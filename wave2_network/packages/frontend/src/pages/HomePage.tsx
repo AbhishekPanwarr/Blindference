@@ -1,58 +1,103 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, Lock, Shield, Cpu } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ArrowRight } from 'lucide-react';
 
 export function HomePage() {
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.15
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+  };
+
   return (
-    <div className="flex flex-col items-center pt-16 pb-12">
-      <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 text-emerald-500 rounded border border-emerald-500/20 text-[10px] font-bold uppercase tracking-widest mb-8">
-        <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-        </span>
-        Live on Arbitrum Sepolia
-      </div>
-      
-      <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight text-center text-white leading-tight max-w-3xl mb-6">
-        Confidential AI Risk Scoring via <span className="text-emerald-500">FHE</span>
-      </h1>
-      
-      <p className="text-lg text-gray-400 text-center max-w-2xl mb-10 leading-relaxed">
-        Run verifiable machine learning models over encrypted data. Blindference ensures your applicant data is never exposed in plaintext, while guaranteeing execution via crypto-economic quorum.
-      </p>
-      
-      <div className="flex items-center gap-4">
-        <Link 
-          to="/inference/new" 
-          className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black px-8 py-3 rounded font-bold transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] text-sm group uppercase tracking-widest"
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="flex flex-col items-start w-full max-w-5xl mx-auto pt-24 pb-32 px-6"
+    >
+      <motion.div variants={itemVariants} className="mb-6">
+        <span className="text-gray-500 font-mono text-[10px] tracking-[0.2em] uppercase">Build on Fhenix</span>
+      </motion.div>
+
+      <motion.h1 variants={itemVariants} className="text-5xl sm:text-6xl md:text-7xl lg:text-[5.5rem] font-medium tracking-tight text-white leading-[1.05] max-w-4xl mb-12">
+        Build the next generation of <span className="text-emerald-500 font-bold">onchain AI</span> with the fastest FHE execution network
+      </motion.h1>
+
+      <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-center gap-6 mt-4 mb-32 w-full sm:w-auto">
+        <Link
+          to="/inference/new"
+          className="flex items-center gap-2 bg-emerald-500 text-black hover:bg-emerald-400 px-8 py-4 rounded-xl font-bold transition-all text-sm group w-full sm:w-auto justify-center"
         >
-          New Inference Request
-          <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          Start Inference
         </Link>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-24 w-full">
-        <div className="flex flex-col items-center text-center p-6 bg-white/[0.02] rounded-xl border border-white/5">
-           <div className="w-12 h-12 bg-white/[0.03] text-emerald-500 rounded-xl flex items-center justify-center mb-4 border border-white/10">
-              <Lock className="w-6 h-6" />
-           </div>
-           <h3 className="text-lg font-bold text-white mb-2">FHE Encryption</h3>
-           <p className="text-sm text-gray-500">Locally encrypt applicant features. Data is evaluated entirely in cipher space.</p>
+        <a
+          href="https://cofhe-docs.fhenix.zone/"
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-2 bg-transparent text-white border border-white/20 hover:bg-white/5 px-8 py-4 rounded-xl font-bold transition-all text-sm w-full sm:w-auto justify-center"
+        >
+          Read docs
+        </a>
+      </motion.div>
+
+      <motion.div variants={itemVariants} className="w-full">
+        <div className="mb-8">
+          <span className="text-gray-500 font-mono text-[10px] tracking-[0.2em] uppercase">Stack</span>
         </div>
-        <div className="flex flex-col items-center text-center p-6 bg-white/[0.02] rounded-xl border border-white/5">
-           <div className="w-12 h-12 bg-white/[0.03] text-emerald-500 rounded-xl flex items-center justify-center mb-4 border border-white/10">
-              <Shield className="w-6 h-6" />
-           </div>
-           <h3 className="text-lg font-bold text-white mb-2">Verifiable Quorum</h3>
-           <p className="text-sm text-gray-500">Results are independently verified by node clusters enforced by slashing conditions.</p>
+
+        <div className="flex flex-col border-t border-white/10">
+
+          <Link to="/inference/new" className="group flex flex-col sm:flex-row sm:items-center justify-between py-10 border-b border-white/10 hover:bg-white/[0.02] transition-colors -mx-6 px-6">
+            <div className="flex items-start gap-8 sm:gap-16">
+              <span className="text-4xl sm:text-5xl font-mono text-gray-500">01</span>
+              <div>
+                <h3 className="text-3xl sm:text-4xl font-medium text-white mb-3 group-hover:text-emerald-500 transition-colors">Compute</h3>
+                <p className="text-gray-400 text-sm max-w-md">Decentralized FHE inference, priced for builders.</p>
+              </div>
+            </div>
+            <div className="mt-6 sm:mt-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center text-sm font-mono text-white">
+              Start <ArrowRight className="w-4 h-4 ml-2" />
+            </div>
+          </Link>
+
+          <div className="group flex flex-col sm:flex-row sm:items-center justify-between py-10 border-b border-white/10 hover:bg-white/[0.02] transition-colors -mx-6 px-6 cursor-not-allowed opacity-60">
+            <div className="flex items-start gap-8 sm:gap-16">
+              <span className="text-4xl sm:text-5xl font-mono text-gray-500">02</span>
+              <div>
+                <h3 className="text-3xl sm:text-4xl font-medium text-white mb-3">Storage</h3>
+                <p className="text-gray-400 text-sm max-w-md">Fast, decentralized storage for AI workloads.</p>
+              </div>
+            </div>
+            <div className="mt-6 sm:mt-0 opacity-0 flex items-center text-sm font-mono text-white">
+              Coming soon <ArrowRight className="w-4 h-4 ml-2" />
+            </div>
+          </div>
+
+          <div className="group flex flex-col sm:flex-row sm:items-center justify-between py-10 border-b border-white/10 hover:bg-white/[0.02] transition-colors -mx-6 px-6 cursor-not-allowed opacity-60">
+            <div className="flex items-start gap-8 sm:gap-16">
+              <span className="text-4xl sm:text-5xl font-mono text-gray-500">03</span>
+              <div>
+                <h3 className="text-3xl sm:text-4xl font-medium text-white mb-3">Quorum</h3>
+                <p className="text-gray-400 text-sm max-w-md">Crypto-economically verified consensus network.</p>
+              </div>
+            </div>
+            <div className="mt-6 sm:mt-0 opacity-0 flex items-center text-sm font-mono text-white">
+              Coming soon <ArrowRight className="w-4 h-4 ml-2" />
+            </div>
+          </div>
+
         </div>
-        <div className="flex flex-col items-center text-center p-6 bg-white/[0.02] rounded-xl border border-white/5">
-           <div className="w-12 h-12 bg-white/[0.03] text-emerald-500 rounded-xl flex items-center justify-center mb-4 border border-white/10">
-              <Cpu className="w-6 h-6" />
-           </div>
-           <h3 className="text-lg font-bold text-white mb-2">Open Marketplace</h3>
-           <p className="text-sm text-gray-500">Choose from top open-source models like Llama 3 70B or connect API endpoints like Gemini Pro.</p>
-        </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

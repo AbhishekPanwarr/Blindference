@@ -181,24 +181,24 @@ export function InferenceNewPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl pb-20 pt-6">
-      <div className="mb-8 flex items-start justify-between">
+    <div className="mx-auto max-w-2xl pb-20 pt-12">
+      <div className="mb-10 flex items-start justify-between">
         <div>
-          <h1 className="mb-1 text-2xl font-semibold text-white">
+          <h1 className="mb-2 text-3xl font-medium text-white tracking-tight">
             {mode === 'risk' ? 'New Risk Assessment' : 'New Text Inference'}
           </h1>
           <p className="text-sm text-gray-500">Secure, end-to-end encrypted inference via FHE.</p>
         </div>
-        <span className="rounded border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-emerald-500">
+        <span className="rounded border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-emerald-500">
           FHE Active
         </span>
       </div>
 
-      <div className="mb-8 inline-flex rounded-lg border border-white/10 bg-white/[0.03] p-1">
+      <div className="mb-10 inline-flex rounded-lg border border-white/10 bg-black p-1">
         <button
           className={cn(
-            'rounded-md px-4 py-2 text-sm font-semibold transition-colors',
-            mode === 'risk' ? 'bg-emerald-500 text-black' : 'text-gray-400 hover:text-white',
+            'rounded-md px-6 py-2.5 text-sm font-semibold transition-colors',
+            mode === 'risk' ? 'bg-white text-black' : 'text-gray-500 hover:text-white',
           )}
           onClick={() => setMode('risk')}
           type="button"
@@ -207,8 +207,8 @@ export function InferenceNewPage() {
         </button>
         <button
           className={cn(
-            'rounded-md px-4 py-2 text-sm font-semibold transition-colors',
-            mode === 'text' ? 'bg-emerald-500 text-black' : 'text-gray-400 hover:text-white',
+            'rounded-md px-6 py-2.5 text-sm font-semibold transition-colors',
+            mode === 'text' ? 'bg-white text-black' : 'text-gray-500 hover:text-white',
           )}
           onClick={() => setMode('text')}
           type="button"
@@ -218,7 +218,7 @@ export function InferenceNewPage() {
       </div>
 
       {mode === 'risk' && store.error ? (
-        <div className="mb-6 flex items-center gap-3 rounded border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-500">
+        <div className="mb-8 flex items-center gap-3 rounded-lg border border-red-500/30 bg-red-500/10 p-5 text-sm text-red-500">
           <ShieldAlert className="h-5 w-5" />
           {store.error}
         </div>
@@ -227,65 +227,65 @@ export function InferenceNewPage() {
       {mode === 'text' ? (
         <TextInferenceWizard />
       ) : (
-      <div className="space-y-6">
-        <div className="space-y-3">
-          <label className="text-[11px] font-bold uppercase tracking-widest text-gray-500">Model Selection</label>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div className="space-y-8">
+        <div className="space-y-4">
+          <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-500">Model Selection</label>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {(['llama3-70b', 'gemini-pro'] as const).map((id) => {
               const isSelected = store.modelId === id
               return (
                 <button
                   className={cn(
-                    'cursor-pointer rounded-lg p-3 text-left outline-none transition-colors flex flex-col gap-1',
+                    'cursor-pointer rounded-xl p-5 text-left outline-none transition-all flex flex-col gap-1.5',
                     isSelected
-                      ? 'border-2 border-emerald-500 bg-emerald-500/5 opacity-100'
-                      : 'border border-white/5 bg-white/[0.02] opacity-60 hover:border-white/20',
+                      ? 'border border-emerald-500 bg-emerald-500/5 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
+                      : 'border border-white/10 bg-black hover:border-white/30',
                   )}
                   key={id}
                   onClick={() => store.setModelId(id)}
                   type="button"
                 >
-                  <span className="text-sm font-semibold capitalize text-white">{id.replace('-', ' ')}</span>
-                  <span className="text-[10px] text-gray-400">{id === 'gemini-pro' ? 'Google API' : 'DePIN execution'}</span>
+                  <span className="text-base font-semibold capitalize text-white">{id.replace('-', ' ')}</span>
+                  <span className="text-xs text-gray-500">{id === 'gemini-pro' ? 'Google API' : 'DePIN execution'}</span>
                 </button>
               )
             })}
           </div>
 
-          <div className="mt-3 w-full space-y-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-emerald-400">
-            <div className="border-b border-emerald-500/10 pb-2 text-[10px] font-bold uppercase tracking-widest text-emerald-500/70">
+          <div className="mt-4 w-full space-y-3 rounded-xl border border-white/10 bg-white/[0.01] p-5">
+            <div className="border-b border-white/5 pb-3 text-[10px] font-bold uppercase tracking-[0.15em] text-gray-500">
               Model Telemetry
             </div>
-            <div className="mt-2 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+            <div className="mt-3 grid grid-cols-2 gap-6 text-sm sm:grid-cols-4">
               <div>
-                <span className="mb-1 block text-[10px] uppercase text-emerald-500/50">Accuracy</span>
-                <span className="font-mono">{currentModel.telemetry.accuracy}</span>
+                <span className="mb-1.5 block text-[10px] uppercase text-gray-500">Accuracy</span>
+                <span className="font-mono text-white">{currentModel.telemetry.accuracy}</span>
               </div>
               <div>
-                <span className="mb-1 block text-[10px] uppercase text-emerald-500/50">False Positives</span>
-                <span className="font-mono">{currentModel.telemetry.falsePositives}</span>
+                <span className="mb-1.5 block text-[10px] uppercase text-gray-500">False Positives</span>
+                <span className="font-mono text-white">{currentModel.telemetry.falsePositives}</span>
               </div>
               <div>
-                <span className="mb-1 block text-[10px] uppercase text-emerald-500/50">Hallucinations</span>
-                <span className="font-mono">{currentModel.telemetry.hallucinations}</span>
+                <span className="mb-1.5 block text-[10px] uppercase text-gray-500">Hallucinations</span>
+                <span className="font-mono text-white">{currentModel.telemetry.hallucinations}</span>
               </div>
               <div>
-                <span className="mb-1 block text-[10px] uppercase text-emerald-500/50">Benchmark</span>
-                <span className="font-mono">{currentModel.telemetry.benchmark}</span>
+                <span className="mb-1.5 block text-[10px] uppercase text-gray-500">Benchmark</span>
+                <span className="font-mono text-white">{currentModel.telemetry.benchmark}</span>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="space-y-4">
-          <label className="text-[11px] font-bold uppercase tracking-widest text-gray-500">
+        <div className="space-y-5">
+          <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-500">
             Applicant Data (Encrypted)
           </label>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <span className="text-xs text-gray-400">Credit Score</span>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div className="space-y-2">
+              <span className="text-xs font-medium text-gray-400">Credit Score</span>
               <input
-                className="w-full rounded border border-white/10 bg-white/[0.03] px-3 py-2 font-mono text-sm text-white focus:border-emerald-500/50 focus:outline-none"
+                className="w-full rounded-lg border border-white/10 bg-black px-4 py-3 font-mono text-sm text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 transition-all"
                 max={850}
                 min={300}
                 onChange={(event) => store.setCreditScore(Number(event.target.value))}
@@ -293,30 +293,30 @@ export function InferenceNewPage() {
                 value={store.creditScore}
               />
             </div>
-            <div className="space-y-1.5">
-              <span className="text-xs text-gray-400">Loan Amount ($)</span>
+            <div className="space-y-2">
+              <span className="text-xs font-medium text-gray-400">Loan Amount ($)</span>
               <input
-                className="w-full rounded border border-white/10 bg-white/[0.03] px-3 py-2 font-mono text-sm text-white focus:border-emerald-500/50 focus:outline-none"
+                className="w-full rounded-lg border border-white/10 bg-black px-4 py-3 font-mono text-sm text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 transition-all"
                 min={0}
                 onChange={(event) => store.setLoanAmount(Number(event.target.value))}
                 type="number"
                 value={store.loanAmount}
               />
             </div>
-            <div className="space-y-1.5">
-              <span className="text-xs text-gray-400">Account Age (days)</span>
+            <div className="space-y-2">
+              <span className="text-xs font-medium text-gray-400">Account Age (days)</span>
               <input
-                className="w-full rounded border border-white/10 bg-white/[0.03] px-3 py-2 font-mono text-sm text-white focus:border-emerald-500/50 focus:outline-none"
+                className="w-full rounded-lg border border-white/10 bg-black px-4 py-3 font-mono text-sm text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 transition-all"
                 min={0}
                 onChange={(event) => store.setAccountAge(Number(event.target.value))}
                 type="number"
                 value={store.accountAge}
               />
             </div>
-            <div className="space-y-1.5">
-              <span className="text-xs text-gray-400">Previous Defaults</span>
+            <div className="space-y-2">
+              <span className="text-xs font-medium text-gray-400">Previous Defaults</span>
               <input
-                className="w-full rounded border border-white/10 bg-white/[0.03] px-3 py-2 font-mono text-sm text-white focus:border-emerald-500/50 focus:outline-none"
+                className="w-full rounded-lg border border-white/10 bg-black px-4 py-3 font-mono text-sm text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 transition-all"
                 max={10}
                 min={0}
                 onChange={(event) => store.setPrevDefaults(Number(event.target.value))}
@@ -327,44 +327,44 @@ export function InferenceNewPage() {
           </div>
         </div>
 
-        <div className="flex items-start gap-3 rounded-lg border border-emerald-500/20 bg-emerald-950/20 p-4">
+        <div className="flex items-start gap-4 rounded-xl border border-white/10 bg-white/[0.01] p-5 hover:border-white/20 transition-colors">
           <input
             checked={store.coverageEnabled}
-            className="mt-1 cursor-pointer rounded border-white/10 bg-black text-emerald-500 accent-emerald-500"
+            className="mt-1 cursor-pointer h-5 w-5 rounded border-white/20 bg-black text-emerald-500 focus:ring-emerald-500 focus:ring-offset-black"
             onChange={(event) => store.setCoverageEnabled(event.target.checked)}
             type="checkbox"
           />
-          <div className="space-y-1">
-            <h4 className="text-sm font-semibold text-emerald-400">Hallucination Coverage</h4>
-            <p className="text-xs leading-relaxed text-gray-400">
+          <div className="space-y-1.5">
+            <h4 className="text-sm font-semibold text-white">Hallucination Coverage</h4>
+            <p className="text-xs leading-relaxed text-gray-500">
               Receive up to 500 USDC payout if the prediction is disputed and settled in your favor. Premium is
               automatically calculated.
             </p>
           </div>
         </div>
 
-        <div className="mt-2 flex items-center justify-between border-t border-white/5 pt-4">
+        <div className="mt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between border-t border-white/10 pt-8 gap-6 sm:gap-0">
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-tighter text-gray-500">Estimated Fee</span>
-            <div className="text-xl font-mono text-white">
-              {totalDisplay}.00 <span className="text-gray-500">GNK</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-500">Estimated Fee</span>
+            <div className="text-2xl font-mono text-white mt-1">
+              {totalDisplay}.00 <span className="text-emerald-500 text-lg">GNK</span>
             </div>
           </div>
 
           <button
-            className="flex min-w-[200px] items-center justify-center rounded bg-emerald-500 px-8 py-3 text-sm font-bold uppercase text-black shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all hover:bg-emerald-400 disabled:opacity-50 disabled:shadow-none"
+            className="flex w-full sm:w-auto min-w-[220px] items-center justify-center rounded-xl bg-emerald-500 px-8 py-4 text-sm font-bold text-black transition-all hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={store.isEncrypting || store.isSubmitting || !isReady || !address}
             onClick={handleSubmit}
             type="button"
           >
             {store.isEncrypting ? (
               <div className="flex items-center gap-2">
-                <Lock className="h-4 w-4 animate-pulse text-emerald-900" />
+                <Lock className="h-4 w-4 animate-pulse text-black" />
                 Encrypting...
               </div>
             ) : store.isSubmitting ? (
               <div className="flex items-center gap-2">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-900/30 border-t-black" />
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-black/30 border-t-black" />
                 Submitting
               </div>
             ) : (

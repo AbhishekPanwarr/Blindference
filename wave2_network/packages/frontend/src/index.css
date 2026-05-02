@@ -1,1 +1,17 @@
 @import "tailwindcss";
+
+@theme {
+  --color-emerald-500: #10b981;
+  
+  --animate-shimmer: shimmer 1.5s infinite;
+  
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+}
+
+body {
+  @apply bg-black text-white antialiased selection:bg-emerald-500/30;
+}

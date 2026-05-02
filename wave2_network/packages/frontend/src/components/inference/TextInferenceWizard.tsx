@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi'
 import axios from 'axios'
-import { Lock, ShieldAlert } from 'lucide-react'
+import { Lock, ShieldAlert, Cpu } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import type { Hex } from 'viem'
 
 import { inferenceApi } from '../../api/inferenceApi'
@@ -49,17 +50,18 @@ export function TextInferenceWizard() {
   const [selectedModelKey, setSelectedModelKey] = useState<TextModelKey>(resolveDefaultModelKey)
   const [error, setError] = useState<string | null>(null)
   const [stage, setStage] = useState<SubmissionStage>('idle')
+  const [isFocused, setIsFocused] = useState(false)
   const selectedModel = TEXT_MODEL_OPTIONS[selectedModelKey]
 
   const isBusy = stage !== 'idle'
   const buttonLabel = useMemo(() => {
     switch (stage) {
       case 'encrypting':
-        return 'Encrypting...'
+        return 'Encrypting Prompt...'
       case 'uploading':
-        return 'Uploading Prompt...'
+        return 'Uploading to ICL...'
       case 'submitting':
-        return 'Submitting...'
+        return 'Assigning Quorum...'
       default:
         return 'Run Confidential Text Inference'
     }
@@ -175,71 +177,144 @@ export function TextInferenceWizard() {
     }
   }
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 10 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.4 } }
+  }
+
   return (
-    <div className="space-y-6">
-      {error ? (
-        <div className="flex items-center gap-3 rounded border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-500">
-          <ShieldAlert className="h-5 w-5" />
-          {error}
+    <motion.div 
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="space-y-6"
+    >
+      <AnimatePresence>
+        {error ? (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="flex items-center gap-3 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-500 overflow-hidden"
+          >
+            <ShieldAlert className="h-5 w-5 shrink-0" />
+            <span className="leading-relaxed">{error}</span>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      <motion.div variants={itemVariants} className="space-y-3 relative">
+        <div className="flex items-center justify-between">
+          <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-500">Confidential Prompt</label>
+          <AnimatePresence>
+            {isFocused && (
+              <motion.span 
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-500 uppercase tracking-widest bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20"
+              >
+                <Lock className="w-3 h-3" /> FHE Protected
+              </motion.span>
+            )}
+          </AnimatePresence>
         </div>
-      ) : null}
+        
+        <div className="relative group">
+          <div className={`absolute -inset-0.5 rounded-xl bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0 blur opacity-0 transition-opacity duration-500 ${isFocused ? 'opacity-100' : 'group-hover:opacity-50'}`} />
+          <textarea
+            className="relative min-h-[220px] w-full resize-y rounded-xl border border-white/10 bg-black px-5 py-4 text-sm leading-relaxed text-white placeholder:text-gray-600 focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/30 transition-all shadow-inner"
+            onChange={(event) => setPrompt(event.target.value)}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            placeholder="Enter your confidential prompt..."
+            value={prompt}
+          />
+        </div>
+      </motion.div>
 
-      <div className="space-y-3">
-        <label className="text-[11px] font-bold uppercase tracking-widest text-gray-500">Confidential Prompt</label>
-        <textarea
-          className="min-h-[220px] w-full resize-y rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-sm leading-6 text-white placeholder:text-gray-500 focus:border-emerald-500/50 focus:outline-none"
-          onChange={(event) => setPrompt(event.target.value)}
-          placeholder="Enter your confidential prompt..."
-          value={prompt}
-        />
-      </div>
+      <motion.div variants={itemVariants} className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
+        <div className="flex items-start gap-4">
+          <div className="mt-1 rounded-full bg-emerald-500/10 p-2 border border-emerald-500/20 text-emerald-500">
+            <Lock className="w-4 h-4" />
+          </div>
+          <div className="space-y-1">
+            <h4 className="text-sm font-semibold text-white">End-to-End Encryption</h4>
+            <p className="text-xs leading-relaxed text-gray-500">
+              Your prompt is encrypted in the browser, uploaded as an encrypted blob, and only the assigned quorum can decrypt the prompt key through CoFHE permissions.
+            </p>
+          </div>
+        </div>
+      </motion.div>
 
-      <div className="rounded-lg border border-emerald-500/20 bg-emerald-950/20 p-4 text-sm text-gray-300">
-        Your prompt is encrypted in the browser, uploaded as an encrypted blob, and only the assigned quorum can
-        decrypt the prompt key through CoFHE permissions.
-      </div>
-
-      <div className="flex items-center justify-between border-t border-white/5 pt-4">
-        <div className="space-y-2">
+      <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-t border-white/10 pt-6 gap-6 sm:gap-0 mt-8">
+        <div className="space-y-2 w-full sm:w-auto">
           <label
-            className="block text-[10px] font-bold uppercase tracking-tighter text-gray-500"
+            className="block text-[10px] font-bold uppercase tracking-[0.15em] text-gray-500"
             htmlFor="text-model-select"
           >
-            Model
+            Execution Model
           </label>
-          <select
-            className="min-w-[240px] rounded border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white outline-none transition-colors focus:border-emerald-500/50"
-            disabled={isBusy}
-            id="text-model-select"
-            onChange={(event) => setSelectedModelKey(event.target.value as TextModelKey)}
-            value={selectedModelKey}
-          >
-            {Object.entries(TEXT_MODEL_OPTIONS).map(([key, option]) => (
-              <option className="bg-zinc-950 text-white" key={key} value={key}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <div className="text-xs text-gray-500">{selectedModel.description}</div>
+          <div className="relative">
+            <Cpu className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500/50" />
+            <select
+              className="w-full sm:min-w-[260px] appearance-none rounded-lg border border-white/10 bg-black pl-10 pr-10 py-3 text-sm font-medium text-white outline-none transition-all focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 disabled:opacity-50"
+              disabled={isBusy}
+              id="text-model-select"
+              onChange={(event) => setSelectedModelKey(event.target.value as TextModelKey)}
+              value={selectedModelKey}
+            >
+              {Object.entries(TEXT_MODEL_OPTIONS).map(([key, option]) => (
+                <option className="bg-black text-white" key={key} value={key}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+              <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
+                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" fillRule="evenodd" />
+              </svg>
+            </div>
+          </div>
+          <div className="text-[11px] text-gray-500 font-mono mt-1">{selectedModel.description}</div>
         </div>
 
         <button
-          className="flex min-w-[260px] items-center justify-center rounded bg-emerald-500 px-8 py-3 text-sm font-bold uppercase text-black shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all hover:bg-emerald-400 disabled:opacity-50 disabled:shadow-none"
+          className="group relative flex w-full sm:w-auto min-w-[280px] items-center justify-center rounded-xl bg-emerald-500 px-8 py-4 text-sm font-bold uppercase tracking-wide text-black transition-all hover:bg-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed overflow-hidden shadow-[0_0_20px_rgba(16,185,129,0.15)] hover:shadow-[0_0_25px_rgba(16,185,129,0.3)]"
           disabled={isBusy || !isReady || !address}
           onClick={handleSubmit}
           type="button"
         >
           {isBusy ? (
-            <div className="flex items-center gap-2">
-              <Lock className="h-4 w-4 animate-pulse text-emerald-900" />
+            <div className="flex items-center gap-3 relative z-10">
+              <motion.div 
+                animate={{ rotate: 360 }}
+                transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                className="h-4 w-4 rounded-full border-2 border-black/30 border-t-black" 
+              />
               {buttonLabel}
             </div>
           ) : (
-            'Run Confidential Text Inference'
+            <span className="relative z-10 flex items-center gap-2">
+              <Lock className="w-4 h-4" />
+              Run Confidential Inference
+            </span>
+          )}
+          
+          {!isBusy && (
+            <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
           )}
         </button>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
 

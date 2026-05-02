@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { AlertCircle, CheckCircle2, Clock } from 'lucide-react'
+import { motion } from 'framer-motion'
 
 import { DisputeForm } from '../components/DisputeForm'
 import { OnChainEvidence } from '../components/OnChainEvidence'
@@ -159,13 +160,23 @@ export function InferenceStatusPage() {
 
   if (!status) {
     return (
-      <div className="mx-auto max-w-4xl pb-20 pt-6">
+      <div className="mx-auto max-w-4xl pb-20 pt-12">
         <div className="flex h-64 flex-col items-center justify-center">
-          <div className="relative mb-4 h-32 w-32 overflow-hidden">
-            <div className="absolute top-0 h-32 w-32 rounded-full border-[8px] border-white/5" />
-            <div className="absolute top-0 h-32 w-32 animate-spin rounded-full border-[8px] border-emerald-500 border-b-transparent border-r-transparent" />
-          </div>
-          <p className="animate-pulse text-xs font-bold uppercase tracking-widest text-gray-500">Loading request...</p>
+          <motion.div 
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+            className="relative mb-6 h-24 w-24"
+          >
+            <div className="absolute inset-0 rounded-full border border-white/10" />
+            <div className="absolute inset-0 rounded-full border-t border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
+          </motion.div>
+          <motion.p 
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ repeat: Infinity, duration: 1.5 }}
+            className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500"
+          >
+            Loading request...
+          </motion.p>
         </div>
       </div>
     )
@@ -175,28 +186,28 @@ export function InferenceStatusPage() {
   const Icon = currentDisplay.icon
 
   return (
-    <div className="mx-auto max-w-4xl pb-20 pt-6">
+    <div className="mx-auto max-w-4xl pb-20 pt-8">
       <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
         <div>
-          <h2 className="text-lg font-semibold text-white">Active Task</h2>
-          <div className="flex items-center gap-2 font-mono text-[11px] uppercase text-gray-500">
+          <h2 className="text-xl font-medium text-white mb-1">Active Task</h2>
+          <div className="flex items-center gap-2 font-mono text-[10px] uppercase text-gray-500 tracking-wider">
             <span>REQ-ID: {requestId}</span>
           </div>
         </div>
         <div
-          className={`flex items-center gap-2 rounded px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest ${currentDisplay.bg} ${currentDisplay.color}`}
+          className={`flex items-center gap-2 rounded-full px-4 py-2 text-[10px] font-bold uppercase tracking-widest ${currentDisplay.bg} ${currentDisplay.color} border shadow-sm`}
         >
-          <Icon className="h-3 w-3" />
+          <Icon className="h-3.5 w-3.5" />
           {currentDisplay.text}
         </div>
       </div>
 
       <StatusTimeline currentStatus={status.status} timestamps={status.timestamps} />
 
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-[1fr_300px]">
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-[1fr_320px]">
         <div className="space-y-8">
-          <section className="space-y-4 rounded-xl border border-white/5 bg-white/[0.02] p-5">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Quorum Progress</h3>
+          <section className="space-y-5 rounded-xl border border-white/10 bg-black p-6">
+            <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">Quorum Progress</h3>
             <QuorumVisualizer leader={status.quorum.leader ?? undefined} status={status.status} verifiers={status.quorum.verifiers} />
             {!status.quorum.leader ? (
               <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.01] py-8 text-center text-sm text-gray-500">
@@ -225,22 +236,22 @@ export function InferenceStatusPage() {
           ) : null}
 
           {status.status === 'ACCEPTED' && status.coverage_id ? (
-            <section className="mt-auto flex flex-col gap-4 rounded-xl border border-white/5 bg-white/[0.02] p-5">
+            <section className="mt-auto flex flex-col gap-5 rounded-xl border border-white/10 bg-black p-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-gray-500">Coverage Status</div>
-                  <div className="flex items-center gap-2 text-sm font-semibold text-emerald-400">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-                    ACTIVE <span className="ml-2 text-xs font-normal text-gray-500">ID: {status.coverage_id}</span>
+                  <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">Coverage Status</div>
+                  <div className="flex items-center gap-2 text-sm font-bold text-emerald-500">
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                    ACTIVE <span className="ml-2 text-xs font-normal text-gray-500 font-mono">ID: {status.coverage_id}</span>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-gray-500">Dispute Window</div>
-                  <div className="font-mono text-sm text-gray-300">{timeLeft} remaining</div>
+                <div className="text-left sm:text-right">
+                  <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">Dispute Window</div>
+                  <div className="font-mono text-sm text-white">{timeLeft} remaining</div>
                 </div>
               </div>
               <button
-                className="mt-2 w-full rounded border border-red-500/40 bg-red-500/10 py-2.5 text-xs font-bold uppercase tracking-widest text-red-400 transition-colors hover:bg-red-500/20 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                className="mt-2 w-full rounded-xl border border-red-500/50 bg-red-500/10 py-3.5 text-xs font-bold uppercase tracking-[0.2em] text-red-500 transition-colors hover:bg-red-500/20"
                 onClick={() => setIsDisputeOpen(true)}
                 type="button"
               >
@@ -251,26 +262,26 @@ export function InferenceStatusPage() {
         </div>
 
         <div>
-          <section className="sticky top-24 flex flex-col items-center justify-center rounded-xl border border-white/5 bg-black/40 p-8">
+          <section className="sticky top-24 flex flex-col items-center justify-center rounded-xl border border-white/10 bg-black p-8 min-h-[400px]">
             {status.mode === 'text' && status.status === 'ACCEPTED' ? (
-              <div className="flex w-full flex-col gap-4">
-                <div className="w-full rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-emerald-400">
-                  <div className="border-b border-emerald-500/10 pb-2 text-[10px] font-bold uppercase tracking-widest text-emerald-500/70">
+              <div className="flex w-full flex-col gap-6">
+                <div className="w-full rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-5 text-emerald-400">
+                  <div className="border-b border-emerald-500/20 pb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-500">
                     Decrypted Answer
                   </div>
                   {isDecryptingAnswer ? (
-                    <div className="py-8 text-sm text-gray-300">Decrypting answer...</div>
+                    <div className="py-8 text-sm text-gray-400 font-mono">Decrypting answer...</div>
                   ) : textAnswerError ? (
                     <div className="py-8 text-sm text-red-400">{textAnswerError}</div>
                   ) : textAnswer ? (
-                    <pre className="mt-3 whitespace-pre-wrap font-sans text-sm leading-6 text-white">{textAnswer}</pre>
+                    <pre className="mt-4 whitespace-pre-wrap font-sans text-sm leading-relaxed text-white">{textAnswer}</pre>
                   ) : (
-                    <div className="py-8 text-sm text-gray-400">Waiting for output key...</div>
+                    <div className="py-8 text-sm text-gray-500 font-mono">Waiting for output key...</div>
                   )}
                 </div>
-                <div className="w-full rounded-xl border border-white/5 bg-white/[0.02] p-4">
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Commitment</div>
-                  <div className="mt-2 break-all font-mono text-xs text-gray-300">
+                <div className="w-full rounded-xl border border-white/10 bg-white/[0.02] p-5">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">Commitment</div>
+                  <div className="mt-3 break-all font-mono text-[10px] leading-relaxed text-gray-400">
                     {status.text_result?.commitment_hash ?? 'Pending'}
                   </div>
                 </div>
@@ -279,62 +290,94 @@ export function InferenceStatusPage() {
               <div className="flex w-full flex-col items-center">
                 <RiskGauge score={status.result.risk_score} size={220} />
 
-                <div className="mt-8 flex w-full justify-center gap-8">
+                <div className="mt-10 flex w-full justify-center gap-12">
                   <div className="text-center">
-                    <div className="text-xs font-bold uppercase text-gray-500">Confidence</div>
-                    <div className="text-xl font-semibold text-white">{status.result.confidence}%</div>
+                    <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500 mb-2">Confidence</div>
+                    <div className="text-2xl font-medium text-white">{status.result.confidence}%</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-xs font-bold uppercase text-gray-500">Quorum</div>
-                    <div className="text-xl font-semibold text-white">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500 mb-2">Quorum</div>
+                    <div className="text-2xl font-medium text-white">
                       {status.quorum.confirm_count}/{status.quorum.verifiers.length}{' '}
-                      <span className="text-xs text-emerald-400">✓</span>
+                      <span className="text-emerald-500 ml-1">✓</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-8 w-full space-y-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-emerald-400">
-                  <div className="border-b border-emerald-500/10 pb-2 text-[10px] font-bold uppercase tracking-widest text-emerald-500/70">
+                <div className="mt-10 w-full space-y-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5 text-emerald-400">
+                  <div className="border-b border-emerald-500/20 pb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-500">
                     Verified Model Telemetry
                   </div>
-                  <div className="mt-2 grid grid-cols-2 gap-4 text-sm">
+                  <div className="mt-3 grid grid-cols-2 gap-5 text-sm">
                     <div>
-                      <span className="mb-1 block text-[10px] uppercase text-emerald-500/50">Accuracy</span>
-                      <span className="font-mono">{'model_id' in status.raw && status.raw.model_id.includes('gemini') ? '96.8%' : '94.2%'}</span>
+                      <span className="mb-1.5 block text-[10px] uppercase text-emerald-500/60">Accuracy</span>
+                      <span className="font-mono text-white">{'model_id' in status.raw && status.raw.model_id.includes('gemini') ? '96.8%' : '94.2%'}</span>
                     </div>
                     <div>
-                      <span className="mb-1 block text-[10px] uppercase text-emerald-500/50">False Positives</span>
-                      <span className="font-mono">{'model_id' in status.raw && status.raw.model_id.includes('gemini') ? '0.8%' : '1.2%'}</span>
+                      <span className="mb-1.5 block text-[10px] uppercase text-emerald-500/60">False Positives</span>
+                      <span className="font-mono text-white">{'model_id' in status.raw && status.raw.model_id.includes('gemini') ? '0.8%' : '1.2%'}</span>
                     </div>
                     <div>
-                      <span className="mb-1 block text-[10px] uppercase text-emerald-500/50">Hallucinations</span>
-                      <span className="font-mono">{'model_id' in status.raw && status.raw.model_id.includes('gemini') ? '< 0.2%' : '< 0.5%'}</span>
+                      <span className="mb-1.5 block text-[10px] uppercase text-emerald-500/60">Hallucinations</span>
+                      <span className="font-mono text-white">{'model_id' in status.raw && status.raw.model_id.includes('gemini') ? '< 0.2%' : '< 0.5%'}</span>
                     </div>
                     <div>
-                      <span className="mb-1 block text-[10px] uppercase text-emerald-500/50">Benchmark</span>
-                      <span className="font-mono">{'model_id' in status.raw && status.raw.model_id.includes('gemini') ? '86.2 MMLU' : '82.0 MMLU'}</span>
+                      <span className="mb-1.5 block text-[10px] uppercase text-emerald-500/60">Benchmark</span>
+                      <span className="font-mono text-white">{'model_id' in status.raw && status.raw.model_id.includes('gemini') ? '86.2 MMLU' : '82.0 MMLU'}</span>
                     </div>
                   </div>
                 </div>
               </div>
             ) : status.status === 'REJECTED' ? (
-              <div className="flex h-48 flex-col items-center justify-center text-center text-red-400">
-                <AlertCircle className="mb-3 h-12 w-12 opacity-50" />
-                <p className="text-sm font-medium">
+              <div className="flex flex-col items-center justify-center text-center text-red-500">
+                <AlertCircle className="mb-4 h-12 w-12" />
+                <p className="text-sm font-medium leading-relaxed">
                   Inference rejected by quorum.
                   <br />
-                  Mismatched execution fingerprints.
+                  <span className="text-gray-400 font-normal">Mismatched execution fingerprints.</span>
                 </p>
               </div>
             ) : (
-              <div className="flex h-64 flex-col items-center justify-center">
-                <div className="relative mb-4 h-32 w-32 overflow-hidden">
-                  <div className="absolute top-0 h-32 w-32 rounded-full border-[8px] border-white/5" />
-                  <div className="absolute top-0 h-32 w-32 animate-spin rounded-full border-[8px] border-emerald-500 border-b-transparent border-r-transparent" />
+              <div className="flex flex-col items-center justify-center w-full relative">
+                <motion.div
+                  animate={{ 
+                    scale: [1, 1.1, 1],
+                    opacity: [0.3, 0.8, 0.3]
+                  }}
+                  transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                  className="absolute w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"
+                />
+                
+                <div className="relative mb-8 h-32 w-32">
+                  <motion.div 
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 8, ease: "linear" }}
+                    className="absolute inset-0 rounded-full border border-dashed border-emerald-500/30" 
+                  />
+                  <motion.div 
+                    animate={{ rotate: -360 }}
+                    transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
+                    className="absolute inset-2 rounded-full border border-emerald-500/50 border-t-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]" 
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-[10px] font-mono text-emerald-500 font-bold tracking-widest uppercase">
+                      {status.status === 'VERIFYING' ? 'VRFY' : 'EXEC'}
+                    </span>
+                  </div>
                 </div>
-                <p className="animate-pulse text-xs font-bold uppercase tracking-widest text-gray-500">
-                  {status.status === 'VERIFYING' ? 'Verifiers checking result...' : 'Running FHE...'}
-                </p>
+
+                <div className="space-y-2 text-center relative z-10">
+                  <motion.p 
+                    animate={{ opacity: [0.5, 1, 0.5] }}
+                    transition={{ repeat: Infinity, duration: 2 }}
+                    className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-500"
+                  >
+                    {status.status === 'VERIFYING' ? 'Verifying Results...' : 'Computing FHE...'}
+                  </motion.p>
+                  <p className="text-[10px] font-mono text-gray-500">
+                    Generating cryptographic proofs
+                  </p>
+                </div>
               </div>
             )}
           </section>
