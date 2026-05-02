@@ -59,7 +59,7 @@ export function Wave3Popup() {
               </h2>
               
               <p className="mb-10 text-gray-400 text-sm sm:text-base leading-relaxed max-w-2xl">
-                We've massivey expanded the protocol in Wave 3. We've moved beyond risk scoring to bring you full end-to-end confidential inference with crypto-economic guarantees and a completely overhauled developer experience.
+                We've massively expanded the protocol in Wave 3. We've moved beyond risk scoring to bring you full end-to-end confidential inference with crypto-economic guarantees and a completely overhauled developer experience.
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
