@@ -27,6 +27,32 @@ export type InferenceRequestPayload = {
   metadata: Record<string, unknown>
 }
 
+export type TextInferenceRequestPayload = {
+  developer_address: string
+  task_id?: string
+  mode: 'text'
+  model_id?: string
+  text_request: {
+    prompt_cid: string
+    encrypted_prompt_key: {
+      high: string
+      low: string
+    }
+    model_id?: string
+    coverage_enabled?: boolean
+  }
+  min_tier?: number
+  zdr_required?: boolean
+  verifier_count?: number
+  leader_address?: string
+  verifier_addresses?: string[]
+  metadata?: Record<string, unknown>
+}
+
+export type IpfsUploadResponse = {
+  cid: string
+}
+
 export type BackendInferenceRequest = {
   request_id: string
   task_id: string
@@ -136,6 +162,18 @@ export const inferenceApi = {
   },
   submit(payload: InferenceRequestPayload) {
     return apiClient.post<BackendInferenceRequest>('/v1/inference/requests', payload)
+  },
+  submitText(payload: TextInferenceRequestPayload) {
+    return apiClient.post<BackendInferenceRequest | BackendTextInferenceStatus>('/v1/inference/requests', payload)
+  },
+  uploadPromptBlob(blob: Blob, filename = 'blindference-text-prompt.bin') {
+    const formData = new FormData()
+    formData.append('file', blob, filename)
+    return apiClient.post<IpfsUploadResponse>('/v1/inference/upload-prompt', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
   },
   getStatus(requestId: string) {
     return apiClient.get<BackendInferenceStatusResponse>(`/v1/inference/${requestId}`)

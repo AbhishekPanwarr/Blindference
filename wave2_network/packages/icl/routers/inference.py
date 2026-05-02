@@ -1,6 +1,17 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+import sys
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+
+try:
+    from blindference_utils.ipfs import upload_to_ipfs
+except ImportError:
+    shared_py_root = Path(__file__).resolve().parents[2] / "shared-py"
+    if str(shared_py_root) not in sys.path:
+        sys.path.insert(0, str(shared_py_root))
+    from blindference_utils.ipfs import upload_to_ipfs  # type: ignore[no-redef]
 
 from middleware.rate_limit import rate_limit_guard
 from models.request_models import (
@@ -10,11 +21,33 @@ from models.request_models import (
     InferenceRequestCreate,
     VerifierVerdictSubmissionRequest,
 )
-from models.response_models import InferenceCommitResponse, InferenceRequestResponse, QuorumPreviewResponse
+from models.response_models import (
+    InferenceCommitResponse,
+    InferenceRequestResponse,
+    IpfsUploadResponse,
+    QuorumPreviewResponse,
+)
 from models.text_inference import TextInferenceResult
 from services import ServiceContainer, get_service_container
 
 router = APIRouter(prefix="/v1/inference", tags=["inference"])
+
+
+@router.post("/upload-prompt", response_model=IpfsUploadResponse)
+async def upload_encrypted_prompt(
+    file: UploadFile = File(...),
+    _: bool = Depends(rate_limit_guard),
+) -> IpfsUploadResponse:
+    try:
+        data = await file.read()
+        if not data:
+            raise ValueError("Uploaded prompt payload is empty")
+        cid = upload_to_ipfs(data)
+        return IpfsUploadResponse(cid=cid)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except Exception as error:
+        raise HTTPException(status_code=502, detail=f"Prompt upload failed: {error}") from error
 
 
 @router.get("", response_model=list[InferenceRequestResponse])

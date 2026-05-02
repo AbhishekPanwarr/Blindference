@@ -39,7 +39,7 @@ async def test_process_text_task_as_leader_builds_payload_and_posts(monkeypatch)
 
     async def fake_model_runner(prompt: str, model_name: str | None = None) -> str:
         assert prompt == "hello private world"
-        assert model_name == "gpt-4o-mini"
+        assert model_name == "llama-3.3-70b-versatile"
         return "deterministic answer"
 
     monkeypatch.setattr(text_handler, "download_from_ipfs", fake_download)
@@ -49,7 +49,7 @@ async def test_process_text_task_as_leader_builds_payload_and_posts(monkeypatch)
         {
             "job_id": "job-1",
             "prompt_cid": "bafypromptcid",
-            "model_id": "gpt-4o-mini",
+            "model_id": "groq:llama-3.3-70b-versatile",
             "encrypted_prompt_key_high": "11",
             "encrypted_prompt_key_low": "22",
         },
@@ -57,12 +57,15 @@ async def test_process_text_task_as_leader_builds_payload_and_posts(monkeypatch)
         {
             "decrypt_prompt_key": lambda _high, _low: bytes.fromhex(prompt_key_hex),
             "encrypt_output_key": lambda values: {
-                "high": {"ctHash": f"enc-{values[0]}", "securityZone": 0, "utype": 8, "signature": "0x01"},
-                "low": {"ctHash": f"enc-{values[1]}", "securityZone": 0, "utype": 8, "signature": "0x02"},
+                "high": {"ctHash": f"enc-{values[0]}", "securityZone": 0, "utype": 6, "signature": "0x01"},
+                "low": {"ctHash": f"enc-{values[1]}", "securityZone": 0, "utype": 6, "signature": "0x02"},
             },
             "submit_leader_text_result": fake_submit,
             "icl_base_url": "http://icl.local",
             "operator_address": "0x1111111111111111111111111111111111111111",
+            "provider": "groq",
+            "groq_model": "llama-3.3-70b-versatile",
+            "gemini_model": "gemini-2.5-flash",
         },
     )
 
@@ -98,7 +101,7 @@ async def test_process_text_task_as_verifier_builds_payload_and_posts(monkeypatc
 
     async def fake_model_runner(prompt: str, model_name: str | None = None) -> str:
         assert prompt == "verify this prompt"
-        assert model_name == "gpt-4o-mini"
+        assert model_name == "llama-3.3-70b-versatile"
         return "deterministic verifier answer"
 
     monkeypatch.setattr(text_handler, "download_from_ipfs", fake_download)
@@ -114,7 +117,7 @@ async def test_process_text_task_as_verifier_builds_payload_and_posts(monkeypatc
             "prompt_cid": "bafyverifycid",
             "output_cid": "bafyoutputcid",
             "commitment_hash": expected_commitment,
-            "model_id": "gpt-4o-mini",
+            "model_id": "groq:llama-3.3-70b-versatile",
             "encrypted_prompt_key_high": "33",
             "encrypted_prompt_key_low": "44",
         },
@@ -124,6 +127,9 @@ async def test_process_text_task_as_verifier_builds_payload_and_posts(monkeypatc
             "submit_verifier_text_verdict": fake_submit,
             "icl_base_url": "http://icl.local",
             "operator_address": "0x2222222222222222222222222222222222222222",
+            "provider": "groq",
+            "groq_model": "llama-3.3-70b-versatile",
+            "gemini_model": "gemini-2.5-flash",
         },
     )
 

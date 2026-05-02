@@ -33,19 +33,31 @@ logging.basicConfig(
 logger = logging.getLogger("blindference.icl")
 
 
+async def _resolve_database(settings: Settings):
+    if not settings.USE_MONGO:
+        logger.info("USE_MONGO=false; using in-memory persistence")
+        database = get_in_memory_database()
+        await ensure_indexes(database)
+        return database, False
+
+    database = await get_database(settings)
+    mongo_connected = await ping_database(database)
+    if mongo_connected:
+        await ensure_indexes(database)
+        return database, True
+
+    logger.warning("MongoDB unavailable, falling back to in-memory persistence for local development")
+    database = get_in_memory_database()
+    await ensure_indexes(database)
+    return database, False
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     resolved_settings = settings or get_settings()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        database = await get_database(resolved_settings)
-        mongo_connected = await ping_database(database)
-        if mongo_connected:
-            await ensure_indexes(database)
-        else:
-            logger.warning("MongoDB unavailable, falling back to in-memory persistence for local development")
-            database = get_in_memory_database()
-            await ensure_indexes(database)
+        database, mongo_connected = await _resolve_database(resolved_settings)
 
         chain_service = ChainService(resolved_settings, database)
         node_selector = NodeSelector(chain_service)

@@ -12,6 +12,8 @@ class LeaderTextResultSubmission(BaseModel):
     encrypted_output_key_high: str | None = None
     encrypted_output_key_low: str | None = None
     encrypted_output_key_inputs: dict[str, dict[str, Any]] | None = None
+    output_key_store_tx: str | None = None
+    output_key_store_job_id: str | None = None
     verdict: str | None = None
     confidence: int | None = Field(default=None, ge=0, le=100)
 

@@ -52,9 +52,9 @@ class CofheBridgeClient:
         low = int(result["low"])
         return high.to_bytes(16, "big") + low.to_bytes(16, "big")
 
-    async def encrypt_uint256_values(self, *, values: list[int]) -> list[dict]:
+    async def encrypt_uint128_values(self, *, values: list[int]) -> list[dict]:
         payload = {
-            "action": "encrypt_uint256",
+            "action": "encrypt_uint128",
             "rpcUrl": self.rpc_url,
             "chainId": self.chain_id,
             "privateKey": self.private_key,
@@ -62,6 +62,29 @@ class CofheBridgeClient:
         }
         result = await self._run(payload)
         return list(result["results"])
+
+    async def store_prompt_key(
+        self,
+        *,
+        task_id: str,
+        prompt_key_store_address: str,
+        encrypted_high_input: dict,
+        encrypted_low_input: dict,
+        allowed_nodes: list[str],
+    ) -> str:
+        payload = {
+            "action": "store_prompt_key",
+            "rpcUrl": self.rpc_url,
+            "chainId": self.chain_id,
+            "privateKey": self.private_key,
+            "taskId": task_id,
+            "promptKeyStoreAddress": prompt_key_store_address,
+            "encryptedHighInput": encrypted_high_input,
+            "encryptedLowInput": encrypted_low_input,
+            "allowedNodes": allowed_nodes,
+        }
+        result = await self._run(payload)
+        return str(result["txHash"])
 
     async def _run(self, payload: dict) -> dict:
         process = await asyncio.create_subprocess_exec(

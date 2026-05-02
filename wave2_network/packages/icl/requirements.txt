@@ -11,3 +11,4 @@ pytest
 pytest-asyncio
 pycryptodome
 requests
+python-multipart

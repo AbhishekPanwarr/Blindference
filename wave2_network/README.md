@@ -1,71 +1,101 @@
-# Wave 2 Monorepo
+# Wave 3 Monorepo Notes
 
-This is the active Blindference Wave 2 monorepo.
+This is the active Blindference monorepo for the Wave 3 build.
 
-## Packages
+## What This Monorepo Covers
+
+The current Wave 3 build contains both of the currently implemented product surfaces:
+
+- confidential risk scoring
+- confidential text inference
+
+The text pipeline is the major expansion in this Wave 3 build and adds:
+
+- browser AES prompt encryption
+- prompt/output blob storage through Pinata/IPFS
+- on-chain prompt/output key handling through `PromptKeyStore`
+- Groq / Gemini text inference
+- frontend result reveal for the user
+
+## Package Map
 
 ```text
 wave2_network/
-├── packages/contracts/           Reineira core protocol contracts
-├── packages/blindference-demo/   Blindference demo contracts
-├── packages/icl/                 FastAPI coordination layer
-├── packages/frontend/            BF demo frontend
+├── packages/contracts/           Core contracts including PromptKeyStore
+├── packages/blindference-demo/   Demo-specific contracts still used by the UI shell
+├── packages/icl/                 FastAPI coordination backend
+├── packages/frontend/            Active React/Vite frontend
 ├── packages/node-reineira/       Leader / verifier runtime
-├── packages/fhe-mocks/           Optional local CoFHE mock node
-└── protocol/                     Upstream Reineira reference code
+├── packages/shared/              Shared TypeScript helpers
+├── packages/shared-py/           Shared Python helpers
+├── packages/fhe-mocks/           Optional local mock FHE package
+├── protocol/                     Reineira upstream reference code
+└── scripts/demo/                 Start/stop/status helpers
 ```
 
-## Prerequisites
+## Recommended Demo Run
 
-- Node.js 20+
-- Python 3.11+
-- Foundry
-- `anvil`
-- MetaMask on Arbitrum Sepolia for the live demo
-
-## Quick Demo Run
-
-Open separate terminals and use these relative-path commands:
+Start everything:
 
 ```bash
-bash wave2_network/scripts/demo/run-icl.sh
+bash wave2_network/scripts/demo/run-stack.sh
 ```
+
+Check status:
 
 ```bash
-bash wave2_network/scripts/demo/bootstrap.sh
+bash wave2_network/scripts/demo/status.sh
 ```
 
-```bash
-bash wave2_network/scripts/demo/run-node.sh leader
-```
-
-```bash
-bash wave2_network/scripts/demo/run-node.sh verifier1
-```
-
-```bash
-bash wave2_network/scripts/demo/run-node.sh verifier2
-```
-
-```bash
-bash wave2_network/scripts/demo/run-frontend.sh
-```
-
-Open `http://127.0.0.1:3000`.
-
-To stop local demo processes:
+Stop everything:
 
 ```bash
 bash wave2_network/scripts/demo/stop.sh
 ```
 
-To file a mocked dispute without using the modal:
+Open:
 
-```bash
-bash wave2_network/scripts/demo/file-dispute.sh <request_id> <developer_address> "manual review requested"
+- `http://127.0.0.1:3000`
+
+## What The Demo Scripts Do
+
+The stack scripts launch:
+
+- ICL
+- leader node runtime
+- verifier 1 node runtime
+- verifier 2 node runtime
+- frontend dev server
+
+Logs:
+
+```text
+wave2_network/scripts/demo/logs/
 ```
 
-## Install
+PID files:
+
+```text
+wave2_network/scripts/demo/pids/
+```
+
+## Text Demo Path
+
+```mermaid
+flowchart LR
+    FE[Frontend] -->|submit text request| ICL
+    FE -->|store prompt key| PKS[PromptKeyStore]
+    ICL --> L[Leader]
+    ICL --> V1[Verifier 1]
+    ICL --> V2[Verifier 2]
+    L -->|run inference| LLM[Groq / Gemini]
+    V1 -->|verify| LLM
+    V2 -->|verify| LLM
+    L -->|store output key for user| PKS
+    ICL --> FE
+```
+
+## Install By Package
 
 ### Contracts
 
@@ -75,7 +105,7 @@ forge build
 forge test -vv
 ```
 
-### Demo Contracts
+### Demo contracts
 
 ```bash
 cd wave2_network/packages/blindference-demo
@@ -93,14 +123,6 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Required values in `wave2_network/packages/icl/.env`:
-
-- `ICL_PRIVATE_KEY`
-- `DEMO_OPERATOR_PRIVATE_KEYS` or `DEMO_OPERATOR_PRIVATE_KEY1/2/3`
-- `GROQ_API_KEY` or `GOOGLE_API_KEY`
-
-The public Sepolia contract addresses can stay on the defaults from `.env.example`.
-
 ### Frontend
 
 ```bash
@@ -109,15 +131,7 @@ npm install --legacy-peer-deps
 cp .env.example .env
 ```
 
-Recommended values in `wave2_network/packages/frontend/.env`:
-
-- `VITE_ICL_API_URL=http://127.0.0.1:8000`
-- `VITE_CHAIN_ID=421614`
-- `VITE_WALLET_CONNECT_PROJECT_ID=<your_walletconnect_project_id>`
-
-The deployed agent and input vault addresses already exist in `.env.example`.
-
-### Node Runtime
+### Node runtime
 
 ```bash
 cd wave2_network/packages/node-reineira
@@ -127,227 +141,57 @@ npm install --legacy-peer-deps
 cp .env.example .env
 ```
 
-The demo scripts source `wave2_network/packages/icl/.env`, so you do not need to maintain a separate runtime `.env` for normal local usage.
+## Runtime Configuration Notes
 
-## Local Demo Commands
+### Frontend
 
-Use the quick demo scripts above for the normal flow. The detailed commands below remain as a reference.
+Important values:
 
-### 1. Start Anvil
+- `VITE_ICL_API_URL`
+- `VITE_PROMPT_KEY_STORE_ADDRESS`
+- `VITE_TEXT_MODEL_DEFAULT`
+- `VITE_IPFS_GATEWAY_URL`
 
-```bash
-anvil --port 8545
-```
+### ICL
 
-### 2. Deploy Core Protocol
+Important values:
 
-```bash
-cd wave2_network/packages/contracts
-forge script script/Deploy.s.sol:DeployScript --rpc-url http://127.0.0.1:8545 --broadcast
-```
+- `ARBITRUM_SEPOLIA_RPC`
+- `COFHE_RPC_URL`
+- `PROMPT_KEY_STORE_ADDRESS`
+- `ICL_PRIVATE_KEY`
+- `DEMO_OPERATOR_PRIVATE_KEYS`
+- `PINATA_JWT`
 
-### 3. Deploy Blindference Demo Contracts
+### Node runtime
 
-```bash
-cd wave2_network/packages/blindference-demo
-forge script script/DeployBlindferenceAgent.s.sol:DeployBlindferenceAgentScript --rpc-url http://127.0.0.1:8545 --broadcast
-```
+Important values:
 
-### 4. Start the ICL
+- `BLINDFERENCE_NODE_ICL_BASE_URL`
+- `BLINDFERENCE_NODE_PROVIDER`
+- `BLINDFERENCE_NODE_GROQ_API_KEY` or `BLINDFERENCE_NODE_GEMINI_API_KEY`
+- `BLINDFERENCE_NODE_PROMPT_KEY_STORE_ADDRESS`
+- `BLINDFERENCE_NODE_OPERATOR_PRIVATE_KEY`
+- `PINATA_JWT`
 
-```bash
-cd wave2_network/packages/icl
-source .venv/bin/activate
-uvicorn main:app --host 127.0.0.1 --port 8000
-```
+## Fresh Text Validation
 
-### 5. Bootstrap 3 Demo Operators
+When validating text mode, always use a fresh request after restart.
 
-```bash
-curl -s -X POST http://127.0.0.1:8000/admin/bootstrap-demo-nodes \
-  -H 'Content-Type: application/json' \
-  -d '{"count":3}'
-```
+Why:
 
-### 6. Start the 3 Node Daemons
+- the latest fixes changed how prompt/output key handles are persisted
+- older failed jobs may still point at stale handles and give misleading results
 
-Leader:
+Suggested logs to watch:
 
 ```bash
-cd wave2_network/packages/node-reineira
-set -a
-source ../icl/.env
-set +a
-BLINDFERENCE_NODE_OPERATOR_PRIVATE_KEY="$DEMO_OPERATOR_PRIVATE_KEY1" \
-BLINDFERENCE_NODE_RPC_URL="$ARBITRUM_SEPOLIA_RPC" \
-BLINDFERENCE_NODE_CALLBACK_PORT=9101 \
-BLINDFERENCE_NODE_CALLBACK_PUBLIC_URL=http://127.0.0.1:9101 \
-BLINDFERENCE_NODE_ICL_BASE_URL=http://127.0.0.1:8000 \
-BLINDFERENCE_NODE_COFHE_CHAIN_ID="$COFHE_CHAIN_ID" \
-BLINDFERENCE_NODE_GROQ_API_KEY="$GROQ_API_KEY" \
-BLINDFERENCE_NODE_GEMINI_API_KEY="$GOOGLE_API_KEY" \
-BLINDFERENCE_NODE_MOCK_CLOUD_INFERENCE=false \
-PYTHONPATH=src \
-../icl/.venv/bin/python -m blindference_node.cli start
+tail -f wave2_network/scripts/demo/logs/icl.log
+tail -f wave2_network/scripts/demo/logs/node-leader.log
+tail -f wave2_network/scripts/demo/logs/node-verifier1.log
+tail -f wave2_network/scripts/demo/logs/node-verifier2.log
 ```
 
-Verifier 1:
+## Naming Note
 
-```bash
-cd wave2_network/packages/node-reineira
-set -a
-source ../icl/.env
-set +a
-BLINDFERENCE_NODE_OPERATOR_PRIVATE_KEY="$DEMO_OPERATOR_PRIVATE_KEY2" \
-BLINDFERENCE_NODE_RPC_URL="$ARBITRUM_SEPOLIA_RPC" \
-BLINDFERENCE_NODE_CALLBACK_PORT=9102 \
-BLINDFERENCE_NODE_CALLBACK_PUBLIC_URL=http://127.0.0.1:9102 \
-BLINDFERENCE_NODE_ICL_BASE_URL=http://127.0.0.1:8000 \
-BLINDFERENCE_NODE_COFHE_CHAIN_ID="$COFHE_CHAIN_ID" \
-BLINDFERENCE_NODE_GROQ_API_KEY="$GROQ_API_KEY" \
-BLINDFERENCE_NODE_GEMINI_API_KEY="$GOOGLE_API_KEY" \
-BLINDFERENCE_NODE_MOCK_CLOUD_INFERENCE=false \
-PYTHONPATH=src \
-../icl/.venv/bin/python -m blindference_node.cli start
-```
-
-Verifier 2:
-
-```bash
-cd wave2_network/packages/node-reineira
-set -a
-source ../icl/.env
-set +a
-BLINDFERENCE_NODE_OPERATOR_PRIVATE_KEY="$DEMO_OPERATOR_PRIVATE_KEY3" \
-BLINDFERENCE_NODE_RPC_URL="$ARBITRUM_SEPOLIA_RPC" \
-BLINDFERENCE_NODE_CALLBACK_PORT=9103 \
-BLINDFERENCE_NODE_CALLBACK_PUBLIC_URL=http://127.0.0.1:9103 \
-BLINDFERENCE_NODE_ICL_BASE_URL=http://127.0.0.1:8000 \
-BLINDFERENCE_NODE_COFHE_CHAIN_ID="$COFHE_CHAIN_ID" \
-BLINDFERENCE_NODE_GROQ_API_KEY="$GROQ_API_KEY" \
-BLINDFERENCE_NODE_GEMINI_API_KEY="$GOOGLE_API_KEY" \
-BLINDFERENCE_NODE_MOCK_CLOUD_INFERENCE=false \
-PYTHONPATH=src \
-../icl/.venv/bin/python -m blindference_node.cli start
-```
-
-### 7. Start the Frontend
-
-```bash
-cd wave2_network/packages/frontend
-npm run dev -- --force
-```
-
-Open `http://127.0.0.1:3000`.
-
-## Live Sepolia Demo Commands
-
-Use the quick demo scripts above for the normal flow. The detailed commands below remain as a reference.
-
-### 1. Start the ICL
-
-```bash
-cd wave2_network/packages/icl
-source .venv/bin/activate
-uvicorn main:app --host 127.0.0.1 --port 8000
-```
-
-### 2. Bootstrap 3 Funded Operators
-
-```bash
-curl -s -X POST http://127.0.0.1:8000/admin/bootstrap-demo-nodes \
-  -H 'Content-Type: application/json' \
-  -d '{"count":3}'
-```
-
-### 3. Start Leader and Verifiers
-
-Leader:
-
-```bash
-cd wave2_network/packages/node-reineira
-set -a
-source ../icl/.env
-set +a
-BLINDFERENCE_NODE_OPERATOR_PRIVATE_KEY=<leader_private_key> \
-BLINDFERENCE_NODE_RPC_URL="$ARBITRUM_SEPOLIA_RPC" \
-BLINDFERENCE_NODE_CALLBACK_PORT=<9101-or-9102-or-9103> \
-BLINDFERENCE_NODE_CALLBACK_PUBLIC_URL=http://127.0.0.1:<9101-or-9102-or-9103> \
-BLINDFERENCE_NODE_ICL_BASE_URL=http://127.0.0.1:8000 \
-BLINDFERENCE_NODE_COFHE_CHAIN_ID="$COFHE_CHAIN_ID" \
-BLINDFERENCE_NODE_GROQ_API_KEY="$GROQ_API_KEY" \
-BLINDFERENCE_NODE_GEMINI_API_KEY="$GOOGLE_API_KEY" \
-BLINDFERENCE_NODE_MOCK_CLOUD_INFERENCE=false \
-PYTHONPATH=src \
-../icl/.venv/bin/python -m blindference_node.cli start
-```
-
-Verifier 1:
-
-```bash
-cd wave2_network/packages/node-reineira
-set -a
-source ../icl/.env
-set +a
-BLINDFERENCE_NODE_OPERATOR_PRIVATE_KEY=<verifier_one_private_key> \
-BLINDFERENCE_NODE_RPC_URL="$ARBITRUM_SEPOLIA_RPC" \
-BLINDFERENCE_NODE_CALLBACK_PORT=<9101-or-9102-or-9103> \
-BLINDFERENCE_NODE_CALLBACK_PUBLIC_URL=http://127.0.0.1:<9101-or-9102-or-9103> \
-BLINDFERENCE_NODE_ICL_BASE_URL=http://127.0.0.1:8000 \
-BLINDFERENCE_NODE_COFHE_CHAIN_ID="$COFHE_CHAIN_ID" \
-BLINDFERENCE_NODE_GROQ_API_KEY="$GROQ_API_KEY" \
-BLINDFERENCE_NODE_GEMINI_API_KEY="$GOOGLE_API_KEY" \
-BLINDFERENCE_NODE_MOCK_CLOUD_INFERENCE=false \
-PYTHONPATH=src \
-../icl/.venv/bin/python -m blindference_node.cli start
-```
-
-Verifier 2:
-
-```bash
-cd wave2_network/packages/node-reineira
-set -a
-source ../icl/.env
-set +a
-BLINDFERENCE_NODE_OPERATOR_PRIVATE_KEY=<verifier_two_private_key> \
-BLINDFERENCE_NODE_RPC_URL="$ARBITRUM_SEPOLIA_RPC" \
-BLINDFERENCE_NODE_CALLBACK_PORT=<9101-or-9102-or-9103> \
-BLINDFERENCE_NODE_CALLBACK_PUBLIC_URL=http://127.0.0.1:<9101-or-9102-or-9103> \
-BLINDFERENCE_NODE_ICL_BASE_URL=http://127.0.0.1:8000 \
-BLINDFERENCE_NODE_COFHE_CHAIN_ID="$COFHE_CHAIN_ID" \
-BLINDFERENCE_NODE_GROQ_API_KEY="$GROQ_API_KEY" \
-BLINDFERENCE_NODE_GEMINI_API_KEY="$GOOGLE_API_KEY" \
-BLINDFERENCE_NODE_MOCK_CLOUD_INFERENCE=false \
-PYTHONPATH=src \
-../icl/.venv/bin/python -m blindference_node.cli start
-```
-
-### 4. Start the Frontend
-
-```bash
-cd wave2_network/packages/frontend
-npm run dev -- --force
-```
-
-### 5. Browser Demo Flow
-
-1. Open `http://127.0.0.1:3000`
-2. Connect MetaMask on Arbitrum Sepolia
-3. Fill in the risk fields
-4. Submit the encrypted request
-5. Watch:
-   - input vault transaction
-   - leader assignment
-   - verifier progress
-   - accepted risk score
-   - result commitment evidence
-   - coverage state
-   - mock escrow release evidence
-
-## Notes
-
-- The frontend now uses the BF design system from the original `bf` app, but it is wired to the real Wave 2 APIs.
-- The app expects `1 leader + 2 verifiers`.
-- The demo uses a visible mock escrow release after accepted scoring so the full economic lifecycle is present in recordings.
-- Disputes are also mocked for the demo: filing a dispute adds visible mock dispute submission and resolution evidence to the request metadata.
-- Deployment addresses are tracked in [../DEPLOYMENT.md](../DEPLOYMENT.md).
+The folder is still called `wave2_network/` because that was the established repo layout. The docs and deployment story should treat this as the Wave 3 build.

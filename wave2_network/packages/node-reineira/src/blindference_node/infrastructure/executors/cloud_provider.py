@@ -5,8 +5,6 @@ import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
-import os
-
 import httpx
 from web3 import Web3
 
@@ -217,45 +215,111 @@ async def run_text_inference(
     *,
     settings: NodeSettings | None = None,
 ) -> str:
-    resolved_model = model_name or (
-        settings.llm_model
-        if settings is not None
-        else os.getenv("LLM_MODEL") or "gpt-4o-mini"
-    )
-    openai_api_key = (
-        settings.openai_api_key
-        if settings is not None
-        else os.getenv("OPENAI_API_KEY")
-    )
-    base_url = (
-        settings.llm_base_url
-        if settings is not None
-        else os.getenv("LLM_BASE_URL") or "http://localhost:11434/v1"
-    )
+    if settings is None:
+        settings = NodeSettings()
+
+    resolved_model = model_name or _text_model_for_provider(settings.provider, settings)
+    provider = _provider_for_text_model(resolved_model, settings)
+    logger.info("Text inference requested provider=%s model=%s", provider, resolved_model)
+
+    if provider == "groq":
+        content = await _run_text_inference_groq(prompt=prompt, model=resolved_model, settings=settings)
+    elif provider == "gemini":
+        content = await _run_text_inference_gemini(prompt=prompt, model=resolved_model, settings=settings)
+    else:
+        raise ValueError(
+            f"Unsupported text inference provider '{provider}'. Expected one of: groq, gemini."
+        )
+
+    if not content:
+        raise ValueError("Empty response from text inference provider")
+    return str(content)
+
+
+def _text_model_for_provider(provider: str, settings: NodeSettings) -> str:
+    normalized = str(provider).lower()
+    if normalized == "gemini":
+        return settings.gemini_model
+    return settings.groq_model
+
+
+def _provider_for_text_model(model_name: str, settings: NodeSettings) -> str:
+    normalized_model = str(model_name).lower()
+    if normalized_model.startswith("groq:"):
+        return "groq"
+    if normalized_model.startswith("gemini:"):
+        return "gemini"
+    if normalized_model == settings.gemini_model.lower():
+        return "gemini"
+    if normalized_model == settings.groq_model.lower():
+        return "groq"
+    if "gemini" in normalized_model:
+        return "gemini"
+    return str(settings.provider).lower()
+
+
+def _normalize_provider_model(model_name: str) -> str:
+    if ":" in model_name:
+        return model_name.split(":", 1)[1]
+    return model_name
+
+
+async def _run_text_inference_groq(
+    *,
+    prompt: str,
+    model: str,
+    settings: NodeSettings,
+) -> str:
+    if not settings.groq_api_key:
+        raise ValueError("BLINDFERENCE_NODE_GROQ_API_KEY is required for Groq text inference")
 
     payload = {
-        "model": resolved_model,
+        "model": _normalize_provider_model(model),
         "temperature": 0,
-        "seed": 42,
         "messages": [
             {"role": "system", "content": "You are a helpful assistant. Be concise and deterministic."},
             {"role": "user", "content": prompt},
         ],
     }
 
-    if openai_api_key:
-        headers = {"Authorization": f"Bearer {openai_api_key}"}
-        url = "https://api.openai.com/v1/chat/completions"
-    else:
-        headers = {}
-        url = f"{base_url.rstrip('/')}/chat/completions"
-
     async with httpx.AsyncClient(timeout=60.0) as client:
-        response = await client.post(url, headers=headers, json=payload)
+        response = await client.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {settings.groq_api_key}"},
+            json=payload,
+        )
         response.raise_for_status()
         data = response.json()
 
-    content = data["choices"][0]["message"]["content"]
-    if not content:
-        raise ValueError("Empty response from text inference provider")
-    return str(content)
+    return str(data["choices"][0]["message"]["content"])
+
+
+async def _run_text_inference_gemini(
+    *,
+    prompt: str,
+    model: str,
+    settings: NodeSettings,
+) -> str:
+    if not settings.gemini_api_key:
+        raise ValueError("BLINDFERENCE_NODE_GEMINI_API_KEY is required for Gemini text inference")
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        response = await client.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/{_normalize_provider_model(model)}:generateContent",
+            params={"key": settings.gemini_api_key},
+            json={
+                "generationConfig": {"temperature": 0},
+                "contents": [
+                    {
+                        "parts": [
+                            {"text": "You are a helpful assistant. Be concise and deterministic."},
+                            {"text": prompt},
+                        ]
+                    }
+                ],
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+
+    return str(data["candidates"][0]["content"]["parts"][0]["text"])

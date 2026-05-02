@@ -21,6 +21,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    USE_MONGO: bool = False
     MONGO_URI: str = "mongodb://localhost:27017"
     MONGO_DB_NAME: str = "blindference_wave2"
     ARBITRUM_SEPOLIA_RPC: str = "http://127.0.0.1:8545"

@@ -10,9 +10,7 @@
     "./ipfs": "./src/ipfs.ts",
     "./types/textInference": "./src/types/textInference.ts"
   },
-  "dependencies": {
-    "@lighthouse-web3/sdk": "^0.3.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "^22.14.0",
     "typescript": "~5.8.2"

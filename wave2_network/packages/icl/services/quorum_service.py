@@ -251,7 +251,7 @@ class QuorumService:
             },
             sort_keys=True,
         )
-        task_id = self.chain_service.web3_client.keccak_text(
+        task_id = payload.task_id or self.chain_service.web3_client.keccak_text(
             f"{payload.developer_address}:{text_fingerprint}:{now.isoformat()}"
         )
         metadata = dict(payload.metadata)
@@ -322,20 +322,47 @@ class QuorumService:
         registration_tx_hash = chain_registration.get("tx_hash")
         metadata["task_registered_tx"] = registration_tx_hash
 
-        prompt_key_inputs = self._resolve_text_prompt_key_inputs(
-            metadata,
-            fallback_high_handle=payload.text_request.encrypted_prompt_key.high,
-            fallback_low_handle=payload.text_request.encrypted_prompt_key.low,
-        )
-        prompt_key_store = await self.chain_service.store_text_prompt_key(
-            task_id=request_record.task_id,
-            encrypted_high_input=prompt_key_inputs["high"],
-            encrypted_low_input=prompt_key_inputs["low"],
-            allowed_nodes=required_nodes,
-        )
-        metadata["prompt_key_store_address"] = self.chain_service.settings.PROMPT_KEY_STORE_ADDRESS
-        metadata["prompt_key_store_tx"] = prompt_key_store.get("tx_hash")
-        metadata["prompt_key_store_status"] = prompt_key_store.get("status")
+        stored_prompt_key_handles: dict[str, str]
+        existing_prompt_key_store_tx = metadata.get("prompt_key_store_tx")
+        if existing_prompt_key_store_tx:
+            metadata["prompt_key_store_status"] = metadata.get("prompt_key_store_status") or "stored_by_user"
+            metadata["prompt_key_store_address"] = (
+                metadata.get("prompt_key_store_address") or self.chain_service.settings.PROMPT_KEY_STORE_ADDRESS
+            )
+            stored_prompt_key_handles = await self.chain_service.get_text_prompt_key_handles(
+                task_id=request_record.task_id,
+            )
+        else:
+            prompt_key_inputs = self._resolve_text_prompt_key_inputs(
+                metadata,
+                fallback_high_handle=payload.text_request.encrypted_prompt_key.high,
+                fallback_low_handle=payload.text_request.encrypted_prompt_key.low,
+            )
+            prompt_key_store = await self.chain_service.store_text_prompt_key(
+                task_id=request_record.task_id,
+                encrypted_high_input=prompt_key_inputs["high"],
+                encrypted_low_input=prompt_key_inputs["low"],
+                allowed_nodes=required_nodes,
+            )
+            metadata["prompt_key_store_address"] = self.chain_service.settings.PROMPT_KEY_STORE_ADDRESS
+            metadata["prompt_key_store_tx"] = prompt_key_store.get("tx_hash")
+            metadata["prompt_key_store_status"] = prompt_key_store.get("status")
+            stored_prompt_key_handles = {
+                "high": str(prompt_key_store["stored_high_handle"]),
+                "low": str(prompt_key_store["stored_low_handle"]),
+            }
+
+        metadata["prompt_key_store_handles"] = {
+            "high": stored_prompt_key_handles["high"],
+            "low": stored_prompt_key_handles["low"],
+        }
+        metadata["text_request"] = {
+            **dict(metadata["text_request"]),
+            "encrypted_prompt_key": {
+                "high": stored_prompt_key_handles["high"],
+                "low": stored_prompt_key_handles["low"],
+            },
+        }
 
         metadata["escrow_creation_tx"] = (
             registration_tx_hash
@@ -356,6 +383,8 @@ class QuorumService:
             {
                 "$set": {
                     "metadata": metadata,
+                    "encrypted_prompt_key_high": stored_prompt_key_handles["high"],
+                    "encrypted_prompt_key_low": stored_prompt_key_handles["low"],
                     "updated_at": datetime.now(timezone.utc),
                 }
             },
@@ -579,6 +608,8 @@ class QuorumService:
             "encrypted_output_key_high": payload.encrypted_output_key_high,
             "encrypted_output_key_low": payload.encrypted_output_key_low,
             "encrypted_output_key_inputs": payload.encrypted_output_key_inputs,
+            "output_key_store_tx": payload.output_key_store_tx,
+            "output_key_store_job_id": payload.output_key_store_job_id,
             "verdict": verdict,
             "confidence": payload.confidence,
             "submitted_at": datetime.now(timezone.utc).isoformat(),
@@ -586,7 +617,20 @@ class QuorumService:
 
         output_key_store_tx = None
         output_key_store_job_id = None
-        if payload.encrypted_output_key_inputs:
+        stored_output_key_handles: dict[str, str] | None = None
+        existing_output_key_store_tx = payload.output_key_store_tx
+        if existing_output_key_store_tx:
+            output_key_store_job_id = payload.output_key_store_job_id or self.chain_service.web3_client.keccak_text(
+                f"{request_document['task_id']}:output-key"
+            )
+            output_key_store_tx = existing_output_key_store_tx
+            metadata["output_key_store_job_id"] = output_key_store_job_id
+            metadata["output_key_store_tx"] = output_key_store_tx
+            metadata["output_key_store_address"] = self.chain_service.settings.PROMPT_KEY_STORE_ADDRESS
+            stored_output_key_handles = await self.chain_service.get_text_prompt_key_handles(
+                task_id=output_key_store_job_id,
+            )
+        elif payload.encrypted_output_key_inputs:
             output_key_store_job_id = self.chain_service.web3_client.keccak_text(
                 f"{request_document['task_id']}:output-key"
             )
@@ -600,6 +644,25 @@ class QuorumService:
             metadata["output_key_store_job_id"] = output_key_store_job_id
             metadata["output_key_store_tx"] = output_key_store_tx
             metadata["output_key_store_address"] = self.chain_service.settings.PROMPT_KEY_STORE_ADDRESS
+            stored_output_key_handles = {
+                "high": str(output_key_store["stored_high_handle"]),
+                "low": str(output_key_store["stored_low_handle"]),
+            }
+
+        if stored_output_key_handles:
+            metadata["output_key_store_handles"] = stored_output_key_handles
+            metadata["text_leader_result"] = {
+                **metadata["text_leader_result"],
+                "encrypted_output_key_high": stored_output_key_handles["high"],
+                "encrypted_output_key_low": stored_output_key_handles["low"],
+            }
+
+        output_key_high = (
+            stored_output_key_handles["high"] if stored_output_key_handles else payload.encrypted_output_key_high
+        )
+        output_key_low = (
+            stored_output_key_handles["low"] if stored_output_key_handles else payload.encrypted_output_key_low
+        )
 
         await self.database[INFERENCE_REQUESTS].update_one(
             {"request_id": payload.job_id},
@@ -607,8 +670,8 @@ class QuorumService:
                 "$set": {
                     "output_cid": payload.output_cid,
                     "commitment_hash": payload.commitment_hash,
-                    "encrypted_output_key_high": payload.encrypted_output_key_high,
-                    "encrypted_output_key_low": payload.encrypted_output_key_low,
+                    "encrypted_output_key_high": output_key_high,
+                    "encrypted_output_key_low": output_key_low,
                     "metadata": metadata,
                     "updated_at": datetime.now(timezone.utc),
                 }
@@ -1352,8 +1415,8 @@ class QuorumService:
         if not isinstance(raw_inputs, dict):
             if self.chain_service.settings.MOCK_CHAIN and fallback_high_handle and fallback_low_handle:
                 return {
-                    "high": {"ctHash": fallback_high_handle, "securityZone": 0, "utype": 8, "signature": "0x"},
-                    "low": {"ctHash": fallback_low_handle, "securityZone": 0, "utype": 8, "signature": "0x"},
+                    "high": {"ctHash": fallback_high_handle, "securityZone": 0, "utype": 6, "signature": "0x"},
+                    "low": {"ctHash": fallback_low_handle, "securityZone": 0, "utype": 6, "signature": "0x"},
                 }
             raise ValueError(
                 "Text jobs require metadata.cofhe_prompt_key_inputs.high/low so the ICL can store prompt keys on-chain"

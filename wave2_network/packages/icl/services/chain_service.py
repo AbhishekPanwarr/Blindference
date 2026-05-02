@@ -246,7 +246,12 @@ class ChainService:
                 "allowed_nodes": normalized_nodes,
                 "tx_hash": tx_hash,
             }
-            return {"tx_hash": tx_hash, "status": "stored"}
+            return {
+                "tx_hash": tx_hash,
+                "status": "stored",
+                "stored_high_handle": str(encrypted_high_input["ctHash"]),
+                "stored_low_handle": str(encrypted_low_input["ctHash"]),
+            }
 
         if not self.prompt_key_store.enabled:
             raise ValueError(
@@ -260,7 +265,36 @@ class ChainService:
             encrypted_low_input=encrypted_low_input,
             allowed_nodes=normalized_nodes,
         )
-        return {"tx_hash": tx_result["tx_hash"], "status": "stored"}
+        stored_handles = await asyncio.to_thread(
+            self.prompt_key_store.get_encrypted_key_handles,
+            job_id=task_id,
+        )
+        return {
+            "tx_hash": tx_result["tx_hash"],
+            "status": "stored",
+            "stored_high_handle": stored_handles["high"],
+            "stored_low_handle": stored_handles["low"],
+        }
+
+    async def get_text_prompt_key_handles(self, *, task_id: str) -> dict[str, str]:
+        if self.settings.MOCK_CHAIN:
+            stored = self._mock_prompt_key_stores.get(task_id)
+            if stored is None:
+                raise KeyError(f"mock prompt key for task {task_id} not found")
+            return {
+                "high": str(stored["encrypted_high_input"]["ctHash"]),
+                "low": str(stored["encrypted_low_input"]["ctHash"]),
+            }
+
+        if not self.prompt_key_store.enabled:
+            raise ValueError(
+                "PROMPT_KEY_STORE_ADDRESS is not configured; cannot read text prompt keys on-chain"
+            )
+
+        return await asyncio.to_thread(
+            self.prompt_key_store.get_encrypted_key_handles,
+            job_id=task_id,
+        )
 
     async def finalize_execution(
         self,

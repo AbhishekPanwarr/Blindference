@@ -29,6 +29,7 @@ class PermitEntry(BaseModel):
 
 class InferenceRequestCreate(BaseModel):
     developer_address: str
+    task_id: str | None = None
     model_id: str | None = None
     mode: str = Field(default="risk", description="'risk' or 'text'")
     text_request: TextInferenceRequest | None = None

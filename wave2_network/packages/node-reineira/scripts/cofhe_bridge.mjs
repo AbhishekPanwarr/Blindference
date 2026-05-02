@@ -1,10 +1,65 @@
-import { createCofheClient, createCofheConfig } from '@cofhe/sdk/node'
-import { Encryptable, FheTypes } from '@cofhe/sdk'
-import { chains } from '@cofhe/sdk/chains'
-import { PermitUtils } from '@cofhe/sdk/permits'
-import { createPublicClient, createWalletClient, http } from 'viem'
-import { privateKeyToAccount } from 'viem/accounts'
-import { arbitrumSepolia, hardhat } from 'viem/chains'
+import fs from 'node:fs'
+import path from 'node:path'
+import os from 'node:os'
+
+installLocalStorageShim()
+
+const [{ createCofheClient, createCofheConfig }, { Encryptable, FheTypes }, { chains }, { PermitUtils }, { createPublicClient, createWalletClient, http, parseAbi }, { privateKeyToAccount }, { arbitrumSepolia, hardhat }] = await Promise.all([
+  import('@cofhe/sdk/node'),
+  import('@cofhe/sdk'),
+  import('@cofhe/sdk/chains'),
+  import('@cofhe/sdk/permits'),
+  import('viem'),
+  import('viem/accounts'),
+  import('viem/chains'),
+])
+
+const promptKeyStoreAbi = parseAbi([
+  'function storeKey(bytes32 jobId, (uint256 ctHash, uint8 securityZone, uint8 utype, bytes signature) encHigh, (uint256 ctHash, uint8 securityZone, uint8 utype, bytes signature) encLow, address[] allowedNodes)',
+])
+
+function installLocalStorageShim() {
+  if (globalThis.localStorage && typeof globalThis.localStorage.setItem === 'function') {
+    return
+  }
+
+  const storageDir = path.join(process.env.HOME || os.homedir() || '.', '.blindference-cofhe')
+  const storageFile = path.join(storageDir, 'localstorage.json')
+
+  const readStore = () => {
+    try {
+      if (!fs.existsSync(storageFile)) return {}
+      return JSON.parse(fs.readFileSync(storageFile, 'utf8'))
+    } catch {
+      return {}
+    }
+  }
+
+  const writeStore = (data) => {
+    fs.mkdirSync(storageDir, { recursive: true })
+    fs.writeFileSync(storageFile, JSON.stringify(data))
+  }
+
+  globalThis.localStorage = {
+    getItem(key) {
+      const store = readStore()
+      return key in store ? String(store[key]) : null
+    },
+    setItem(key, value) {
+      const store = readStore()
+      store[key] = String(value)
+      writeStore(store)
+    },
+    removeItem(key) {
+      const store = readStore()
+      delete store[key]
+      writeStore(store)
+    },
+    clear() {
+      writeStore({})
+    },
+  }
+}
 
 function parseJsonInput() {
   return new Promise((resolve, reject) => {
@@ -134,11 +189,11 @@ async function decryptPromptKey(payload) {
   })
 
   const high = await client
-    .decryptForView(BigInt(payload.highHandle), FheTypes.Uint256)
+    .decryptForView(BigInt(payload.highHandle), FheTypes.Uint128)
     .withPermit(permit)
     .execute()
   const low = await client
-    .decryptForView(BigInt(payload.lowHandle), FheTypes.Uint256)
+    .decryptForView(BigInt(payload.lowHandle), FheTypes.Uint128)
     .withPermit(permit)
     .execute()
 
@@ -149,11 +204,11 @@ async function decryptPromptKey(payload) {
   }
 }
 
-async function encryptUint256(payload) {
+async function encryptUint128(payload) {
   const { client } = await createClient(payload)
   const values = Array.isArray(payload.values) ? payload.values : []
   const encrypted = await client
-    .encryptInputs(values.map((value) => Encryptable.uint256(BigInt(value))))
+    .encryptInputs(values.map((value) => Encryptable.uint128(BigInt(value))))
     .execute()
 
   return {
@@ -182,6 +237,57 @@ async function createSharingPermit(payload) {
   }
 }
 
+async function storePromptKey(payload) {
+  const { publicClient, walletClient } = await createClient(payload)
+  const latestBlock = await publicClient.getBlock({ blockTag: 'latest' })
+  const fallbackPriorityFeePerGas = 2_000_000n
+  const maxPriorityFeePerGas = await publicClient
+    .estimateMaxPriorityFeePerGas()
+    .catch(() => fallbackPriorityFeePerGas)
+  const priorityFeePerGas = maxPriorityFeePerGas > 0n ? maxPriorityFeePerGas : fallbackPriorityFeePerGas
+  const baseFeePerGas = latestBlock.baseFeePerGas
+  const feeParams =
+    baseFeePerGas != null
+      ? {
+          maxPriorityFeePerGas: priorityFeePerGas,
+          maxFeePerGas: baseFeePerGas * 2n + priorityFeePerGas + 1_000_000n,
+        }
+      : {
+          gasPrice: await publicClient.getGasPrice(),
+        }
+
+  const txHash = await walletClient.writeContract({
+    account: walletClient.account,
+    address: payload.promptKeyStoreAddress,
+    abi: promptKeyStoreAbi,
+    chain: walletClient.chain,
+    functionName: 'storeKey',
+    args: [
+      payload.taskId,
+      toContractInput(payload.encryptedHighInput),
+      toContractInput(payload.encryptedLowInput),
+      payload.allowedNodes,
+    ],
+    ...feeParams,
+  })
+
+  const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+  if (receipt.status !== 'success') {
+    throw new Error(`PromptKeyStore transaction failed for task ${payload.taskId}`)
+  }
+
+  return { txHash }
+}
+
+function toContractInput(input) {
+  return {
+    ctHash: BigInt(input.ctHash),
+    securityZone: Number(input.securityZone ?? 0),
+    utype: Number(input.utype),
+    signature: input.signature,
+  }
+}
+
 async function main() {
   try {
     const payload = await parseJsonInput()
@@ -197,8 +303,11 @@ async function main() {
       case 'decrypt_prompt_key':
         result = await decryptPromptKey(payload)
         break
-      case 'encrypt_uint256':
-        result = await encryptUint256(payload)
+      case 'encrypt_uint128':
+        result = await encryptUint128(payload)
+        break
+      case 'store_prompt_key':
+        result = await storePromptKey(payload)
         break
       default:
         throw new Error(`Unsupported action: ${payload.action}`)

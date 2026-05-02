@@ -14,6 +14,10 @@ class HealthResponse(BaseModel):
     mongo_connected: bool
 
 
+class IpfsUploadResponse(BaseModel):
+    cid: str
+
+
 class NodeMetricsResponse(BaseModel):
     tasks_completed: int
     tasks_accepted: int

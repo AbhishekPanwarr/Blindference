@@ -1,4 +1,4 @@
-import { type CofheClient, type EncryptedItemInput } from '../lib/cofhe'
+import { Encryptable, FheTypes, type CofheClient, type EncryptedItemInput } from '../lib/cofhe'
 
 type SerializedEncryptedInput = {
   ctHash: string
@@ -32,9 +32,9 @@ export async function encryptPromptKeyForTextRequest(
   const low = bigintFromBytes(promptKey.subarray(16, 32))
   const [highInput, lowInput] = await client
     .encryptInputs([
-      u256Encryptable(high),
-      u256Encryptable(low),
-    ] as any)
+      Encryptable.uint128(high),
+      Encryptable.uint128(low),
+    ])
     .execute()
 
   return {
@@ -57,16 +57,17 @@ export async function decryptOutputKey(
   lowHandle: string,
 ): Promise<Uint8Array> {
   const permit = await client.permits.getOrCreateSelfPermit()
-  const high = await client.decryptForView(highHandle, 8).withPermit(permit).execute()
-  const low = await client.decryptForView(lowHandle, 8).withPermit(permit).execute()
-  return combineUint256Halves(high, low)
+  const high = await client.decryptForView(BigInt(highHandle), FheTypes.Uint128).withPermit(permit).execute()
+  const low = await client.decryptForView(BigInt(lowHandle), FheTypes.Uint128).withPermit(permit).execute()
+  return combineKeyHalves(high, low)
 }
 
 export async function downloadAndDecryptTextOutput(
   outputCid: string,
   key: Uint8Array,
 ): Promise<string> {
-  const response = await fetch(`https://gateway.lighthouse.storage/ipfs/${outputCid}`)
+  const gatewayBaseUrl = (import.meta.env.VITE_IPFS_GATEWAY_URL || 'https://gateway.pinata.cloud/ipfs').replace(/\/$/, '')
+  const response = await fetch(`${gatewayBaseUrl}/${outputCid}`)
   if (!response.ok) {
     throw new Error(`Failed to download encrypted output from IPFS: ${response.statusText}`)
   }
@@ -110,19 +111,11 @@ function bigintFromBytes(bytes: Uint8Array): bigint {
   return value
 }
 
-function combineUint256Halves(high: bigint, low: bigint): Uint8Array {
+function combineKeyHalves(high: bigint, low: bigint): Uint8Array {
   const output = new Uint8Array(32)
   writeBigIntToBytes(high, output, 0)
   writeBigIntToBytes(low, output, 16)
   return output
-}
-
-function u256Encryptable(value: bigint) {
-  return {
-    data: value,
-    securityZone: 0,
-    utype: 8,
-  }
 }
 
 function writeBigIntToBytes(value: bigint, output: Uint8Array, offset: number) {

@@ -55,6 +55,7 @@ async def process_text_task_as_leader(
 
     output_key_high, output_key_low = split_key_for_fhe(output_key)
     encrypted_output_key = await _encrypt_output_key_halves(int(output_key_high), int(output_key_low), config)
+    output_key_store = await _store_output_key(task, encrypted_output_key, config)
     payload = {
         "job_id": _job_id(task),
         "output_cid": output_cid,
@@ -62,6 +63,8 @@ async def process_text_task_as_leader(
         "encrypted_output_key_high": str(encrypted_output_key["high"]["ctHash"]),
         "encrypted_output_key_low": str(encrypted_output_key["low"]["ctHash"]),
         "encrypted_output_key_inputs": encrypted_output_key,
+        "output_key_store_tx": output_key_store["tx_hash"] if output_key_store else None,
+        "output_key_store_job_id": output_key_store["job_id"] if output_key_store else None,
         "verdict": "CONFIRM",
         "confidence": 100,
     }
@@ -145,8 +148,8 @@ async def _encrypt_output_key_halves(
         }
 
     return {
-        "high": {"ctHash": str(high), "securityZone": 0, "utype": 8, "signature": "0x"},
-        "low": {"ctHash": str(low), "securityZone": 0, "utype": 8, "signature": "0x"},
+        "high": {"ctHash": str(high), "securityZone": 0, "utype": 6, "signature": "0x"},
+        "low": {"ctHash": str(low), "securityZone": 0, "utype": 6, "signature": "0x"},
     }
 
 
@@ -162,6 +165,28 @@ async def _submit_verifier_text_verdict(job_id: str, payload: dict[str, Any], co
     if callable(submitter):
         return await _call_maybe_async(submitter, job_id, payload)
     return await _post_json(config, "/internal/task/verify", payload)
+
+
+async def _store_output_key(
+    task: dict[str, Any],
+    encrypted_output_key: dict[str, dict[str, Any]],
+    config: dict[str, Any],
+) -> dict[str, str] | None:
+    store_output_key = config.get("store_output_key")
+    if callable(store_output_key):
+        result = await _call_maybe_async(store_output_key, task, encrypted_output_key)
+        if result is None:
+            return None
+        if not isinstance(result, dict):
+            raise ValueError("store_output_key must return a dict with tx_hash and job_id")
+        tx_hash = result.get("tx_hash")
+        job_id = result.get("job_id")
+        if not isinstance(tx_hash, str) or not tx_hash:
+            raise ValueError("store_output_key must return tx_hash")
+        if not isinstance(job_id, str) or not job_id:
+            raise ValueError("store_output_key must return job_id")
+        return {"tx_hash": tx_hash, "job_id": job_id}
+    return None
 
 
 async def _post_json(config: dict[str, Any], path: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -249,11 +274,17 @@ def _resolve_model_name(task: dict[str, Any], config: dict[str, Any]) -> str:
     if isinstance(model_id, str) and model_id:
         return model_id
 
-    configured = config.get("llm_model")
+    provider = config.get("provider")
+    if isinstance(provider, str) and provider.lower() == "gemini":
+        configured = config.get("gemini_model")
+        if isinstance(configured, str) and configured:
+            return configured
+
+    configured = config.get("groq_model")
     if isinstance(configured, str) and configured:
         return configured
 
-    return "gpt-4o-mini"
+    return "llama-3.3-70b-versatile"
 
 
 def _resolve_leader_output_cid(task: dict[str, Any]) -> str:

@@ -6,6 +6,7 @@ from typing import Any
 import re
 
 import httpx
+from eth_utils import keccak
 
 from blindference_node.cofhe_bridge import CofheBridgeClient
 from blindference_node.config import NodeSettings
@@ -180,10 +181,13 @@ class BlindferenceDemoWorker:
 
         config = {
             "icl_base_url": self.settings.icl_base_url,
-            "llm_model": self.settings.llm_model,
+            "provider": self.settings.provider,
+            "groq_model": self.settings.groq_model,
+            "gemini_model": self.settings.gemini_model,
             "operator_address": self.cofhe_bridge.operator_address if self.cofhe_bridge else "",
             "decrypt_prompt_key": self._decrypt_text_prompt_key,
             "encrypt_output_key": self._encrypt_text_output_key,
+            "store_output_key": self._store_text_output_key,
             "text_stub_prompt_key_hex": self.settings.text_stub_prompt_key_hex,
             "submit_leader_text_result": lambda job_id, payload: self.submit_leader_text_result(client, job_id, payload),
             "submit_verifier_text_verdict": lambda job_id, payload: self.submit_verifier_text_verdict(client, job_id, payload),
@@ -223,7 +227,7 @@ class BlindferenceDemoWorker:
 
     async def _encrypt_text_output_key(self, values: list[int]) -> dict[str, dict[str, Any]]:
         if self.cofhe_bridge:
-            encrypted = await self.cofhe_bridge.encrypt_uint256_values(values=values)
+            encrypted = await self.cofhe_bridge.encrypt_uint128_values(values=values)
             if len(encrypted) != 2:
                 raise ValueError(f"Expected 2 encrypted output-key halves, received {len(encrypted)}")
             return {
@@ -232,8 +236,37 @@ class BlindferenceDemoWorker:
             }
 
         return {
-            "high": {"ctHash": str(values[0]), "securityZone": 0, "utype": 8, "signature": "0x"},
-            "low": {"ctHash": str(values[1]), "securityZone": 0, "utype": 8, "signature": "0x"},
+            "high": {"ctHash": str(values[0]), "securityZone": 0, "utype": 6, "signature": "0x"},
+            "low": {"ctHash": str(values[1]), "securityZone": 0, "utype": 6, "signature": "0x"},
+        }
+
+    async def _store_text_output_key(
+        self,
+        task: dict[str, Any],
+        encrypted_output_key: dict[str, dict[str, Any]],
+    ) -> dict[str, str] | None:
+        if not self.cofhe_bridge or not self.settings.prompt_key_store_address:
+            return None
+
+        developer_address = str(task.get("developer_address") or "").strip()
+        if not developer_address:
+            raise ValueError("Text task is missing developer_address for output-key storage")
+
+        task_id = str(task.get("task_id") or "").strip()
+        if not task_id:
+            raise ValueError("Text task is missing task_id for output-key storage")
+
+        output_key_store_job_id = "0x" + keccak(text=f"{task_id}:output-key").hex()
+        tx_hash = await self.cofhe_bridge.store_prompt_key(
+            task_id=output_key_store_job_id,
+            prompt_key_store_address=self.settings.prompt_key_store_address,
+            encrypted_high_input=encrypted_output_key["high"],
+            encrypted_low_input=encrypted_output_key["low"],
+            allowed_nodes=[developer_address],
+        )
+        return {
+            "tx_hash": tx_hash,
+            "job_id": output_key_store_job_id,
         }
 
     async def _decrypt_features(

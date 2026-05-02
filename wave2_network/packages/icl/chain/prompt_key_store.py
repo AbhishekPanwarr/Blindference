@@ -37,19 +37,28 @@ class PromptKeyStoreClient:
     ) -> dict[str, Any]:
         function = self.contract.functions.storeKey(
             self.web3_client.ensure_bytes32(job_id),
-            self._normalize_encrypted_uint256_input(encrypted_high_input),
-            self._normalize_encrypted_uint256_input(encrypted_low_input),
+            self._normalize_encrypted_uint128_input(encrypted_high_input),
+            self._normalize_encrypted_uint128_input(encrypted_low_input),
             [self.web3_client.checksum_address(address) for address in allowed_nodes],
         )
         return self.web3_client.send_transaction(function)
 
-    def _normalize_encrypted_uint256_input(self, value: dict[str, Any]) -> tuple[int, int, int, bytes]:
+    def get_encrypted_key_handles(self, *, job_id: str) -> dict[str, str]:
+        high_handle, low_handle = self.contract.functions.getEncryptedKey(
+            self.web3_client.ensure_bytes32(job_id)
+        ).call()
+        return {
+            "high": str(int(high_handle)),
+            "low": str(int(low_handle)),
+        }
+
+    def _normalize_encrypted_uint128_input(self, value: dict[str, Any]) -> tuple[int, int, int, bytes]:
         if not isinstance(value, dict):
             raise ValueError("CoFHE encrypted prompt-key input must be an object")
 
         ct_hash = value.get("ctHash", value.get("ct_hash"))
         security_zone = value.get("securityZone", value.get("security_zone", 0))
-        utype = value.get("utype", 8)
+        utype = value.get("utype", 6)
         signature = value.get("signature")
 
         if ct_hash in (None, ""):

@@ -3,17 +3,28 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 WAVE2_ROOT="${REPO_ROOT}/wave2_network"
 ICL_DIR="${WAVE2_ROOT}/packages/icl"
 NODE_DIR="${WAVE2_ROOT}/packages/node-reineira"
 FRONTEND_DIR="${WAVE2_ROOT}/packages/frontend"
+DEMO_SCRIPT_DIR="${WAVE2_ROOT}/scripts/demo"
+LOG_DIR="${DEMO_SCRIPT_DIR}/logs"
+PID_DIR="${DEMO_SCRIPT_DIR}/pids"
 
 DEFAULT_BLINDFERENCE_INPUT_VAULT_ADDRESS="0x8dD7B2A9B69C76A69d33B2DF46426Cbe657a902b"
 DEFAULT_BLINDFERENCE_AGENT_ADDRESS="0xc9208B8aCAaD3abFc955a575719BB8F21640A6fE"
 DEFAULT_BLINDFERENCE_ATTESTOR_ADDRESS="0x74454F689F28EfbEF6Ef9F3F14e56ac62CA8EC49"
 DEFAULT_BLINDFERENCE_UNDERWRITER_ADDRESS="0xcbbdcb1b42DE4Ed52f7ceD752c65652EE317B601"
 DEFAULT_MOCK_ORACLE_ADDRESS="0xDe9AE4b048bF320Db6492e2AfD0516392EBA05Fc"
+
+ensure_demo_dirs() {
+  mkdir -p "${LOG_DIR}" "${PID_DIR}"
+}
+
+pid_file_for() {
+  printf '%s/%s.pid' "${PID_DIR}" "$1"
+}
 
 load_icl_env() {
   if [[ ! -f "${ICL_DIR}/.env" ]]; then

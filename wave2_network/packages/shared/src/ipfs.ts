@@ -1,25 +1,45 @@
-import lighthouse from '@lighthouse-web3/sdk'
-
-function getApiKey(): string {
-  const apiKey = process.env.LIGHTHOUSE_API_KEY
-  if (!apiKey) {
-    throw new Error('LIGHTHOUSE_API_KEY is not set')
+function getPinataJwt(): string {
+  const jwt = process.env.PINATA_JWT
+  if (!jwt) {
+    throw new Error('PINATA_JWT is not set')
   }
-  return apiKey
+  return jwt
+}
+
+function getGatewayBaseUrl(): string {
+  return (process.env.PINATA_GATEWAY_URL || 'https://gateway.pinata.cloud/ipfs').replace(/\/$/, '')
 }
 
 export async function uploadToIPFS(data: Buffer): Promise<string> {
-  const response = await lighthouse.uploadBuffer(data, getApiKey())
+  const formData = new FormData()
+  formData.append('file', new Blob([data]), 'blindference.bin')
+  formData.append('network', 'public')
+  formData.append('name', 'blindference.bin')
 
-  if (!response.data?.Hash) {
-    throw new Error(`IPFS upload failed: ${JSON.stringify(response)}`)
+  const response = await fetch('https://uploads.pinata.cloud/v3/files', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${getPinataJwt()}`,
+    },
+    body: formData,
+  })
+
+  if (!response.ok) {
+    throw new Error(`IPFS upload failed: ${response.status} ${response.statusText}`)
   }
 
-  return response.data.Hash
+  const payload = await response.json()
+  const cid = payload?.data?.cid
+
+  if (!cid) {
+    throw new Error(`IPFS upload failed: ${JSON.stringify(payload)}`)
+  }
+
+  return cid
 }
 
 export async function downloadFromIPFS(cid: string): Promise<Buffer> {
-  const url = `https://gateway.lighthouse.storage/ipfs/${cid}`
+  const url = `${getGatewayBaseUrl()}/${cid}`
   const response = await fetch(url)
 
   if (!response.ok) {

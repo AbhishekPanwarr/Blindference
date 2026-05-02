@@ -27,7 +27,9 @@ export function useCofheClient() {
           useWorkers: false,
         })
         const cofheClient = createCofheClient(config)
-        await cofheClient.connect(publicClient, walletClient)
+        // SDK 0.5.1 currently brings its own viem types, so connect() needs a narrow cast here
+        // even though the runtime objects are compatible.
+        await (cofheClient.connect as any)(publicClient, walletClient)
 
         if (cancelled) return
         setClient(cofheClient)

@@ -4,8 +4,10 @@ import { Lock, ShieldAlert } from 'lucide-react'
 import { PermitUtils } from '@cofhe/sdk/permits'
 import type { Hex } from 'viem'
 import axios from 'axios'
+import { useState } from 'react'
 
 import { inferenceApi } from '../api/inferenceApi'
+import { TextInferenceWizard } from '../components/inference/TextInferenceWizard'
 import { useCofheClient } from '../hooks/useCofheClient'
 import { readStoredRiskInputHandles, storeEncryptedRiskInputsInVault } from '../lib/inputVault'
 import { useInferenceStore } from '../stores/inferenceStore'
@@ -40,6 +42,7 @@ const MODEL_BINDINGS = {
 } as const
 
 export function InferenceNewPage() {
+  const [mode, setMode] = useState<'risk' | 'text'>('risk')
   const navigate = useNavigate()
   const { address } = useAccount()
   const publicClient = usePublicClient()
@@ -181,7 +184,9 @@ export function InferenceNewPage() {
     <div className="mx-auto max-w-2xl pb-20 pt-6">
       <div className="mb-8 flex items-start justify-between">
         <div>
-          <h1 className="mb-1 text-2xl font-semibold text-white">New Risk Assessment</h1>
+          <h1 className="mb-1 text-2xl font-semibold text-white">
+            {mode === 'risk' ? 'New Risk Assessment' : 'New Text Inference'}
+          </h1>
           <p className="text-sm text-gray-500">Secure, end-to-end encrypted inference via FHE.</p>
         </div>
         <span className="rounded border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-emerald-500">
@@ -189,13 +194,39 @@ export function InferenceNewPage() {
         </span>
       </div>
 
-      {store.error ? (
+      <div className="mb-8 inline-flex rounded-lg border border-white/10 bg-white/[0.03] p-1">
+        <button
+          className={cn(
+            'rounded-md px-4 py-2 text-sm font-semibold transition-colors',
+            mode === 'risk' ? 'bg-emerald-500 text-black' : 'text-gray-400 hover:text-white',
+          )}
+          onClick={() => setMode('risk')}
+          type="button"
+        >
+          Risk Score
+        </button>
+        <button
+          className={cn(
+            'rounded-md px-4 py-2 text-sm font-semibold transition-colors',
+            mode === 'text' ? 'bg-emerald-500 text-black' : 'text-gray-400 hover:text-white',
+          )}
+          onClick={() => setMode('text')}
+          type="button"
+        >
+          Text Inference
+        </button>
+      </div>
+
+      {mode === 'risk' && store.error ? (
         <div className="mb-6 flex items-center gap-3 rounded border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-500">
           <ShieldAlert className="h-5 w-5" />
           {store.error}
         </div>
       ) : null}
 
+      {mode === 'text' ? (
+        <TextInferenceWizard />
+      ) : (
       <div className="space-y-6">
         <div className="space-y-3">
           <label className="text-[11px] font-bold uppercase tracking-widest text-gray-500">Model Selection</label>
@@ -342,6 +373,7 @@ export function InferenceNewPage() {
           </button>
         </div>
       </div>
+      )}
     </div>
   )
 }

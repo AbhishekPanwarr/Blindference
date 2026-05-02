@@ -43,15 +43,22 @@ typechain-types/
 # Local secrets / certs
 secrets/
 *.pem
+*.key
 *.p12
 *.pfx
 *.keystore
 *.crt
+.blindference-cofhe/
+*.sqlite
+*.sqlite3
+*.db
 
 # Local runtime files
 *.pid
 *.pid.lock
 tmp/
+scripts/demo/logs/
+scripts/demo/pids/
 
 # OS / editor
 .DS_Store
