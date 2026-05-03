@@ -1,5 +1,14 @@
 import { apiClient } from './client'
-import type { TextInferenceRequest } from '../../../shared/src/types/textInference'
+
+type TextInferenceRequest = {
+  promptCID: string
+  encryptedPromptKey: {
+    high: string
+    low: string
+  }
+  modelId?: string
+  coverageEnabled?: boolean
+}
 
 export type InferenceRequestPayload = {
   developer_address: string
