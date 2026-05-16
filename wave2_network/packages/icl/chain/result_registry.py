@@ -1,3 +1,5 @@
+"""Client for Blindference ResultRegistry — on-chain inference result storage."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -7,17 +9,20 @@ from config import Settings
 
 
 class ResultRegistryClient:
-    def __init__(self, web3_client: Web3Client, settings: Settings):
-        self.web3_client = web3_client
-        self.settings = settings
-        self.contract = web3_client.get_contract("ResultRegistry", settings.RESULT_REGISTRY_ADDRESS)
+    """Wraps calls to ``ResultRegistry`` for recording verified inference outcomes."""
 
-    def register_developer(self, task_id: str, developer_address: str) -> dict[str, Any]:
-        function = self.contract.functions.registerDeveloper(
-            self.web3_client.ensure_bytes32(task_id),
-            self.web3_client.checksum_address(developer_address),
-        )
-        return self.web3_client.send_transaction(function)
+    def __init__(self, web3_client: Web3Client, settings: Settings):
+        self._web3 = web3_client
+        self._settings = settings
+        addr = getattr(settings, "RESULT_REGISTRY_ADDRESS", None)
+        if addr:
+            self._contract = web3_client.get_contract("ResultRegistry", addr)
+        else:
+            self._contract = None
+
+    @property
+    def enabled(self) -> bool:
+        return self._contract is not None
 
     def commit_result(
         self,
@@ -31,17 +36,25 @@ class ResultRegistryClient:
         aggregated_confidence: int,
         model_id: str,
     ) -> dict[str, Any]:
-        function = self.contract.functions.commitResult(
-            self.web3_client.ensure_bytes32(task_id),
-            self.web3_client.ensure_bytes32(result_hash),
-            self.web3_client.checksum_address(leader),
-            [self.web3_client.checksum_address(verifier) for verifier in verifiers],
+        """Mark a task as accepted in ResultRegistry.
+
+        Calls ``ResultRegistry.commitResult(taskId, resultHash, leader, verifiers, confirms, rejects, confidence, modelId)``.
+        Only callable by the ICL service address (``onlyIclService`` modifier).
+        """
+        if not self.enabled:
+            return {"status": "skipped", "reason": "ResultRegistry not configured"}
+
+        function = self._contract.functions.commitResult(
+            self._web3.ensure_bytes32(task_id),
+            self._web3.ensure_bytes32(result_hash),
+            self._web3.checksum_address(leader),
+            [self._web3.checksum_address(v) for v in verifiers],
             confirm_count,
             reject_count,
             aggregated_confidence,
-            self.web3_client.ensure_bytes32(model_id),
+            self._web3.ensure_bytes32(model_id),
         )
-        return self.web3_client.send_transaction(function)
+        return self._web3.send_transaction(function)
 
     def commit_rejection(
         self,
@@ -52,30 +65,26 @@ class ResultRegistryClient:
         model_id: str,
         reason: str,
     ) -> dict[str, Any]:
-        function = self.contract.functions.commitRejection(
-            self.web3_client.ensure_bytes32(task_id),
-            self.web3_client.checksum_address(leader),
-            [self.web3_client.checksum_address(verifier) for verifier in verifiers],
-            self.web3_client.ensure_bytes32(model_id),
+        """Mark a task as rejected in ResultRegistry."""
+        if not self.enabled:
+            return {"status": "skipped"}
+
+        function = self._contract.functions.commitRejection(
+            self._web3.ensure_bytes32(task_id),
+            self._web3.checksum_address(leader),
+            [self._web3.checksum_address(v) for v in verifiers],
+            self._web3.ensure_bytes32(model_id),
             reason,
         )
-        return self.web3_client.send_transaction(function)
+        return self._web3.send_transaction(function)
 
-    def get_result(self, task_id: str) -> dict[str, Any]:
-        result_tuple = self.contract.functions.getResult(self.web3_client.ensure_bytes32(task_id)).call()
-        return {
-            "task_id": result_tuple[0].hex(),
-            "result_hash": result_tuple[1].hex(),
-            "leader_address": self.web3_client.checksum_address(result_tuple[2]),
-            "verifier_addresses": [
-                self.web3_client.checksum_address(verifier) for verifier in result_tuple[3]
-            ],
-            "confirm_count": int(result_tuple[4]),
-            "reject_count": int(result_tuple[5]),
-            "aggregated_confidence": int(result_tuple[6]),
-            "model_id": result_tuple[7].hex(),
-            "committed_at": int(result_tuple[8]),
-            "status": int(result_tuple[9]),
-            "dispute_deadline": int(result_tuple[10]),
-            "coverage_id": result_tuple[11].hex(),
-        }
+    def is_condition_met(self, task_id: str) -> bool:
+        """Check if a task is in ACCEPTED status."""
+        if not self.enabled:
+            return False
+        try:
+            return self._contract.functions.isConditionMet(
+                self._web3.ensure_bytes32(task_id), 70, 2
+            ).call()
+        except Exception:
+            return False

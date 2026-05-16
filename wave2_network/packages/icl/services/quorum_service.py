@@ -848,6 +848,25 @@ class QuorumService:
                 accepted=True,
             )
             new_status = "accepted"
+
+            # Write to ResultRegistry for Reineira settlement
+            escrow_id = request_document.get("escrow_id", 0)
+            if escrow_id > 0:
+                try:
+                    await self.chain_service.write_result_to_registry(
+                        task_id=request_document["task_id"],
+                        result_hash=str(aggregation["result_hash"]),
+                        leader=assignment["leader_address"],
+                        verifiers=assignment["verifier_addresses"],
+                        accepted=True,
+                        model_id=request_document.get("model_id", "qwen2.5-7b"),
+                    )
+                    logger.info(
+                        "ResultRegistry written for task %s (escrow %s)",
+                        request_document["task_id"], escrow_id,
+                    )
+                except Exception as exc:
+                    logger.error("ResultRegistry write failed: %s", exc)
         else:
             chain_result = await self.chain_service.finalize_execution(
                 task_id=request_document["task_id"],

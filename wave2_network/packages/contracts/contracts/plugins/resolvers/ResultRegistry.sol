@@ -169,7 +169,7 @@ contract ResultRegistry is Ownable, IResultRegistry {
         uint8 minConfidence,
         uint8 minQuorum
     ) external view override returns (bool) {
-        require(taskExists[taskId], "Task does not exist");
+        if (!taskExists[taskId]) return false;
 
         InferenceResult memory result = results[taskId];
         if (result.status != STATUS_ACCEPTED) {

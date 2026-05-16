@@ -46,6 +46,7 @@ class InferenceRequestCreate(BaseModel):
     zdr_required: bool = False
     verifier_count: int = Field(default=2, ge=1, le=5)
     metadata: dict[str, Any] = Field(default_factory=dict)
+    escrow_id: int = Field(default=0, ge=0)
 
     def normalized_encrypted_features(self) -> list[EncryptedFeature]:
         if isinstance(self.encrypted_input, list):
@@ -111,6 +112,7 @@ class ModelRegistrationRequest(BaseModel):
     min_tier: int = Field(default=1, ge=0, le=2)
     zdr_required: bool = False
     metadata: dict[str, Any] = Field(default_factory=dict)
+    escrow_id: int = Field(default=0, ge=0)
 
 
 class DisputeSubmissionRequest(BaseModel):

@@ -29,9 +29,9 @@ contract InferenceGate is IConditionResolver {
     /// @inheritdoc IConditionResolver
     function isConditionMet(uint256 escrowId) external view override returns (bool) {
         bytes32 internalJobId = escrowToJob[escrowId];
-        require(internalJobId != bytes32(0), "Unknown escrow");
-
-        // Default thresholds: min 70% confidence, quorum of at least 2
+        if (internalJobId == bytes32(0)) {
+            return false;
+        }
         return resultRegistry.isConditionMet(internalJobId, 70, 2);
     }
 }

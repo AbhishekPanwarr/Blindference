@@ -18,6 +18,7 @@ from chain.execution_commitment_registry import (
 )
 from chain.node_attestation_registry import NodeAttestationRegistryClient
 from chain.prompt_key_store import PromptKeyStoreClient
+from chain.result_registry import ResultRegistryClient
 from chain.reputation_registry import ReputationRegistryClient
 from chain.reward_accumulator import RewardAccumulatorClient
 from chain.web3_client import Web3Client
@@ -46,6 +47,7 @@ class ChainService:
         self.agent_config_registry = AgentConfigRegistryClient(self.web3_client, settings)
         self.reputation_registry = ReputationRegistryClient(self.web3_client, settings)
         self.reward_accumulator = RewardAccumulatorClient(self.web3_client, settings)
+        self.result_registry = ResultRegistryClient(self.web3_client, settings)
         self._mock_invocations: dict[int, dict[str, Any]] = {}
         self._mock_prompt_key_stores: dict[str, dict[str, Any]] = {}
 
@@ -570,6 +572,52 @@ class ChainService:
                 }
             },
         )
+
+    async def write_result_to_registry(
+        self,
+        *,
+        task_id: str,
+        result_hash: str,
+        leader: str,
+        verifiers: list[str],
+        accepted: bool,
+        model_id: str,
+        rejection_reason: str | None = None,
+    ) -> dict[str, Any]:
+        """Write the verification outcome to the on‑chain ResultRegistry.
+
+        This is the trigger for Reineira settlement — InferenceGate reads
+        ResultRegistry.isConditionMet() to decide if the escrow should release.
+        """
+        if self.settings.MOCK_CHAIN:
+            logger.info("ResultRegistry write skipped (mock chain): task=%s accepted=%s", task_id, accepted)
+            return {"status": "mock"}
+
+        if not self.result_registry.enabled:
+            logger.warning("ResultRegistry not configured — settlement will not work")
+            return {"status": "skipped"}
+
+        if accepted:
+            return await asyncio.to_thread(
+                self.result_registry.commit_result,
+                task_id=task_id,
+                result_hash=result_hash,
+                leader=leader,
+                verifiers=verifiers,
+                confirm_count=2,
+                reject_count=0,
+                aggregated_confidence=95,
+                model_id=model_id,
+            )
+        else:
+            return await asyncio.to_thread(
+                self.result_registry.commit_rejection,
+                task_id=task_id,
+                leader=leader,
+                verifiers=verifiers,
+                model_id=model_id,
+                reason=rejection_reason or "quorum rejected",
+            )
 
     def _private_key_for_operator(self, operator_address: str) -> str:
         target = self.web3_client.checksum_address(operator_address)

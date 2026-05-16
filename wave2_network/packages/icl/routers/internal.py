@@ -201,6 +201,30 @@ async def submit_internal_task_verification(
 
 
 # ---------------------------------------------------------------------------
+# /internal/jobs/{jobId}/escrow
+# ---------------------------------------------------------------------------
+
+
+@router.get("/jobs/{job_id}/escrow")
+async def get_job_escrow(
+    job_id: str,
+    services: ServiceContainer = Depends(get_service_container),
+) -> dict[str, object]:
+    """Return the escrow ID associated with a job."""
+    try:
+        request_doc = await services.quorum_service.get_request_status_by_task_id(job_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+    if isinstance(request_doc, dict):
+        escrow_id = request_doc.get("escrow_id", 0)
+    else:
+        escrow_id = getattr(request_doc, "escrow_id", 0) if hasattr(request_doc, "escrow_id") else 0
+
+    return {"jobId": job_id, "escrowId": escrow_id}
+
+
+# ---------------------------------------------------------------------------
 # /internal/heartbeat
 # ---------------------------------------------------------------------------
 
