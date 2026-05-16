@@ -56,6 +56,7 @@ export type TextInferenceRequestPayload = {
   leader_address?: string
   verifier_addresses?: string[]
   metadata?: Record<string, unknown>
+  escrow_id?: number
 }
 
 export type IpfsUploadResponse = {

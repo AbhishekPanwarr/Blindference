@@ -47,6 +47,7 @@ export function TextInferenceWizard() {
   const { data: walletClient } = useWalletClient()
   const { client, isReady } = useCofheClient()
   const [prompt, setPrompt] = useState('')
+  const [escrowId, setEscrowId] = useState('')
   const [selectedModelKey, setSelectedModelKey] = useState<TextModelKey>(resolveDefaultModelKey)
   const [error, setError] = useState<string | null>(null)
   const [stage, setStage] = useState<SubmissionStage>('idle')
@@ -140,6 +141,7 @@ export function TextInferenceWizard() {
         min_tier: 1,
         zdr_required: false,
         verifier_count: 2,
+        escrow_id: escrowId ? Number(escrowId) : undefined,
         metadata: {
           cofhe_prompt_key_inputs: encryptedPromptKey.metadata.cofhe_prompt_key_inputs,
           prompt_length: normalizedPrompt.length,
@@ -239,6 +241,33 @@ export function TextInferenceWizard() {
             value={prompt}
           />
         </div>
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <details className="rounded-xl border border-white/10 bg-white/[0.02] p-5 group">
+          <summary className="cursor-pointer list-none text-sm font-semibold text-gray-400 hover:text-white transition-colors flex items-center gap-2">
+            <svg className="w-4 h-4 transition-transform group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+            </svg>
+            Advanced / Settlement
+          </summary>
+          <div className="mt-4 space-y-2">
+            <label className="block text-[10px] font-bold uppercase tracking-[0.15em] text-gray-500" htmlFor="escrow-id-input">
+              Escrow ID (optional)
+            </label>
+            <input
+              className="w-full rounded-lg border border-white/10 bg-black px-4 py-2.5 text-sm text-white placeholder:text-gray-600 focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/30"
+              id="escrow-id-input"
+              onChange={(event) => setEscrowId(event.target.value)}
+              placeholder="Link this job to a Reineira escrow for automatic settlement"
+              type="number"
+              value={escrowId}
+            />
+            <p className="text-[11px] leading-relaxed text-gray-500">
+              Link this job to a Reineira escrow for automatic settlement. Leave blank if you are not using escrow.
+            </p>
+          </div>
+        </details>
       </motion.div>
 
       <motion.div variants={itemVariants} className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
