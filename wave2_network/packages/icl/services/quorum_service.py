@@ -1380,6 +1380,23 @@ class QuorumService:
                     callback_url,
                 )
 
+    async def _get_pending_assignments(self, node_address: str) -> list[str]:
+        """Return task IDs that are assigned to *node_address* and still pending."""
+        checksum = self.chain_service.web3_client.checksum_address(node_address)
+        assigned_ids: list[str] = []
+
+        cursor = self.database[INFERENCE_REQUESTS].find({
+            "$or": [
+                {"leader_address": checksum},
+                {"verifier_addresses": checksum},
+            ],
+            "status": {"$in": ["queued", "dispatched", "running"]},
+        })
+        async for document in cursor:
+            assigned_ids.append(document["request_id"])
+
+        return assigned_ids
+
     async def _dispatch_pending_tasks_for_node(self, operator_address: str) -> None:
         checksum_address = self.chain_service.web3_client.checksum_address(operator_address)
         cursor = self.database[INFERENCE_REQUESTS].find({"status": "queued"})

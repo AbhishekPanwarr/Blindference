@@ -9,7 +9,7 @@ This wave now supports two user-facing modes:
 
 ## What Changed In This Wave
 
-The biggest update is the new confidential text pipeline.
+The biggest update is the new confidential text pipeline. It is a complete end-to-end flow that allows users to encrypt a text prompt, submit it to the network, have it processed by a quorum of nodes, and then decrypt the answer using their wallet.
 
 ### Added
 

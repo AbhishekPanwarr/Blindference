@@ -52,6 +52,14 @@ class PromptKeyStoreClient:
             "low": str(int(low_handle)),
         }
 
+    def grant_decrypt_access(self, *, job_id: str, node_address: str) -> dict[str, Any]:
+        """Call PromptKeyStore.grantDecryptAccess(jobId, node) on-chain."""
+        function = self.contract.functions.grantDecryptAccess(
+            self.web3_client.ensure_bytes32(job_id),
+            self.web3_client.checksum_address(node_address),
+        )
+        return self.web3_client.send_transaction(function)
+
     def _normalize_encrypted_uint128_input(self, value: dict[str, Any]) -> tuple[int, int, int, bytes]:
         if not isinstance(value, dict):
             raise ValueError("CoFHE encrypted prompt-key input must be an object")
