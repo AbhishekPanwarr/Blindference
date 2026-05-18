@@ -1,0 +1,198 @@
+---
+title: Monitoring
+description: 'Track node health, job performance, and earnings'
+---
+
+# Monitoring
+
+## Health Checks
+
+### ICL Health
+
+```bash
+curl -s $BLF_ICL_ENDPOINT/health | python3 -m json.tool
+```
+
+Expected response:
+
+```json
+{
+  "status": "ok",
+  "chain_connected": true,
+  "mongo_connected": true
+}
+```
+
+### Node Status via ICL
+
+```bash
+# Check if your node is in the active pool
+curl -s "$BLF_ICL_ENDPOINT/v1/nodes/active" | python3 -m json.tool | grep -A5 "your_address"
+
+# Check node metrics
+curl -s "$BLF_ICL_ENDPOINT/v1/nodes/{your_address}" | python3 -m json.tool
+```
+
+Expected metrics:
+
+```json
+{
+  "operator_address": "0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5",
+  "model_tiers": [0],
+  "active": true,
+  "metrics": {
+    "tasks_completed": 42,
+    "tasks_accepted": 40,
+    "tasks_rejected": 2,
+    "reputation_score": 9520,
+    "total_slash_amount": 0,
+    "last_heartbeat": 1779078687
+  }
+}
+```
+
+### Local Node Logs
+
+```bash
+# Tail logs in real-time
+tail -f ~/.blindference/node.log
+
+# Or if running in foreground, logs go to stdout
+grep -E "ERROR|WARNING" ~/.blindference/node.log
+```
+
+## Key Metrics
+
+### 1. Heartbeat Success Rate
+
+```bash
+# Count heartbeats in last hour
+grep "Heartbeat sent" node.log | wc -l
+# Expected: ~60 (1 per minute)
+
+# Count heartbeat failures
+grep "Heartbeat failed" node.log | wc -l
+# Expected: 0
+```
+
+### 2. Job Assignment Rate
+
+```bash
+# Total jobs received
+grep "Received.*assignment" node.log | wc -l
+
+# Jobs by role
+grep "starting as leader" node.log | wc -l
+grep "starting as verifier" node.log | wc -l
+
+# Job outcomes
+grep "Leader result accepted" node.log | wc -l
+grep "Verdict: match" node.log | wc -l
+grep "Verdict: no-match" node.log | wc -l
+```
+
+### 3. Inference Performance
+
+```bash
+# Average inference time (if logged at DEBUG level)
+grep "Inference complete" node.log | awk '{print $NF}' | sort -n | awk '
+  {sum+=$1; count++}
+  END {print "Avg:", sum/count, "ms"}'
+
+# Model usage distribution
+grep "Running inference" node.log | sed 's/.*via //' | sort | uniq -c
+```
+
+### 4. CoFHE Operations
+
+```bash
+# Decrypt successes/failures
+grep "Decrypted prompt key" node.log | wc -l
+grep "CoFHE decrypt failed" node.log | wc -l
+
+# IPFS operations
+grep "Downloaded prompt blob" node.log | wc -l
+grep "uploaded encrypted output" node.log | wc -l
+```
+
+## Alerting
+
+### Simple Shell Script
+
+```bash
+#!/bin/bash
+# check_node_health.sh
+
+HEALTH=$(curl -s -o /dev/null -w "%{http_code}" $BLF_ICL_ENDPOINT/health)
+if [ "$HEALTH" != "200" ]; then
+  echo "ALERT: ICL health check failed with status $HEALTH" | mail -s "Blindference Alert" admin@example.com
+fi
+
+# Check if node is in active pool
+ACTIVE=$(curl -s "$BLF_ICL_ENDPOINT/v1/nodes/active" | grep -c "your_address")
+if [ "$ACTIVE" -eq 0 ]; then
+  echo "ALERT: Node not in active pool" | mail -s "Blindference Alert" admin@example.com
+fi
+```
+
+Run via cron every 5 minutes:
+
+```bash
+*/5 * * * * /path/to/check_node_health.sh
+```
+
+### Prometheus / Grafana (Advanced)
+
+For production deployments, expose metrics in Prometheus format:
+
+```python
+# Add to node_loop.py
+from prometheus_client import Counter, Histogram, start_http_server
+
+jobs_completed = Counter('blindference_jobs_completed', 'Jobs completed', ['role'])
+inference_duration = Histogram('blindference_inference_seconds', 'Inference duration')
+heartbeat_failures = Counter('blindference_heartbeat_failures', 'Heartbeat failures')
+
+# Start metrics server
+start_http_server(9090)
+```
+
+Then scrape with Prometheus and visualize in Grafana.
+
+## Log Analysis
+
+### Structured Log Format
+
+Blindference node logs use this format:
+
+```
+[YYYY-MM-DDTHH:MM:SS] [LEVEL   ] [address] Message
+```
+
+Example:
+
+```
+[2026-05-18T10:25:00] [INFO   ] [0xdDef3Cf5] Daemon starting ...
+```
+
+### Parsing with jq
+
+```bash
+# Extract all ERROR lines
+grep "ERROR" node.log | jq -R 'split("]") | {time: .[0], level: .[1], address: .[2], message: .[3]}'
+
+# Count errors by type
+grep "ERROR" node.log | sed 's/.*ERROR.*]//' | sort | uniq -c | sort -rn
+```
+
+## Dashboard (Future)
+
+A web-based node dashboard is planned for future releases. It will show:
+
+- Real-time job queue
+- Inference performance charts
+- Earnings history
+- Attestation status
+- Reputation score trends
+
+For now, use the CLI and log-based monitoring described above.

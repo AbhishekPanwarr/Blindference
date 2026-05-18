@@ -1,36 +1,23 @@
-# Blindference Wave 3
+# Blindference
 
-Blindference Wave 3 is a confidential AI execution layer for Web3. It coordinates encrypted requests across a `1 leader + 2 verifier` quorum, uses CoFHE for key access control, runs off-chain inference through hosted frontier models, and exposes the result lifecycle in a demoable on-chain flow on Arbitrum Sepolia.
+Blindference is a confidential AI execution layer for Web3. It coordinates encrypted requests across a `1 leader + 2 verifier` quorum, uses CoFHE for key access control, runs off-chain inference through hosted frontier models, and exposes the result lifecycle in a demoable on-chain flow on Arbitrum Sepolia.
 
-This wave now supports two user-facing modes:
+## What It Does
 
-- confidential risk scoring
-- confidential text inference
+Blindference enables users to submit sensitive prompts and data to AI models without revealing them to any single party. The system guarantees:
 
-## What Changed In This Wave
+- **Input privacy**: User prompts are AES-256 encrypted in the browser before leaving the device
+- **Access control**: Encryption keys are split into FHE-encrypted halves and stored on-chain via CoFHE, only decryptable by assigned quorum nodes
+- **Execution integrity**: A `1 leader + 2 verifier` quorum runs identical inference and cross-validates results
+- **Economic accountability**: Disputed results trigger on-chain verification with automatic USDC payouts via Reineira
+- **Output privacy**: Only the user can decrypt the final result using their wallet
 
-The biggest update is the new confidential text pipeline. It is a complete end-to-end flow that allows users to encrypt a text prompt, submit it to the network, have it processed by a quorum of nodes, and then decrypt the answer using their wallet.
+## Supported Modes
 
-### Added
+- **Confidential text inference**: Submit natural language prompts to Groq Llama 3 or Google Gemini through encrypted channels
+- **Confidential risk scoring**: Submit structured financial features for privacy-preserving credit/risk evaluation
 
-- browser-side text prompt encryption with AES-256
-- Pinata/IPFS storage for encrypted prompt/output blobs
-- `PromptKeyStore` contract for CoFHE-encrypted AES key halves
-- node-side prompt-key decryption for assigned quorum members
-- frontend text submission UI
-- Groq / Gemini model selection in text mode
-- frontend output-key decryption and answer reveal
-- background demo stack scripts
-
-### Updated
-
-- CoFHE SDK flow aligned to `@cofhe/sdk@0.5.1`
-- key halves use `uint128` instead of the older `uint256` assumption
-- prompt keys are stored by the user wallet
-- output keys are stored by the leader node wallet
-- ICL now persists the on-chain stored handles instead of the original ciphertext handles
-
-## System Picture
+## System Architecture
 
 ```mermaid
 flowchart LR
@@ -60,151 +47,153 @@ flowchart LR
     PKS --> FE
 ```
 
-## Why This Matters
+## Core Principles
 
-Blindference is trying to make private AI execution feel complete, not partial.
-
-That means:
-
-- the coordinator should not need plaintext
-- the assigned nodes should not need global access
-- the user should remain the only one who can reveal the final answer
-- the execution should still be verifiable and economically meaningful
-
-## Current Architecture
-
-Blindference Wave 3 has five main layers:
-
-1. `packages/frontend`
-   - wallet UX, encryption, submission, polling, result reveal
-2. `packages/icl`
-   - coordination, quorum assignment, dispatch, aggregation, status APIs
-3. `packages/node-reineira`
-   - leader/verifier runtime, CoFHE bridge, Groq/Gemini execution
-4. `packages/contracts`
-   - protocol contracts and `PromptKeyStore`
-5. `packages/blindference-demo`
-   - demo-specific vault/settlement contracts still used by the UI shell
+- The coordinator (ICL) never sees plaintext
+- Assigned quorum nodes only receive encrypted inputs with cryptographically enforced access control
+- The user remains the only party who can reveal the final answer
+- Execution is verifiable through quorum consensus and economically meaningful through on-chain settlement
 
 ## Monorepo Layout
 
 ```text
 blindference/
-├── README.md
-├── ARCHITECTURE.md
-├── DEPLOYMENT.md
-├── BLINDFERENCE_CONTEXT_TRANSFER.md
-└── wave2_network/
-    ├── packages/contracts/
-    ├── packages/blindference-demo/
-    ├── packages/icl/
-    ├── packages/frontend/
-    ├── packages/node-reineira/
-    ├── packages/shared/
-    ├── packages/shared-py/
-    └── scripts/demo/
+├── README.md                 # This file
+├── ARCHITECTURE.md           # Detailed component architecture
+├── DEPLOYMENT.md            # Contract addresses and deployment guide
+├── updates.md               # Changelog and release notes
+├── CONTEXT.md               # LLM/engineer handoff context
+├── network/                 # Main monorepo
+│   ├── packages/
+│   │   ├── contracts/       # Reineira protocol contracts
+│   │   ├── blindference-demo/  # Demo vault/settlement contracts
+│   │   ├── icl/             # FastAPI inference coordinator
+│   │   ├── frontend/        # React/Vite browser client
+│   │   ├── node-reineira/   # Node runtime (legacy, see Blindference-node)
+│   │   ├── shared/          # Shared TypeScript utilities
+│   │   └── shared-py/       # Shared Python utilities
+│   └── scripts/demo/        # Demo stack orchestration scripts
+└── Blindference-node/       # Standalone node runtime package
 ```
 
-## Wave 3 Execution Flows
+## Execution Flows
 
-### Risk flow
+### Text Inference Flow
 
 ```text
-User features -> browser CoFHE encryption -> ICL -> leader/verifier quorum
--> hosted inference/verification -> accepted result -> on-chain commitment
+1. User types prompt in browser
+2. Browser AES-256 encrypts prompt locally
+3. Encrypted blob uploaded to Pinata IPFS
+4. AES key split into two uint128 halves
+5. Each half CoFHE-encrypted and stored in PromptKeyStore contract
+6. User submits request to ICL with quorum preview
+7. ICL selects 1 leader + 2 verifiers from active node pool
+8. ICL dispatches tasks to nodes with CoFHE sharing permits
+9. Nodes decrypt prompt key halves via CoFHE ACL
+10. Nodes download encrypted blob from IPFS
+11. Nodes run identical inference via Groq/Gemini
+12. Leader submits result hash + output key to ICL
+13. Verifiers submit verdicts (match/no-match)
+14. ICL aggregates: 2/3 match = accepted, <2/3 = rejected
+15. Accepted result committed on-chain via ResultRegistry
+16. Frontend polls status, decrypts output key, reveals answer
 ```
 
-### Text flow
+### Risk Scoring Flow
 
 ```text
-Prompt text -> browser AES encryption -> encrypted blob upload
--> prompt key split into uint128 halves
--> prompt key halves CoFHE-encrypted and stored in PromptKeyStore
--> quorum decrypts prompt key under ACL
--> hosted inference -> leader stores output key for user
--> frontend decrypts output key -> answer revealed
+1. User enters financial features in browser
+2. Browser CoFHE-encrypts features
+3. User creates sharing permits for each quorum node
+4. Request submitted to ICL with encrypted features + permits
+5. ICL dispatches to leader + verifiers
+6. Nodes decrypt features via imported sharing permits
+7. Nodes run risk model inference
+8. Leader submits result hash, verifiers cross-validate
+9. ICL commits accepted result on-chain
 ```
 
-## Deployed Text-Key Contract
+## Deployed Contracts (Arbitrum Sepolia)
 
-Current `PromptKeyStore` deployment:
+| Contract | Address | Purpose |
+|----------|---------|---------|
+| PromptKeyStore | `0x1E22dD12f448B15f1Ca8560fB6B4463834FaAf73` | Stores CoFHE-encrypted AES key halves |
+| NodeAttestationRegistry | `0xB54e019e9717a8Ed4746bA9d7F1A3F83cf0a35E0` | Operator attestation and tier verification |
+| ExecutionCommitmentRegistry | `0xcd45aefE9a16772528fa30B7d47958a95e83440C` | Task dispatch and commitment tracking |
+| ResultRegistry | `0xCebd831eCd00915E299b8Ef2666cAbf942dc7150` | On-chain result storage for settlement |
+| ReputationRegistry | `0xdaDb4D46D231d3fe6D3754E0861c8bCD36aF0604` | Operator reputation scoring |
+| AgentConfigRegistry | `0x85aE035d6a94c006B5d0808cAdF47F5c22536996` | Model and agent configuration |
+| RewardAccumulator | `0xFa25Fb53eF8dAc88E4f43bB7558Cf3930Bf3e817` | Reward distribution |
+| BlindferenceAttestor | `0x957CEb3F3E77bF91A001ef9FB2cEeB40A860FD79` | Custom attestation validation |
+| BlindferenceUnderwriter | `0xC7D3706Ca2a42d739429Aec1b452051dA5Eb68f0` | Insurance underwriter |
+| BlindferenceAgent | `0x43132afC4F163C244f7b66Adafee32F6B904994c` | Agent configuration |
 
-- address: `0x597ed3E3a442ebB31481AC3BAc98815F98ED6B44`
-- explorer: <https://sepolia.arbiscan.io/address/0x597ed3e3a442ebb31481ac3bac98815f98ed6b44>
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for full deployment details.
 
 ## Quick Start
 
-Use the demo scripts:
+### Prerequisites
+
+- Node.js 18+ with npm/pnpm
+- Python 3.11+ with uv/pip
+- Foundry (for contract compilation)
+- Git
+
+### Running the Full Stack Locally
 
 ```bash
-bash wave2_network/scripts/demo/run-stack.sh
+# 1. Start the ICL coordinator
+cd network/packages/icl
+./.venv/bin/uvicorn main:app --host 127.0.0.1 --port 9000
+
+# 2. In another terminal, bootstrap demo operators
+curl -s -X POST http://127.0.0.1:9000/admin/bootstrap-demo-nodes \
+  -H 'Content-Type: application/json' \
+  -d '{"count":3}'
+
+# 3. Start 3 nodes (in separate terminals)
+# See Blindference-node/ README for node setup
+
+# 4. Start the frontend
+cd network/packages/frontend
+npm install
+npm run dev
 ```
 
-Check status:
+Or use the demo scripts:
 
 ```bash
-bash wave2_network/scripts/demo/status.sh
+bash network/scripts/demo/run-stack.sh   # Start everything
+bash network/scripts/demo/status.sh        # Check status
+bash network/scripts/demo/stop.sh        # Stop everything
 ```
 
-Stop everything:
+Open http://localhost:3000 and connect MetaMask to Arbitrum Sepolia.
 
-```bash
-bash wave2_network/scripts/demo/stop.sh
-```
+## Documentation
 
-Frontend:
+- [ARCHITECTURE.md](./ARCHITECTURE.md) — Component-level architecture and data flows
+- [DEPLOYMENT.md](./DEPLOYMENT.md) — Contract deployment guide and addresses
+- [updates.md](./updates.md) — Changelog and release history
+- [CONTEXT.md](./CONTEXT.md) — Engineer/LLM handoff context
 
-- `http://127.0.0.1:3000`
+## Repositories
 
-ICL:
+This project consists of two main repositories:
 
-- `http://127.0.0.1:8000`
+1. **blindference** (this repo) — Frontend, ICL coordinator, contracts, and demo infrastructure
+2. **Blindference-node** — Standalone node runtime for compute providers
 
-## Demo Visuals
+## License
 
-### Text flow sequence
+MIT License — see [LICENSE](./LICENSE) for details.
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant FE as Frontend
-    participant PKS as PromptKeyStore
-    participant ICL
-    participant Leader
-    participant Verifier
+## Contributing
 
-    User->>FE: Enter prompt
-    FE->>FE: AES encrypt prompt
-    FE->>PKS: store prompt key halves
-    FE->>ICL: submit text request
-    ICL->>Leader: dispatch task
-    ICL->>Verifier: dispatch task
-    Leader->>PKS: decrypt prompt key via ACL
-    Verifier->>PKS: decrypt prompt key via ACL
-    Leader->>Leader: run model
-    Verifier->>Verifier: run model
-    Leader->>PKS: store output key for user
-    Leader->>ICL: submit leader result
-    Verifier->>ICL: submit verdict
-    ICL-->>FE: accepted result status
-    User->>FE: approve final output-key decrypt
-    FE->>PKS: decrypt output key
-    FE->>User: reveal answer
-```
+We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
-## Important Runtime Notes
+## Contact
 
-- text mode does not need a user-shared node permit prompt anymore
-- the final wallet interaction is expected, because the output key is encrypted for the user
-- old text jobs created before the latest handle-persistence fixes may still fail; use a fresh request for validation
-
-## Related Docs
-
-- [Architecture](./ARCHITECTURE.md)
-- [Deployment](./DEPLOYMENT.md)
-- [Context Transfer](./BLINDFERENCE_CONTEXT_TRANSFER.md)
-- [Wave 3 Monorepo Notes](./wave2_network/README.md)
-
-## Naming Note
-
-The implementation still lives under `wave2_network/` because that is the existing monorepo path, but the current build and docs should be treated as the Wave 3 build.
+- Website: https://blindference.xyz
+- Demo: https://blindference.vercel.app
+- Twitter: @blindference

@@ -1,0 +1,116 @@
+name: Docs Validation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - 'docs/**'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Validate Docs Structure
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (LTS)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Mintlify CLI
+        run: npm install -g mintlify
+
+      - name: Check mint.json is valid JSON
+        run: |
+          cd docs
+          node -e "JSON.parse(require('fs').readFileSync('mint.json', 'utf8')); console.log('mint.json is valid JSON')"
+
+      - name: Check all navigation pages exist
+        run: |
+          cd docs
+          node -e "
+          const config = JSON.parse(require('fs').readFileSync('mint.json', 'utf8'));
+          const fs = require('fs');
+          let errors = 0;
+          
+          function checkPage(page) {
+            // Check if file exists (try .mdx first, then .md)
+            const mdxPath = page + '.mdx';
+            const mdPath = page + '.md';
+            if (!fs.existsSync(mdxPath) && !fs.existsSync(mdPath)) {
+              console.error('Missing page: ' + page);
+              errors++;
+            } else {
+              console.log('OK: ' + page);
+            }
+          }
+          
+          config.navigation.forEach(group => {
+            group.pages.forEach(checkPage);
+          });
+          
+          if (errors > 0) {
+            process.exit(1);
+          }
+          console.log('All ' + config.navigation.reduce((acc, g) => acc + g.pages.length, 0) + ' navigation pages found');
+          "
+
+      - name: Check logo files exist
+        run: |
+          cd docs
+          test -f logo/logo-dark.svg && echo "OK: logo-dark.svg" || (echo "Missing: logo/logo-dark.svg" && exit 1)
+          test -f logo/logo-light.svg && echo "OK: logo-light.svg" || (echo "Missing: logo/logo-light.svg" && exit 1)
+          test -f favicon.svg && echo "OK: favicon.svg" || (echo "Missing: favicon.svg" && exit 1)
+
+      - name: Check for broken internal links
+        run: |
+          cd docs
+          node -e "
+          const fs = require('fs');
+          const glob = require('fs');
+          
+          function findLinks(content) {
+            const links = [];
+            const regex = /href=\"([^\"]+)\"|\\[.*?\\]\\(([^)]+)\\)/g;
+            let match;
+            while ((match = regex.exec(content)) !== null) {
+              const link = match[1] || match[2];
+              if (link && !link.startsWith('http') && !link.startsWith('#')) {
+                links.push(link);
+              }
+            }
+            return links;
+          }
+          
+          const files = fs.readdirSync('.', { recursive: true })
+            .filter(f => f.endsWith('.mdx') || f.endsWith('.md'));
+          
+          let errors = 0;
+          files.forEach(file => {
+            const content = fs.readFileSync(file, 'utf8');
+            const links = findLinks(content);
+            links.forEach(link => {
+              const target = link.replace(/\.mdx?$/, '').replace(/^\//, '');
+              const mdxExists = fs.existsSync(target + '.mdx');
+              const mdExists = fs.existsSync(target + '.md');
+              if (!mdxExists && !mdExists && !link.startsWith('mailto:')) {
+                console.error('Broken link in ' + file + ' -> ' + link);
+                errors++;
+              }
+            });
+          });
+          
+          if (errors > 0) {
+            console.error(errors + ' broken links found');
+            process.exit(1);
+          }
+          console.log('All internal links valid');
+          "

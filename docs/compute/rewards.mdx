@@ -1,0 +1,151 @@
+---
+title: Rewards & Slashing
+description: 'How nodes earn fees and what gets them slashed'
+---
+
+# Rewards & Slashing
+
+## Earning Model
+
+Nodes earn fees for successfully completing inference tasks. Fees are determined by:
+
+| Factor | Impact | Details |
+|--------|--------|---------|
+| **Task complexity** | Base fee | More complex prompts earn more |
+| **Model tier** | Multiplier | Premium APIs (Groq, Gemini) earn premium rates |
+| **Attestation tier** | Multiplier | Tier 1 (TPM) earns 1.5x, Tier 2 (TEE) earns 2x |
+| **Reputation score** | Priority | Higher scores get priority assignment |
+
+## Fee Distribution
+
+```
+Total Task Fee
+├── Leader Fee (60%)
+│   └── Base + Complexity Multiplier
+├── Verifier Fee (20% each, 2 verifiers)
+│   └── Base Fee
+└── ICL Coordinator Fee (10%)
+    └── Infrastructure costs
+```
+
+Note: Exact percentages are configurable by the ICL and may vary by task type.
+
+## Reputation System
+
+Reputation scores range from 0 to 10000.
+
+### Gaining Reputation
+
+| Action | Reputation Gain |
+|--------|----------------|
+| Successful job completion | +100 |
+| Verifier matching leader | +50 |
+| Consistent uptime (30 days) | +500 |
+| Tier upgrade (mock → TPM → TEE) | +1000 per tier |
+
+### Losing Reputation
+
+| Action | Reputation Loss |
+|--------|----------------|
+| Verifier no-match (wrong result) | -200 |
+| Missed heartbeat (within grace period) | -10 |
+| Missed heartbeat (outside grace period) | -100 |
+| Failed attestation | -500 |
+| Timeout on assigned job | -300 |
+
+## Slashing Conditions
+
+Nodes may be slashed (lose stake/rewards) for:
+
+### 1. Failed Attestation
+
+**Condition**: Attestation certificate expired and auto-re-attest failed.
+
+**Consequence**:
+- Removed from active pool
+- Cannot receive new assignments
+- Existing assignments may be reassigned
+
+**Recovery**: Fix connectivity issue, restart daemon. Auto-re-attest will retry.
+
+### 2. Missed Heartbeat
+
+**Condition**: No heartbeat within `HEARTBEAT_GRACE_SECONDS` (default: 300s = 5 minutes).
+
+**Consequence**:
+- Temporarily removed from active pool
+- Reputation penalty
+
+**Recovery**: Resume heartbeats. Node re-enters active pool after next successful heartbeat.
+
+### 3. Bad Inference (Verifier Mismatch)
+
+**Condition**: Verifier consensus shows leader produced wrong result.
+
+**Consequence**:
+- Leader reputation penalty (-200)
+- Potential stake slashing (if stake > 0)
+- May be temporarily excluded from leader role
+
+**Recovery**: Fix model configuration, ensure determinism. Run determinism test:
+
+```bash
+blindference-node test-determinism --model qwen2.5-7b --prompt "Hello, test"
+```
+
+### 4. Job Timeout
+
+**Condition**: Failed to submit result within execution window (default: 600s).
+
+**Consequence**:
+- Reputation penalty (-300)
+- Job reassigned to another node
+- No fee earned
+
+**Recovery**: Check inference performance, network connectivity.
+
+### 5. Double-Claiming
+
+**Condition**: Node claims a job but doesn't submit result, preventing reassignment.
+
+**Consequence**:
+- Reputation penalty (-500)
+- Potential temporary ban
+
+**Recovery**: Ensure job handler doesn't crash between claim and submit.
+
+## Insurance & Coverage
+
+The Reineira protocol provides insurance for inference tasks:
+
+- **User pays premium** when submitting request
+- **Coverage amount** is set based on task value
+- **If result is disputed** and verified as incorrect, insurance pays out to user
+- **If result is correct**, premium is distributed to nodes and ICL
+
+Nodes benefit from coverage because:
+- More tasks are submitted (users feel protected)
+- Higher-value tasks are available
+- Dispute resolution is automated
+
+## Reward Claiming
+
+Rewards accumulate in the `RewardAccumulator` contract on Arbitrum Sepolia.
+
+### Claiming Process (Future)
+
+The `blindference-node withdraw` command will:
+1. Query accumulated rewards from contract
+2. Submit claim transaction
+3. Transfer rewards to node wallet
+
+**Current status**: Withdrawal is a stub in v0.3.0. Rewards are tracked on-chain but claiming is not yet implemented.
+
+## Best Practices
+
+1. **Monitor reputation**: Keep reputation score > 5000 for priority assignments
+2. **Maintain uptime**: Heartbeat every 60s, avoid extended downtime
+3. **Run determinism test**: Before going live, verify model produces consistent outputs
+4. **Use stable network**: Avoid mobile or unstable connections
+5. **Keep logs**: Log retention helps debug disputes
+6. **Update regularly**: New versions may have performance improvements and bug fixes

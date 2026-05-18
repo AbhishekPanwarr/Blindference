@@ -1,0 +1,250 @@
+---
+title: Troubleshooting
+description: 'Common issues and how to fix them'
+---
+
+# Troubleshooting
+
+## Installation Issues
+
+### `pip install blindference-node` fails
+
+**Symptoms**: Compilation errors for `cryptography`, `web3`, or other dependencies.
+
+**Causes & Fixes**:
+
+| Platform | Cause | Fix |
+|----------|-------|-----|
+| Ubuntu/Debian | Missing headers | `sudo apt-get install -y python3-dev libssl-dev libffi-dev build-essential` |
+| macOS | Missing OpenSSL | `brew install openssl libffi` |
+| Windows | Missing C++ compiler | Install Visual Studio Build Tools or use WSL |
+
+### `blindference-node: command not found`
+
+**Symptoms**: After `pip install`, the CLI is not available.
+
+**Fix**:
+
+```bash
+# Check where pip installed it
+python -m site --user-base
+# Add to PATH
+export PATH="$PATH:$(python -m site --user-base)/bin"
+
+# Or use the module directly
+python -m blindference_node.cli --help
+```
+
+## Attestation Issues
+
+### "Attestation certificate expired"
+
+**Symptoms**: Daemon shows warning about expired certificate, then auto-re-attests.
+
+**Expected behavior**: Auto-re-attestation should handle this automatically.
+
+**If auto-re-attest fails**:
+
+```bash
+# Check ICL connectivity
+curl $BLF_ICL_ENDPOINT/health
+
+# Check your system time
+date
+
+# Restart daemon
+blindference-node run
+```
+
+### "Attestation rejected by ICL"
+
+**Symptoms**: ICL returns 400/403 on attestation verify.
+
+**Causes**:
+- Wrong backend type (e.g., sending TPM quote with `mock` backend)
+- Challenge nonce expired (older than 300 seconds)
+- Invalid HMAC for mock backend
+
+**Fix**:
+
+```bash
+# Verify backend setting
+grep attestation_backend ~/.blindference/config.json
+
+# Check ICL challenge endpoint directly
+curl $BLF_ICL_ENDPOINT/internal/challenge/YOUR_ADDRESS
+
+# Re-initialize with correct backend
+blindference-node init
+```
+
+## Job Execution Issues
+
+### "Missing CoFHE key handles — cannot decrypt prompt"
+
+**Symptoms**: Job aborts after claiming.
+
+**Cause**: `claim_task` returned empty handles or claim failed.
+
+**Fix**:
+
+```bash
+# Check ICL logs for claim errors
+grep "task/claim" icl.log
+
+# Verify node is properly registered
+curl $BLF_ICL_ENDPOINT/v1/nodes/active | grep YOUR_ADDRESS
+
+# Check assignment has key handles
+curl $BLF_ICL_ENDPOINT/internal/assignments/YOUR_ADDRESS
+```
+
+### "Failed to fetch prompt blob from IPFS"
+
+**Symptoms**: Job aborts during IPFS download.
+
+**Causes**:
+- IPFS gateway down or rate-limited
+- CID not yet propagated
+- Network timeout
+
+**Fix**:
+
+```bash
+# Test IPFS gateway directly
+curl -s $BLF_IPFS_GATEWAY/ipfs/QmTest123 | head -c 100
+
+# Try alternative gateway
+export BLF_IPFS_GATEWAY=https://gateway.pinata.cloud/ipfs
+
+# Increase timeout (if configurable in future releases)
+```
+
+### "CoFHE decrypt failed: HTTP 403"
+
+**Symptoms**: Node cannot decrypt prompt key handles.
+
+**Cause**: ACL not granted for these handles. The ICL may have distributed the wrong handles (original ciphertext handles instead of stored handles).
+
+**Fix**:
+
+This is an ICL-side issue. Ensure the ICL is using the **stored handles** from `PromptKeyStore`, not the original `ctHash` values.
+
+Verify in ICL database:
+```python
+# ICL debug query
+{"prompt_key_store_handles": {"high": "0x...", "low": "0x..."}}
+```
+
+### "Inference failed: Groq API error"
+
+**Symptoms**: Model inference returns error.
+
+**Causes**:
+- Missing or invalid Groq API key
+- Model ID not supported by Groq
+- Rate limiting
+- Model temporarily unavailable
+
+**Fix**:
+
+```bash
+# Check Groq API key is set
+echo $GROQ_API_KEY
+
+# Test Groq directly
+curl https://api.groq.com/openai/v1/chat/completions \
+  -H "Authorization: Bearer $GROQ_API_KEY" \
+  -d '{"model":"llama-3.3-70b-versatile","messages":[{"role":"user","content":"Hello"}]}'
+
+# Switch to Gemini
+export BLF_SUPPORTED_MODEL_IDS=gemini:gemini-2.5-flash
+```
+
+## Network Issues
+
+### "ICL heartbeat failed"
+
+**Symptoms**: Repeated heartbeat failures in logs.
+
+**Causes**:
+- ICL is down
+- Network connectivity issues
+- Firewall blocking outbound HTTPS
+
+**Fix**:
+
+```bash
+# Test ICL connectivity
+curl -v $BLF_ICL_ENDPOINT/health
+
+# Check DNS resolution
+nslookup $(echo $BLF_ICL_ENDPOINT | sed 's|https://||')
+
+# Test with different network
+# (e.g., mobile hotspot to rule out firewall)
+```
+
+### "Too Many Requests" from Alchemy
+
+**Symptoms**: CoFHE operations fail with rate limit errors.
+
+**Cause**: Alchemy free tier limits requests.
+
+**Fix**:
+
+```bash
+# Use dedicated RPC endpoint
+export BLF_COFHE_ENDPOINT=https://arb-sepolia.g.alchemy.com/v2/YOUR_DEDICATED_KEY
+
+# Or use Fhenix Helios endpoint
+export BLF_COFHE_ENDPOINT=https://api.helios.fhenix.zone
+```
+
+## Performance Issues
+
+### High memory usage
+
+**Symptoms**: Node process consumes >2GB RAM.
+
+**Cause**: Concurrent jobs or memory leak.
+
+**Fix**:
+
+```bash
+# Reduce concurrent jobs (default is 2)
+# Edit node_loop.py or config to lower semaphore count
+
+# Restart daemon to clear any leaks
+blindference-node run
+```
+
+### Slow inference
+
+**Symptoms**: Inference takes >30 seconds.
+
+**Causes**:
+- API rate limiting
+- Large prompt size
+- Network latency
+
+**Fix**:
+
+```bash
+# Switch to faster model
+groq:llama-3.3-70b-versatile  # Fast
+# vs
+gemini:gemini-2.5-flash  # Also fast
+
+# Check prompt size
+# Large prompts (>4k tokens) take longer
+```
+
+## Getting Help
+
+If none of the above fixes work:
+
+1. **Collect logs**: `cat ~/.blindference/node.log | gzip > node_logs.gz`
+2. **Check versions**: `blindference-node --version`, `python --version`
+3. **Open an issue**: [GitHub Issues](https://github.com/baync180705/Blindference-node/issues)
+4. **Join Discord**: [Blindference Community](https://discord.gg/blindference)

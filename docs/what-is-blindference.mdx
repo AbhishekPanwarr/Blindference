@@ -1,0 +1,76 @@
+---
+title: What is Blindference?
+description: 'The problem, the solution, and why it matters'
+---
+
+# What is Blindference?
+
+## The Problem
+
+Running AI inference on sensitive data creates a fundamental tension:
+
+- **Centralized APIs** (OpenAI, Anthropic) see your data in plaintext — you must trust their security and data policies
+- **On-chain FHE** is too slow for production model latency — proving entire computations on-chain is impractical
+- **Pure off-chain** execution has no verifiability — you can't prove the model ran correctly or wasn't tampered with
+
+Blindference exists because fully on-chain FHE inference is not practical for real model latency. The architecture moved from trying to prove the whole computation on-chain to:
+
+- Keep inputs private
+- Let nodes compute off-chain
+- Make the result economically accountable with quorum, attestations, commitments, and coverage
+
+## The Solution
+
+Blindference coordinates encrypted requests across a distributed quorum of nodes:
+
+1. **User encrypts locally**: Prompts are AES-256 encrypted in the browser before upload
+2. **Keys are access-controlled**: AES key halves are CoFHE-encrypted and stored on-chain — only assigned nodes can decrypt
+3. **Quorum executes**: 1 leader + 2 verifiers independently run the same inference
+4. **Results are cross-validated**: Verifiers check the leader's output; 2/3 consensus required
+5. **Settlement is automatic**: Accepted results are committed on-chain; disputed results trigger insurance payouts
+
+## Why This Matters
+
+Blindference is trying to make private AI execution feel **complete**, not partial.
+
+That means:
+
+- The coordinator (ICL) never sees plaintext
+- The assigned nodes only receive encrypted inputs with cryptographically enforced access control
+- The user remains the only one who can reveal the final answer
+- The execution is still verifiable and economically meaningful
+
+## Trust Model
+
+| Entity | What They See | Trust Assumption |
+|--------|--------------|------------------|
+| User | Full plaintext (after decrypt) | Self — owns the wallet |
+| Frontend | Encrypted blobs, ciphertext handles | Browser security (same as any web app) |
+| ICL Coordinator | Ciphertext handles, quorum addresses | Doesn't need trust — can't decrypt |
+| Leader Node | Decrypted prompt (temporarily), model output | Attested + economically bonded + verifiable |
+| Verifier Nodes | Decrypted prompt (temporarily), model output | Same as leader — cross-validation catches cheating |
+| CoFHE Network | FHE ciphertexts, ACL checks | Threshold FHE — no single party sees plaintext |
+| Blockchain | Commitments, hashes, escrows | Public verifiability |
+
+## Comparison
+
+| Approach | Privacy | Verifiability | Latency | Cost |
+|----------|---------|-------------|---------|------|
+| Centralized API | ❌ None | ❌ None | ✅ Fast | ✅ Low |
+| Pure On-chain FHE | ✅ Full | ✅ Full | ❌ Hours | ❌ Very High |
+| Pure Off-chain | ✅ Full | ❌ None | ✅ Fast | ✅ Low |
+| **Blindference** | **✅ Full** | **✅ Quorum-backed** | **✅ Fast** | **✅ Moderate** |
+
+## Use Cases
+
+### Financial Risk Scoring
+
+A DeFi protocol wants to evaluate loan applications without exposing applicant data to any node operator. The applicant encrypts credit score, loan amount, and account age. A quorum of nodes independently evaluates risk. The protocol receives a verifiable risk score without ever seeing the underlying data.
+
+### Confidential AI Assistants
+
+A healthcare company wants to let patients ask medical questions via AI without exposing PHI to model providers. The patient encrypts their prompt. The quorum runs inference. Only the patient can decrypt the answer.
+
+### Verifiable Model Inference
+
+A researcher wants to prove they ran a specific model on specific data and got a specific result. The quorum consensus creates on-chain evidence. Disputes trigger automated re-verification and payouts.

@@ -1,0 +1,137 @@
+---
+title: Quickstart
+description: 'Get your first Blindference node running in 5 minutes'
+---
+
+# Quickstart
+
+Get a Blindference node running and earning in under 5 minutes.
+
+## Prerequisites
+
+- Python 3.10 or higher
+- pip (Python package manager)
+- A terminal with internet access
+- No GPU required for mock inference
+
+## Step 1: Install
+
+```bash
+pip install blindference-node
+```
+
+For GPU-accelerated local inference (optional):
+
+```bash
+pip install "blindference-node[gpu]"
+```
+
+## Step 2: Initialize
+
+```bash
+blindference-node init
+```
+
+This interactive command will:
+
+1. **Detect your hardware** — checks for GPU, sets inference mode accordingly
+2. **Generate a wallet** — creates an encrypted Ethereum keystore at `~/.blindference/keystore.json`
+3. **Prompt for password** — encrypts the keystore (you'll need this to run the node)
+4. **Perform mock attestation** — submits an attestation quote to the ICL and receives a certificate
+5. **Save configuration** — writes `~/.blindference/config.json` with your node settings
+
+### Example Output
+
+```
+============================================================
+  Blindference Node — Initialisation
+============================================================
+
+GPU detected: NVIDIA GeForce RTX 4090
+Setting inference mode: local vLLM
+
+Creating wallet ...
+  Address: 0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5
+  Keystore: ~/.blindference/keystore.json
+
+Performing mock attestation ...
+  Challenge received from ICL
+  Quote generated (HMAC-SHA256)
+  Attestation verified
+  Tier: 0
+  Certificate expiry: 7 days
+
+Configuration saved to ~/.blindference/config.json
+
+============================================================
+  Initialisation complete!
+  Address      : 0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5
+  Tier         : 0
+  Models       : qwen2.5-7b
+  Attestation  : mock
+  Cert expiry  : 604800
+============================================================
+```
+
+## Step 3: Start the Daemon
+
+```bash
+blindference-node run
+```
+
+Enter your keystore password when prompted. The daemon starts three concurrent loops:
+
+| Loop | Frequency | Purpose |
+|------|-----------|---------|
+| Heartbeat | Every 60s | Proves liveness to ICL and on-chain registry |
+| Attestation Watchdog | Every 10min | Auto-re-attests if certificate expires within 6h |
+| Assignment Poller | Every 5s | Polls ICL for pending inference jobs |
+
+### Example Output
+
+```
+============================================================
+  Blindference Node Daemon
+============================================================
+  Address : 0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5
+  Tier    : 0
+  Models  : qwen2.5-7b
+  Cert    : expires in 604663s
+
+[INFO] Daemon starting ...
+[INFO] Heartbeat sent to ICL
+[INFO] No assignments for last 60s
+[INFO] Heartbeat sent to ICL
+[INFO] Received 1 assignment(s)
+[INFO] Spawning leader job 0xabc123...
+[INFO] Job 0xabc123: starting as leader
+[INFO] Job 0xabc123: claimed
+[INFO] Downloaded prompt blob from IPFS
+[INFO] Decrypted prompt key via CoFHE
+[INFO] Running inference via Groq...
+[INFO] Inference complete. Result hash: 0xdef456
+[INFO] Storing output key for user...
+[INFO] Submitting leader result to ICL
+[INFO] Leader result accepted
+```
+
+## Step 4: Verify
+
+Check that your node is registered:
+
+```bash
+curl -s http://127.0.0.1:9000/v1/nodes/active | python3 -m json.tool
+```
+
+You should see your node address in the active nodes list.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="configuration">
+    Customize node settings, models, and endpoints
+  </Card>
+  <Card title="Attestation" icon="shield" href="attestation">
+    Learn about attestation tiers and hardware requirements
+  </Card>
+</CardGroup>

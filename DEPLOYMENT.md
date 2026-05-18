@@ -1,223 +1,287 @@
-# Deployment
+# Deployment Guide
 
-This document tracks the currently relevant Blindference Wave 3 deployments and local runtime expectations.
-
-## Active Monorepo
-
-The push-ready codebase is:
-
-- `wave2_network/`
-
-This folder name is historical. The current product/deployment story should be treated as Wave 3.
+This document provides contract addresses, deployment procedures, and runtime configuration for the Blindference protocol on Arbitrum Sepolia.
 
 ## Network Targets
 
-### Chain
+| Layer | Endpoint |
+|-------|----------|
+| Blockchain | Arbitrum Sepolia |
+| CoFHE Threshold Network | `https://api.helios.fhenix.zone` |
+| Blob Storage | Pinata / IPFS |
+| Model APIs | Groq (`api.groq.com`), Google Gemini (`generativelanguage.googleapis.com`) |
 
-- Arbitrum Sepolia
+## Deployed Contracts (Arbitrum Sepolia)
 
-### CoFHE
+### Core Protocol Contracts
 
-- current testnet RPC used by this stack: `https://api.helios.fhenix.zone`
+| Contract | Address | Explorer | Purpose |
+|----------|---------|----------|---------|
+| NodeAttestationRegistry | `0xB54e019e9717a8Ed4746bA9d7F1A3F83cf0a35E0` | [View](https://sepolia.arbiscan.io/address/0xB54e019e9717a8Ed4746bA9d7F1A3F83cf0a35E0) | Operator attestation storage with tier and expiry |
+| ExecutionCommitmentRegistry | `0xcd45aefE9a16772528fa30B7d47958a95e83440C` | [View](https://sepolia.arbiscan.io/address/0xcd45aefE9a16772528fa30B7d47958a95e83440C) | Task dispatch, commit/reveal deadlines |
+| AgentConfigRegistry | `0x85aE035d6a94c006B5d0808cAdF47F5c22536996` | [View](https://sepolia.arbiscan.io/address/0x85aE035d6a94c006B5d0808cAdF47F5c22536996) | Model ID to agent configuration mapping |
+| ReputationRegistry | `0xdaDb4D46D231d3fe6D3754E0861c8bCD36aF0604` | [View](https://sepolia.arbiscan.io/address/0xdaDb4D46D231d3fe6D3754E0861c8bCD36aF0604) | Operator reputation scoring (tasks, slashes) |
+| RewardAccumulator | `0xFa25Fb53eF8dAc88E4f43bB7558Cf3930Bf3e817` | [View](https://sepolia.arbiscan.io/address/0xFa25Fb53eF8dAc88E4f43bB7558Cf3930Bf3e817) | Reward distribution and claim management |
+| PromptKeyStore | `0x1E22dD12f448B15f1Ca8560fB6B4463834FaAf73` | [View](https://sepolia.arbiscan.io/address/0x1E22dD12f448B15f1Ca8560fB6B4463834FaAf73) | CoFHE-encrypted AES key half storage for text inference |
+| ResultRegistry | `0xCebd831eCd00915E299b8Ef2666cAbf942dc7150` | [View](https://sepolia.arbiscan.io/address/0xCebd831eCd00915E299b8Ef2666cAbf942dc7150) | On-chain result commitment for settlement |
 
-### Blob Storage
+### Supporting Contracts
 
-- Pinata / IPFS
+| Contract | Address | Purpose |
+|----------|---------|---------|
+| ArbiterSelectionRegistry | `0xAaf7Dd729Cb5873975D3643bE2b89CA121143d3f` | Arbiter selection for disputes |
+| MockAgentIdentityRegistry | `0x723ef21650B66a5705eABB74c3f3a3dB1593bb62` | Agent identity mock (dev) |
+| MockEscrowReleaser | `0x6B1dC5aca048e0F5FF7fdd4831Bd721c5501b9fc` | Escrow release mock (dev) |
+| PrevRandaoRandomness | `0xA579Fb461FedA169d59481fE5A24Cb3B7beA8222` | VRF randomness source |
 
-## Deployed Contracts
+### Demo Vertical Contracts
 
-### Core protocol contracts
+| Contract | Address | Purpose |
+|----------|---------|---------|
+| BlindferenceInputVault | `0x8dD7B2A9B69C76A69d33B2DF46426Cbe657a902b` | On-chain FHE input validation and ACL grant |
+| BlindferenceAttestor | `0x957CEb3F3E77bF91A001ef9FB2cEeB40A860FD79` | Custom attestation validation |
+| BlindferenceUnderwriter | `0xC7D3706Ca2a42d739429Aec1b452051dA5Eb68f0` | Insurance underwriter |
+| BlindferenceAgent | `0x43132afC4F163C244f7b66Adafee32F6B904994c` | Agent configuration |
+| MockPriceOracle | `0x5B01c9CcCe3E00DE92d3d76b312f2b9b2Db41e94` | Demo price feed |
+| InferenceGate | `0xF3014a79985f83898912cAe2676226310A546905` | Inference access control |
 
-- `NodeAttestationRegistry`
-  - `0xB54e019e9717a8Ed4746bA9d7F1A3F83cf0a35E0`
-  - <https://sepolia.arbiscan.io/address/0xB54e019e9717a8Ed4746bA9d7F1A3F83cf0a35E0>
-- `ExecutionCommitmentRegistry`
-  - `0xcd45aefE9a16772528fa30B7d47958a95e83440C`
-  - <https://sepolia.arbiscan.io/address/0xcd45aefE9a16772528fa30B7d47958a95e83440C>
-- `AgentConfigRegistry`
-  - `0x85aE035d6a94c006B5d0808cAdF47F5c22536996`
-  - <https://sepolia.arbiscan.io/address/0x85aE035d6a94c006B5d0808cAdF47F5c22536996>
-- `ReputationRegistry`
-  - `0xdaDb4D46D231d3fe6D3754E0861c8bCD36aF0604`
-  - <https://sepolia.arbiscan.io/address/0xdaDb4D46D231d3fe6D3754E0861c8bCD36aF0604>
-- `RewardAccumulator`
-  - `0xFa25Fb53eF8dAc88E4f43bB7558Cf3930Bf3e817`
-  - <https://sepolia.arbiscan.io/address/0xFa25Fb53eF8dAc88E4f43bB7558Cf3930Bf3e817>
+### Important Notes
 
-### PromptKeyStore
+- **PromptKeyStore** (`0x597ed3E3a442ebB31481AC3BAc98815F98ED6B44`) is the current production address supporting `uint128` key halves
+- Older deployment `0x3F883189F163950220993688E14A56F1474554E3` is **obsolete** — it used `uint256` key halves and is incompatible with current node runtime
+- All contracts are verified on Arbiscan
 
-This is the critical new deployment for the text pipeline.
+## Deployment Procedure
 
-- contract:
-  - `wave2_network/packages/contracts/contracts/core/PromptKeyStore.sol`
-- current address:
-  - `0x597ed3E3a442ebB31481AC3BAc98815F98ED6B44`
-- explorer:
-  - <https://sepolia.arbiscan.io/address/0x597ed3e3a442ebb31481ac3bac98815f98ed6b44>
+### Prerequisites
 
-Important:
+- Foundry (`forge`) installed
+- Arbitrum Sepolia RPC endpoint (e.g., Alchemy, Infura)
+- Deployer private key with Sepolia ETH
+- Arbiscan API key for verification
 
-- older deployment `0x3F883189F163950220993688E14A56F1474554E3` is obsolete for the current `uint128` handle flow
+### Environment Setup
 
-### Supporting core deployments
-
-- `ArbiterSelectionRegistry`
-  - `0xAaf7Dd729Cb5873975D3643bE2b89CA121143d3f`
-- `MockAgentIdentityRegistry`
-  - `0x723ef21650B66a5705eABB74c3f3a3dB1593bb62`
-- `MockEscrowReleaser`
-  - `0x6B1dC5aca048e0F5FF7fdd4831Bd721c5501b9fc`
-- `PrevRandaoRandomness`
-  - `0xA579Fb461FedA169d59481fE5A24Cb3B7beA8222`
-
-### Demo contracts
-
-- `BlindferenceInputVault`
-  - `0x8dD7B2A9B69C76A69d33B2DF46426Cbe657a902b`
-  - <https://sepolia.arbiscan.io/address/0x8dD7B2A9B69C76A69d33B2DF46426Cbe657a902b>
-- `MockPriceOracle`
-  - `0xDe9AE4b048bF320Db6492e2AfD0516392EBA05Fc`
-  - <https://sepolia.arbiscan.io/address/0xDe9AE4b048bF320Db6492e2AfD0516392EBA05Fc>
-- `BlindferenceAttestor`
-  - `0x74454F689F28EfbEF6Ef9F3F14e56ac62CA8EC49`
-  - <https://sepolia.arbiscan.io/address/0x74454F689F28EfbEF6Ef9F3F14e56ac62CA8EC49>
-- `BlindferenceUnderwriter`
-  - `0xcbbdcb1b42DE4Ed52f7ceD752c65652EE317B601`
-  - <https://sepolia.arbiscan.io/address/0xcbbdcb1b42DE4Ed52f7ceD752c65652EE317B601>
-- `BlindferenceAgent`
-  - `0xc9208B8aCAaD3abFc955a575719BB8F21640A6fE`
-  - <https://sepolia.arbiscan.io/address/0xc9208B8aCAaD3abFc955a575719BB8F21640A6fE>
-
-## Deployment Story In This Wave
-
-### Before
-
-- protocol contracts existed
-- risk flow contracts existed
-- text flow contract code existed locally
-
-### Added in this wave
-
-- `PromptKeyStore` deployed and verified
-- env propagation across:
-  - `packages/contracts/.env`
-  - `packages/icl/.env`
-  - `packages/node-reineira/.env`
-  - `packages/frontend/.env`
-
-### Updated implementation assumptions
-
-- key halves use `uint128`
-- prompt key stored by user wallet
-- output key stored by leader node wallet
-- ICL reads back stored on-chain handles and persists those
-
-## Runtime Topology
-
-```mermaid
-flowchart LR
-    FE[Frontend] --> ICL
-    FE --> PKS[PromptKeyStore]
-    ICL --> N1[Leader]
-    ICL --> N2[Verifier 1]
-    ICL --> N3[Verifier 2]
-    N1 --> PKS
-    N2 --> PKS
-    N3 --> PKS
-    N1 --> P[Pinata]
-    N2 --> P
-    N3 --> P
-    N1 --> G[Groq / Gemini]
-    N2 --> G
-    N3 --> G
-```
-
-## Env Expectations
-
-### Contracts
-
-Needs deploy-only values:
-
-- `PRIVATE_KEY`
-- `ARB_SEPOLIA_RPC`
-- `ARBISCAN_API_KEY`
-- `PROMPT_KEY_STORE_ADDRESS`
-
-### ICL
-
-Needs:
-
-- Arbitrum Sepolia RPC
-- CoFHE RPC
-- `PROMPT_KEY_STORE_ADDRESS`
-- ICL private key
-- demo operator keys
-- `PINATA_JWT`
-
-### Node runtime
-
-Needs:
-
-- ICL base URL
-- provider selection (`groq` or `gemini`)
-- provider API key
-- CoFHE RPC
-- `PROMPT_KEY_STORE_ADDRESS`
-- one operator private key per node process
-- `PINATA_JWT`
-
-### Frontend
-
-Needs:
-
-- ICL base URL
-- chain id
-- prompt key store address
-- walletconnect project id
-- Pinata gateway URL
-
-## Recommended Demo Bring-Up
+Create `.env` in `network/packages/contracts/`:
 
 ```bash
-bash wave2_network/scripts/demo/run-stack.sh
+PRIVATE_KEY=0x...
+ARB_SEPOLIA_RPC=https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY
+ARBISCAN_API_KEY=YOUR_ARBISCAN_KEY
 ```
 
-Status:
+### Deploy Core Protocol
 
 ```bash
-bash wave2_network/scripts/demo/status.sh
+cd network/packages/contracts
+source .env
+
+# Deploy core registries
+forge script script/DeployCore.s.sol:DeployCore \
+  --rpc-url $ARB_SEPOLIA_RPC \
+  --broadcast \
+  --verify \
+  --etherscan-api-key $ARBISCAN_API_KEY
+
+# Deploy PromptKeyStore
+forge script script/DeployPromptKeyStore.s.sol:DeployPromptKeyStore \
+  --rpc-url $ARB_SEPOLIA_RPC \
+  --broadcast \
+  --verify \
+  --etherscan-api-key $ARBISCAN_API_KEY
 ```
 
-Stop:
+### Deploy Demo Vertical
 
 ```bash
-bash wave2_network/scripts/demo/stop.sh
+cd network/packages/blindference-demo
+source .env
+
+forge script script/DeployDemo.s.sol:DeployDemo \
+  --rpc-url $ARB_SEPOLIA_RPC \
+  --broadcast \
+  --verify \
+  --etherscan-api-key $ARBISCAN_API_KEY
 ```
 
-Logs:
+## Runtime Configuration
 
-```text
-wave2_network/scripts/demo/logs/
+### ICL Environment (`network/packages/icl/.env`)
+
+```bash
+# Blockchain
+ARBITRUM_SEPOLIA_RPC=https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY
+
+# CoFHE
+COFHE_RPC_URL=https://api.helios.fhenix.zone
+COFHE_CHAIN_ID=421614
+
+# Contracts (update after deployment)
+NODE_ATTESTATION_REGISTRY_ADDRESS=0xB54e019e9717a8Ed4746bA9d7F1A3F83cf0a35E0
+EXECUTION_COMMITMENT_REGISTRY_ADDRESS=0xcd45aefE9a16772528fa30B7d47958a95e83440C
+PROMPT_KEY_STORE_ADDRESS=0x1E22dD12f448B15f1Ca8560fB6B4463834FaAf73
+RESULT_REGISTRY_ADDRESS=0xCebd831eCd00915E299b8Ef2666cAbf942dc7150
+AGENT_CONFIG_REGISTRY_ADDRESS=0x85aE035d6a94c006B5d0808cAdF47F5c22536996
+REPUTATION_REGISTRY_ADDRESS=0xdaDb4D46D231d3fe6D3754E0861c8bCD36aF0604
+REWARD_ACCUMULATOR_ADDRESS=0xFa25Fb53eF8dAc88E4f43bB7558Cf3930Bf3e817
+
+# ICL identity
+ICL_PRIVATE_KEY=0x...
+
+# Demo operators (comma-separated)
+DEMO_OPERATOR_PRIVATE_KEYS=0x...,0x...,0x...
+
+# Storage
+PINATA_JWT=eyJ...
+PINATA_GATEWAY_URL=https://gateway.pinata.cloud/ipfs
+
+# Database (optional — falls back to in-memory)
+USE_MONGO=true
+MONGO_URI=mongodb+srv://...
+MONGO_DB_NAME=blindference
+
+# Quorum settings
+DEFAULT_MIN_TIER=0
+DEFAULT_VERIFIER_COUNT=2
+HEARTBEAT_GRACE_SECONDS=300
+EXECUTION_COMMIT_WINDOW_SECONDS=600
+EXECUTION_REVEAL_WINDOW_SECONDS=600
 ```
 
-## What A Successful Text Run Should Look Like
+### Frontend Environment (`network/packages/frontend/.env`)
 
-```text
-1. frontend encrypts prompt
-2. user wallet stores prompt key in PromptKeyStore
-3. ICL creates and dispatches text request
-4. leader + verifiers decrypt prompt key through ACL
-5. leader and verifiers run Groq/Gemini
-6. leader stores output key in PromptKeyStore for the user
-7. ICL aggregates quorum
-8. frontend decrypts output key and reveals answer
+```bash
+VITE_ICL_BASE_URL=http://127.0.0.1:9000
+VITE_ARBITRUM_SEPOLIA_RPC_URL=https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY
+VITE_CHAIN_ID=421614
+VITE_WALLET_CONNECT_PROJECT_ID=your_project_id
+VITE_BLINDFERENCE_AGENT_ADDRESS=0x43132afC4F163C244f7b66Adafee32F6B904994c
+VITE_BLINDFERENCE_INPUT_VAULT_ADDRESS=0x8dD7B2A9B69C76A69d33B2DF46426Cbe657a902b
+VITE_PROMPT_KEY_STORE_ADDRESS=0x1E22dD12f448B15f1Ca8560fB6B4463834FaAf73
+VITE_PROMPT_UPLOAD_TIMEOUT_MS=20000
+VITE_IPFS_GATEWAY_URL=https://gateway.pinata.cloud/ipfs
 ```
 
-## Current Live Validation Note
+### Node Environment (per-node)
 
-The code now contains the latest fixes for:
+Each node needs:
 
-- on-chain stored-handle persistence
-- leader-owned output-key storage
+```bash
+# Node identity (from DEMO_OPERATOR_PRIVATE_KEYS or generated)
+BLF_PRIVATE_KEY=0x...
+BLF_KEY_PASSWORD=secure_password
 
-So any final validation should always use a **fresh** text request after restart, not an older failed job.
+# Endpoints
+BLF_ICL_ENDPOINT=http://127.0.0.1:9000
+BLF_FHENIX_RPC=https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY
+BLF_COFHE_ENDPOINT=https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY
+BLF_COFHE_CHAIN_ID=421614
+
+# Storage
+BLF_IPFS_GATEWAY=https://node.lighthouse.storage
+
+# Models
+BLF_SUPPORTED_MODELS=qwen2.5-7b,groq:llama-3.3-70b-versatile,gemini:gemini-2.5-flash
+
+# CoFHE mode (bridge = TypeScript subprocess, python = direct HTTP)
+BLF_COFHE_MODE=bridge
+```
+
+## Demo Bring-Up
+
+### Using Orchestration Scripts
+
+```bash
+# Start ICL + 3 nodes + frontend
+bash network/scripts/demo/run-stack.sh
+
+# Check all services
+bash network/scripts/demo/status.sh
+
+# Stop everything
+bash network/scripts/demo/stop.sh
+
+# View logs
+ls network/scripts/demo/logs/
+```
+
+### Manual Bring-Up
+
+**1. Start ICL:**
+
+```bash
+cd network/packages/icl
+./.venv/bin/uvicorn main:app --host 127.0.0.1 --port 9000
+```
+
+**2. Bootstrap operators:**
+
+```bash
+curl -s -X POST http://127.0.0.1:9000/admin/bootstrap-demo-nodes \
+  -H 'Content-Type: application/json' \
+  -d '{"count":3}'
+```
+
+**3. Start nodes:**
+
+See [Blindference-node README](../Blindference-node/README.md) for node initialization and startup.
+
+**4. Start frontend:**
+
+```bash
+cd network/packages/frontend
+npm install
+npm run dev -- --host=127.0.0.1
+```
+
+Open http://127.0.0.1:3000 and connect MetaMask.
+
+## Validation Checklist
+
+A successful text inference run should produce:
+
+1. ✅ Frontend shows "AES-256-GCM encrypting..." → "CoFHE ZK proof generation"
+2. ✅ MetaMask prompts for `storeKey` transaction to PromptKeyStore
+3. ✅ ICL shows `POST /v1/inference/requests` with status 200
+4. ✅ All 3 nodes show "Received 1 assignment(s)" and "claimed"
+5. ✅ Nodes show "downloaded prompt blob" and "running inference"
+6. ✅ Leader shows "storing output key" and "submitting leader result"
+7. ✅ Verifiers show "verdict: match" or "verdict: no-match"
+8. ✅ ICL aggregates and shows status "ACCEPTED" or "REJECTED"
+9. ✅ Frontend polls and shows "Decrypting output..." → reveals answer
+10. ✅ Arbiscan shows ResultRegistry transaction for accepted results
+
+## Troubleshooting
+
+### "Failed to fetch" during CoFHE encryption
+
+- Clear browser cache and hard reload (Ctrl+Shift+R)
+- Remove `node_modules/.vite` cache: `rm -rf network/packages/frontend/node_modules/.vite`
+- Verify `fheKeyStorage: null` in `useCofheClient.ts`
+
+### Nodes show "claim failed (500)"
+
+- Check ICL logs for `claim_task` errors
+- Verify `attestation_expiry` is in the future
+- Ensure node address matches an operator in ICL database
+- Check `HEARTBEAT_GRACE_SECONDS` — nodes must heartbeat within 5 minutes
+
+### "Too Many Requests" from Alchemy
+
+- Alchemy free tier rate-limits at ~10 req/s
+- Use separate API keys for frontend, ICL, and each node
+- Or switch to paid tier / dedicated RPC endpoint
+
+### ZK proof hangs / browser freezes
+
+- Expected: CoFHE ZK proof generation takes 10-30s on main thread
+- `useWorkers: false` is set in `useCofheClient.ts` — Web Workers are broken in Vite dev mode
+- For production, enable workers with proper Vite configuration
+
+## Security Considerations
+
+- **Never commit `.env` files** with real private keys
+- Use separate deployer keys for contracts vs ICL vs nodes
+- Rotate `PINATA_JWT` tokens periodically
+- MongoDB Atlas connections should use TLS and IP allowlisting
+- Node private keys should be encrypted with `BLF_KEY_PASSWORD`

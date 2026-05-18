@@ -1,0 +1,47 @@
+---
+title: Contract Addresses
+description: 'All deployed contracts on Arbitrum Sepolia'
+---
+
+# Contract Addresses
+
+All contracts are deployed on **Arbitrum Sepolia** testnet.
+
+## Core Protocol Contracts
+
+| Contract | Address | Explorer | Purpose |
+|----------|---------|----------|---------|
+| PromptKeyStore | `0x1E22dD12f448B15f1Ca8560fB6B4463834FaAf73` | [View](https://sepolia.arbiscan.io/address/0x1E22dD12f448B15f1Ca8560fB6B4463834FaAf73) | Stores CoFHE-encrypted AES key halves |
+| ResultRegistry | `0xCebd831eCd00915E299b8Ef2666cAbf942dc7150` | [View](https://sepolia.arbiscan.io/address/0xCebd831eCd00915E299b8Ef2666cAbf942dc7150) | On-chain result commitment |
+| NodeAttestationRegistry | `0xB54e019e9717a8Ed4746bA9d7F1A3F83cf0a35E0` | [View](https://sepolia.arbiscan.io/address/0xB54e019e9717a8Ed4746bA9d7F1A3F83cf0a35E0) | Operator attestation |
+| ExecutionCommitmentRegistry | `0xcd45aefE9a16772528fa30B7d47958a95e83440C` | [View](https://sepolia.arbiscan.io/address/0xcd45aefE9a16772528fa30B7d47958a95e83440C) | Task dispatch |
+| ReputationRegistry | `0xdaDb4D46D231d3fe6D3754E0861c8bCD36aF0604` | [View](https://sepolia.arbiscan.io/address/0xdaDb4D46D231d3fe6D3754E0861c8bCD36aF0604) | Operator scoring |
+| AgentConfigRegistry | `0x85aE035d6a94c006B5d0808cAdF47F5c22536996` | [View](https://sepolia.arbiscan.io/address/0x85aE035d6a94c006B5d0808cAdF47F5c22536996) | Model configuration |
+| RewardAccumulator | `0xFa25Fb53eF8dAc88E4f43bB7558Cf3930Bf3e817` | [View](https://sepolia.arbiscan.io/address/0xFa25Fb53eF8dAc88E4f43bB7558Cf3930Bf3e817) | Reward distribution |
+
+## Demo Vertical Contracts
+
+| Contract | Address | Explorer | Purpose |
+|----------|---------|----------|---------|
+| BlindferenceInputVault | `0x8dD7B2A9B69C76A69d33B2DF46426Cbe657a902b` | [View](https://sepolia.arbiscan.io/address/0x8dD7B2A9B69C76A69d33B2DF46426Cbe657a902b) | FHE input validation |
+| BlindferenceAttestor | `0x957CEb3F3E77bF91A001ef9FB2cEeB40A860FD79` | [View](https://sepolia.arbiscan.io/address/0x957CEb3F3E77bF91A001ef9FB2cEeB40A860FD79) | Custom attestation |
+| BlindferenceUnderwriter | `0xC7D3706Ca2a42d739429Aec1b452051dA5Eb68f0` | [View](https://sepolia.arbiscan.io/address/0xC7D3706Ca2a42d739429Aec1b452051dA5Eb68f0) | Insurance underwriter |
+| BlindferenceAgent | `0x43132afC4F163C244f7b66Adafee32F6B904994c` | [View](https://sepolia.arbiscan.io/address/0x43132afC4F163C244f7b66Adafee32F6B904994c) | Agent configuration |
+| MockPriceOracle | `0x5B01c9CcCe3E00DE92d3d76b312f2b9b2Db41e94` | [View](https://sepolia.arbiscan.io/address/0x5B01c9CcCe3E00DE92d3d76b312f2b9b2Db41e94) | Demo price feed |
+| InferenceGate | `0xF3014a79985f83898912cAe2676226310A546905` | [View](https://sepolia.arbiscan.io/address/0xF3014a79985f83898912cAe2676226310A546905) | Access control |
+
+## Supporting Contracts
+
+| Contract | Address | Purpose |
+|----------|---------|---------|
+| ArbiterSelectionRegistry | `0xAaf7Dd729Cb5873975D3643bE2b89CA121143d3f` | Arbiter selection for disputes |
+| MockAgentIdentityRegistry | `0x723ef21650B66a5705eABB74c3f3a3dB1593bb62` | Agent identity mock (dev) |
+| MockEscrowReleaser | `0x6B1dC5aca048e0F5FF7fdd4831Bd721c5501b9fc` | Escrow release mock (dev) |
+| PrevRandaoRandomness | `0xA579Fb461FedA169d59481fE5A24Cb3B7beA8222` | VRF randomness source |
+
+## Important Notes
+
+- **PromptKeyStore** (`0x1E22dD12f448B15f1Ca8560fB6B4463834FaAf73`) is the current production address supporting `uint128` key halves
+- Older deployment `0x3F883189F163950220993688E14A56F1474554E3` is **obsolete** — it used `uint256` key halves and is incompatible with current node runtime
+- All contracts are verified on Arbiscan
+- All contracts are on **Arbitrum Sepolia** (Chain ID: 421614)
