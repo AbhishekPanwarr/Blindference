@@ -49,8 +49,8 @@ secrets/
 *.sqlite3
 *.db
 *.history
-wave2_network/scripts/demo/logs/
-wave2_network/scripts/demo/pids/
+network/scripts/demo/logs/
+network/scripts/demo/pids/
 .DS_Store
 .idea/
 .vscode/

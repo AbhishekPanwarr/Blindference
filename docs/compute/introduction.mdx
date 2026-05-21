@@ -15,7 +15,7 @@ A Blindference node is a compute provider that:
 2. **Heartbeats** every 60 seconds to prove liveness
 3. **Polls** for pending inference jobs every 5 seconds
 4. **Decrypts** encrypted prompts via CoFHE threshold FHE under strict ACL
-5. **Executes** inference via Groq Llama 3 or Google Gemini APIs
+5. **Executes** inference via Groq, Google Gemini, or local vLLM (pluggable backends)
 6. **Commits** results back to the ICL for quorum consensus
 
 ## Earning Model

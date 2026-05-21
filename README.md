@@ -113,6 +113,78 @@ blindference/
 9. ICL commits accepted result on-chain
 ```
 
+## CoFHE Prompt Key Storage Architecture
+
+Fhenix CoFHE enforces that **only the address that created an encrypted input can call `FHE.asEuint128()`** with it. This means the ICL coordinator wallet cannot store prompt keys on behalf of the frontend user — the call will revert with `InvalidSigner(expectedSigner, actualSigner)`.
+
+Three architectural options exist for handling this constraint. **Option A** is the current implementation.
+
+### Option A: Frontend Calls `storeKey` (Two-Phase Flow) — IMPLEMENTED
+
+**How it works:**
+1. Frontend encrypts prompt key and calls `PromptKeyStore.storeKey(taskId, encHigh, encLow, allowedNodes)` directly via wagmi/viem
+2. Frontend submits request to ICL, including `prompt_key_store_tx` hash in metadata
+3. ICL verifies the tx (optional), calls `grantDecryptAccess(taskId, node)` for each quorum node, then dispatches
+
+**Pros:**
+- Proper on-chain storage with correct signer
+- ACL access granted through contract
+- Audit trail of who stored each key
+
+**Cons:**
+- Requires two-phase API (create → store → confirm)
+- Frontend must wait for tx confirmation before dispatch
+- Additional MetaMask popup for `storeKey`
+
+**Implementation details:**
+- ICL endpoint: `POST /v1/inference/{request_id}/confirm-store-key` with `{ prompt_key_store_tx: "0x..." }`
+- ICL verifies key exists on-chain via `getEncryptedKey(taskId)` before dispatching
+- If verification fails, ICL returns error and request stays in `pending_store_key` status
+
+### Option B: Sharing Permits (No On-Chain Storage)
+
+**How it works:**
+1. Frontend creates CoFHE sharing permit for each quorum node (`client.permits.createSharing(issuer, recipient)`)
+2. Frontend sends permits to ICL
+3. ICL passes permits to nodes via assignment API
+4. Nodes import permit (`client.permits.importShared(permit)`) and decrypt via `decryptForView().withPermit()`
+
+**Pros:**
+- No on-chain storage overhead
+- No additional MetaMask popups
+- Nodes decrypt directly with imported permits
+
+**Cons:**
+- No on-chain audit trail of prompt keys
+- Permits must be created per-request, per-node
+- If permit expires before node claims, decryption fails
+
+**When to use:**
+- Suitable for systems where on-chain key storage is not a hard requirement
+- Lower latency, simpler flow
+- Used by the legacy `blindference-old` implementation
+
+### Option C: Hybrid — Frontend Store + ICL Grant
+
+**How it works:**
+1. Frontend calls `storeKey` with empty/miminal `allowedNodes`
+2. ICL calls `grantDecryptAccess` for each assigned node
+3. ICL dispatches after all nodes have access
+
+**Pros:**
+- Frontend pays storage gas once
+- ICL dynamically grants access as nodes are assigned
+- Flexible for changing quorum assignments
+
+**Cons:**
+- Still requires frontend `storeKey` call
+- Slightly more complex contract interaction
+- `grantDecryptAccess` must succeed for each node
+
+**When to use:**
+- When quorum assignments are dynamic or may change post-storage
+- When you want the ICL to control node access after assignment
+
 ## Deployed Contracts (Arbitrum Sepolia)
 
 | Contract | Address | Purpose |

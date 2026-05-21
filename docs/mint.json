@@ -68,6 +68,8 @@
         "compute/installation",
         "compute/configuration",
         "compute/attestation",
+        "compute/models",
+        "compute/backends",
         "compute/running",
         "compute/monitoring",
         "compute/troubleshooting",

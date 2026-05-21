@@ -71,6 +71,7 @@ async def verify_attestation(
         attestation_type=backend_type,
         attestation_document_hash=runtime_hash,
         attestation_expires_at=expiry,
+        supported_model_ids=body.get("supportedModelIds") or body.get("supported_model_ids"),
     )
 
     return {
@@ -173,6 +174,12 @@ async def claim_task(
     except Exception:
         pass
 
+    # Record claim to prevent ICL from re-dispatching to this node
+    try:
+        await services.quorum_service.record_node_claim(job_id, node_address)
+    except Exception:
+        pass
+
     def _parse_handle(val):
         if val is None:
             return 0
@@ -212,6 +219,13 @@ async def submit_internal_task_result(
         raise HTTPException(status_code=404, detail=str(error)) from error
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    except Exception as error:
+        import traceback, logging as _logging
+        _logging.getLogger("icl.internal").error(
+            "submit_internal_task_result failed for job_id=%s: %s\n%s",
+            job_id, error, traceback.format_exc()
+        )
+        raise HTTPException(status_code=500, detail=f"Internal error: {error}") from error
 
 
 # ---------------------------------------------------------------------------
@@ -235,6 +249,13 @@ async def submit_internal_task_verification(
         raise HTTPException(status_code=404, detail=str(error)) from error
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    except Exception as error:
+        import traceback, logging as _logging
+        _logging.getLogger("icl.internal").error(
+            "submit_internal_task_verification failed for job_id=%s: %s\n%s",
+            job_id, error, traceback.format_exc()
+        )
+        raise HTTPException(status_code=500, detail=f"Internal error: {error}") from error
 
 
 # ---------------------------------------------------------------------------
@@ -313,9 +334,11 @@ async def get_job_status(
             "leaderCommitment": request_doc.get("commitment_hash"),
         }
 
+    # Handle Pydantic models (TextInferenceResult / InferenceRequestResponse)
+    data = request_doc.model_dump() if hasattr(request_doc, "model_dump") else {}
     return {
         "jobId": job_id,
-        "status": "pending",
-        "outputCid": None,
-        "leaderCommitment": None,
+        "status": data.get("status", "pending"),
+        "outputCid": data.get("output_cid"),
+        "leaderCommitment": data.get("commitment_hash"),
     }

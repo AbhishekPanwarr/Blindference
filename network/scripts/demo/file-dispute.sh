@@ -3,7 +3,7 @@
 set -euo pipefail
 
 if [[ $# -lt 2 ]]; then
-  echo "Usage: bash wave2_network/scripts/demo/file-dispute.sh <request_id> <developer_address> [notes]" >&2
+  echo "Usage: bash network/scripts/demo/file-dispute.sh <request_id> <developer_address> [notes]" >&2
   exit 1
 fi
 

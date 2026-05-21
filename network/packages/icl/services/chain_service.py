@@ -82,15 +82,39 @@ class ChainService:
             heartbeat = operator.get("last_heartbeat", now)
             if isinstance(heartbeat, str):
                 heartbeat = datetime.fromisoformat(heartbeat.replace("Z", "+00:00"))
-            if (now - heartbeat).total_seconds() > self.settings.HEARTBEAT_GRACE_SECONDS:
+            if isinstance(heartbeat, datetime) and heartbeat.tzinfo is None:
+                heartbeat = heartbeat.replace(tzinfo=timezone.utc)
+            heartbeat_stale = (now - heartbeat).total_seconds() > self.settings.HEARTBEAT_GRACE_SECONDS
+
+            # Attestation expiry fallback — if attestation is still valid,
+            # allow the node even if heartbeats were missed (e.g. ICL downtime).
+            attestation_expires_at = operator.get("attestation_expires_at")
+            attestation_still_valid = False
+            if attestation_expires_at is not None:
+                if isinstance(attestation_expires_at, str):
+                    attestation_expires_at = datetime.fromisoformat(
+                        attestation_expires_at.replace("Z", "+00:00")
+                    )
+                if isinstance(attestation_expires_at, datetime):
+                    attestation_still_valid = attestation_expires_at > now
+                elif isinstance(attestation_expires_at, (int, float)):
+                    attestation_still_valid = attestation_expires_at > now.timestamp()
+
+            # Node is excluded only if BOTH heartbeat is stale AND attestation expired.
+            if heartbeat_stale and not attestation_still_valid:
                 continue
 
-            is_valid = True if self.settings.MOCK_CHAIN else await asyncio.to_thread(
-                self.node_attestation_registry.has_valid,
-                operator["operator_address"],
-                operator["attestation_type"],
-                operator["attestation_counterparty"],
-            )
+            # Mock-attested nodes are always considered valid — the on-chain
+            # NodeAttestationRegistry does not recognise mock quotes.
+            if self.settings.MOCK_CHAIN or operator.get("attestation_type") == "mock":
+                is_valid = True
+            else:
+                is_valid = await asyncio.to_thread(
+                    self.node_attestation_registry.has_valid,
+                    operator["operator_address"],
+                    operator["attestation_type"],
+                    operator["attestation_counterparty"],
+                )
             if is_valid:
                 active_addresses.append(self.web3_client.checksum_address(operator["operator_address"]))
 
@@ -111,18 +135,27 @@ class ChainService:
                 operator["operator_address"],
             )
         )
-        is_valid = True if self.settings.MOCK_CHAIN else await asyncio.to_thread(
-            self.node_attestation_registry.has_valid,
-            operator["operator_address"],
-            operator["attestation_type"],
-            operator["attestation_counterparty"],
-        )
+        # Mock-attested nodes are always considered valid — the on-chain
+        # NodeAttestationRegistry does not recognise mock quotes.
+        if self.settings.MOCK_CHAIN or operator.get("attestation_type") == "mock":
+            is_valid = True
+        else:
+            is_valid = await asyncio.to_thread(
+                self.node_attestation_registry.has_valid,
+                operator["operator_address"],
+                operator["attestation_type"],
+                operator["attestation_counterparty"],
+            )
         heartbeat = operator["last_heartbeat"]
         registered_at = operator["registered_at"]
         if isinstance(heartbeat, str):
             heartbeat = datetime.fromisoformat(heartbeat.replace("Z", "+00:00"))
+        if isinstance(heartbeat, datetime) and heartbeat.tzinfo is None:
+            heartbeat = heartbeat.replace(tzinfo=timezone.utc)
         if isinstance(registered_at, str):
             registered_at = datetime.fromisoformat(registered_at.replace("Z", "+00:00"))
+        if isinstance(registered_at, datetime) and registered_at.tzinfo is None:
+            registered_at = registered_at.replace(tzinfo=timezone.utc)
 
         now = datetime.now(timezone.utc)
         is_recent = (now - heartbeat).total_seconds() <= self.settings.HEARTBEAT_GRACE_SECONDS
@@ -299,6 +332,42 @@ class ChainService:
         return await asyncio.to_thread(
             self.prompt_key_store.get_encrypted_key_handles,
             job_id=task_id,
+        )
+
+    async def store_output_key(
+        self,
+        *,
+        task_id: str,
+        high_handle: int,
+        low_handle: int,
+        user_address: str,
+    ) -> dict[str, Any]:
+        """Store the leader's encrypted output key on-chain via PromptKeyStore.storeOutputKey.
+
+        The contract enforces onlyICL, so this must be called by the ICL coordinator wallet.
+        """
+        if self.settings.MOCK_CHAIN:
+            tx_hash = self.web3_client.ensure_hex_prefix(
+                self.web3_client.keccak_text(f"mock-output-key-store:{task_id}")
+            )
+            return {
+                "tx_hash": tx_hash,
+                "status": "stored",
+                "stored_high_handle": str(high_handle),
+                "stored_low_handle": str(low_handle),
+            }
+
+        if not self.prompt_key_store.enabled:
+            raise ValueError(
+                "PROMPT_KEY_STORE_ADDRESS is not configured; cannot store output key on-chain"
+            )
+
+        return await asyncio.to_thread(
+            self.prompt_key_store.store_output_key,
+            job_id=task_id,
+            high_handle=high_handle,
+            low_handle=low_handle,
+            user_address=user_address,
         )
 
     async def grant_prompt_key_access(
@@ -560,6 +629,7 @@ class ChainService:
         attestation_type: str,
         attestation_document_hash: str,
         attestation_expires_at: int,
+        supported_model_ids: list[str] | None = None,
     ) -> None:
         """Create or update an operator record after successful attestation.
 
@@ -575,6 +645,7 @@ class ChainService:
         operator_record = OperatorRecord(
             operator_address=checksum,
             model_tiers=model_tiers,
+            supported_model_ids=list(supported_model_ids) if supported_model_ids else [],
             location="unknown",
             zdr_compliant=False,
             jurisdiction="global",

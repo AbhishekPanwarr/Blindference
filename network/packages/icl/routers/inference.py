@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
@@ -66,12 +67,12 @@ async def get_quorum_preview(
     zdr_required: bool = False,
     services: ServiceContainer = Depends(get_service_container),
 ) -> QuorumPreviewResponse:
-    del model_id
     try:
         preview = await services.quorum_service.preview_quorum(
             min_tier=min_tier,
             zdr_required=zdr_required,
             verifier_count=verifier_count,
+            model_id=model_id,
         )
         return QuorumPreviewResponse(
             leader=preview["leader_address"],
@@ -144,6 +145,28 @@ async def get_inference_request(
         return await services.quorum_service.get_request_status(request_id)
     except KeyError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.post("/{request_id}/confirm-store-key")
+async def confirm_prompt_key_store(
+    request_id: str,
+    payload: dict[str, Any],
+    services: ServiceContainer = Depends(get_service_container),
+) -> InferenceRequestResponse | TextInferenceResult:
+    """Confirm that the frontend has stored the prompt key on-chain.
+
+    The ICL will verify the tx (optional), grant decrypt access to each
+    quorum node, and dispatch the request.
+    """
+    try:
+        return await services.quorum_service.confirm_prompt_key_store(
+            request_id,
+            payload.get("prompt_key_store_tx", ""),
+        )
+    except KeyError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
 
 
 @router.patch("/{task_id}/permit")

@@ -4,6 +4,10 @@ import logging
 import time
 from contextlib import asynccontextmanager
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -70,6 +74,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             chain_service,
             node_selector,
             verdict_aggregator,
+            model_registry_service=model_registry_service,
         )
 
         app.state.settings = resolved_settings

@@ -32,13 +32,13 @@ pip install "blindference-node[gpu]"
 blindference-node init
 ```
 
-This interactive command will:
+This smart command checks your environment first:
 
-1. **Detect your hardware** — checks for GPU, sets inference mode accordingly
-2. **Generate a wallet** — creates an encrypted Ethereum keystore at `~/.blindference/keystore.json`
-3. **Prompt for password** — encrypts the keystore (you'll need this to run the node)
-4. **Perform mock attestation** — submits an attestation quote to the ICL and receives a certificate
-5. **Save configuration** — writes `~/.blindference/config.json` with your node settings
+1. **Detects env vars** — if `BLF_PRIVATE_KEY` is set, auto-imports wallet (no prompt)
+2. **Detects GPU** — checks for NVIDIA GPU and vLLM availability
+3. **Detects API keys** — if `GROQ_API_KEY` or `GOOGLE_API_KEY` set, includes cloud models
+4. **Prompts only what's missing** — wallet creation, password, API keys
+5. **Saves configuration** — writes `~/.blindference/config.json`
 
 ### Example Output
 
@@ -47,19 +47,21 @@ This interactive command will:
   Blindference Node — Initialisation
 ============================================================
 
-GPU detected: NVIDIA GeForce RTX 4090
-Setting inference mode: local vLLM
+  → BLF_PRIVATE_KEY found in environment, importing wallet …
+  Node address : 0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5
 
-Creating wallet ...
-  Address: 0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5
-  Keystore: ~/.blindference/keystore.json
+Detecting GPU …
+  GPU          : NVIDIA GeForce RTX 4090
+  VRAM         : 24.0 GiB
+  Tier         : 0
+  Models       : facebook/opt-125m
 
-Performing mock attestation ...
-  Challenge received from ICL
-  Quote generated (HMAC-SHA256)
-  Attestation verified
-  Tier: 0
-  Certificate expiry: 7 days
+  Cloud API keys detected:
+    • Groq   : ✓
+    • Gemini : ✓
+
+Running determinism self-test …
+  Determinism self-test PASSED
 
 Configuration saved to ~/.blindference/config.json
 
@@ -67,10 +69,20 @@ Configuration saved to ~/.blindference/config.json
   Initialisation complete!
   Address      : 0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5
   Tier         : 0
-  Models       : qwen2.5-7b
+  Models       : facebook/opt-125m, groq:llama-3.3-70b-versatile, gemini:gemini-2.5-flash
   Attestation  : mock
   Cert expiry  : 604800
 ============================================================
+  NEXT STEPS
+  ──────────────────────────────────────────────────────────
+  1. Set cloud API keys (if no GPU):
+     echo 'GROQ_API_KEY=gsk_...' > ~/.blindference/.env
+     echo 'GOOGLE_API_KEY=AI...' >> ~/.blindference/.env
+  2. Run attestation:
+     blindference-node attest --mock
+  3. Start the node:
+     blindference-node run
+  ============================================================
 ```
 
 ## Step 3: Start the Daemon
@@ -83,7 +95,8 @@ Enter your keystore password when prompted. The daemon starts three concurrent l
 
 | Loop | Frequency | Purpose |
 |------|-----------|---------|
-| Heartbeat | Every 60s | Proves liveness to ICL and on-chain registry |
+| ICL Heartbeat | Every 60s | Proves liveness to ICL (free REST call) |
+| On-Chain Heartbeat | Every 10 days | Proves liveness to NodeRegistry (gas tx) |
 | Attestation Watchdog | Every 10min | Auto-re-attests if certificate expires within 6h |
 | Assignment Poller | Every 5s | Polls ICL for pending inference jobs |
 
@@ -95,7 +108,7 @@ Enter your keystore password when prompted. The daemon starts three concurrent l
 ============================================================
   Address : 0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5
   Tier    : 0
-  Models  : qwen2.5-7b
+  Models  : facebook/opt-125m, groq:llama-3.3-70b-versatile, gemini:gemini-2.5-flash
   Cert    : expires in 604663s
 
 [INFO] Daemon starting ...

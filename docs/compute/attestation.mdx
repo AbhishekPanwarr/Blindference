@@ -15,16 +15,28 @@ Without attestation, any node could claim to be running the correct software whi
 
 ### Mock Attestation (Current — Tier 0)
 
-**Key**: `weloveblindference` (hardcoded HMAC-SHA256 key)
+**Key**: `weloveblindference` (default HMAC-SHA256 key, override via `MOCK_ATTESTATION_KEY` env var)
 
 **How it works**:
 1. The ICL issues a random challenge nonce
 2. The node computes `HMAC-SHA256(key="weloveblindference", msg=challenge)`
 3. The ICL verifies the HMAC with the same key
 
-**Trust guarantee**: None. This is purely for pipeline validation and developer testing. Nodes using mock attestation are **capped at tier 0** (low-value, verifier-only jobs).
+**Trust guarantee**: None. This is purely for pipeline validation and developer testing. Nodes using mock attestation are **tier 0** but are still eligible for all jobs (leader and verifier) because all current models are tier 0.
 
 **Use case**: Development, testing, initial integration
+
+**Commands**:
+
+```bash
+# With --mock flag (skips interactive selection)
+blindference-node attest --mock
+
+# With custom dev key
+blindference-node attest --mock --tee-key mydevkey
+```
+
+The `--mock` flag is required. The CLI checks `MOCK_ATTESTATION_KEY` env var first, then falls back to `weloveblindference`. The `--tee-key` flag overrides the key for development TEE simulation.
 
 ### TPM 2.0 (Next Phase — Tier 1)
 
@@ -87,10 +99,36 @@ This eliminates the operational burden of manually re-attesting nodes after ICL 
 While auto-re-attest handles all cases, you can manually trigger it:
 
 ```bash
-blindference-node attest
+# Mock attestation (development)
+blindference-node attest --mock
+
+# With custom mock key
+MOCK_ATTESTATION_KEY=mydevkey blindference-node attest --mock
 ```
 
-Note: This is currently a stub — the auto-re-attest mechanism is the recommended path.
+### Interactive Attestation Flow (without --mock)
+
+If you run `blindference-node attest` without `--mock`, the CLI presents an interactive menu:
+
+```
+Attestation type:
+  [1] Mock (development)
+  [2] TEE / TPM (production)
+Select [1]:
+```
+
+- **Option 1 (Mock)**: Proceeds with mock attestation using `weloveblindference`
+- **Option 2 (TEE)**: Explains hardware requirements, then offers **"Use development TEE simulation?"** — if yes, prompts for an attestation key (default `weloveblindference`) and proceeds as a development attestation
+
+After ICL attestation succeeds, the CLI will ask:
+
+```
+Do you want to register on-chain? [Y/n]:
+  → If YES: estimates gas, shows cost, sends NodeRegistry.register() tx
+  → If NO:  continues with ICL-only mock attestation (no stake required)
+```
+
+The on-chain registration is optional for mock/development tiers. Production tiers (TPM/TEE) require on-chain registration.
 
 ## Certificate Lifecycle
 
@@ -106,9 +144,11 @@ Note: This is currently a stub — the auto-re-attest mechanism is the recommend
 | Capability | Tier 0 | Tier 1 | Tier 2 |
 |------------|--------|--------|--------|
 | Verifier jobs | ✅ | ✅ | ✅ |
-| Leader jobs | ❌ | ✅ | ✅ |
-| High-value tasks | ❌ | ✅ | ✅ |
+| Leader jobs | ✅ | ✅ | ✅ |
+| High-value tasks | ✅ | ✅ | ✅ |
 | Premium fee rate | ❌ | ✅ | ✅ |
+
+> **Note**: All current built-in models (`facebook/opt-125m`, `groq:llama-3.3-70b-versatile`, `gemini:gemini-2.5-flash`) are tier 0, so tier 0 nodes participate in all quorums. Future models may require higher tiers.
 
 ## Troubleshooting
 

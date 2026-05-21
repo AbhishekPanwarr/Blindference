@@ -27,6 +27,14 @@ export interface ChatEntry {
     receiptRoot?: string
     receiptsCID?: string
     traceHash?: string
+    // Submission-time proofs
+    taskId?: string
+    storeKeyTx?: string
+    promptCID?: string
+    requestIdDisplay?: string
+    leader?: string
+    verifiers?: string
+    modelId?: string
   }
   timestamp?: Date
 }
@@ -37,17 +45,61 @@ interface ChatViewProps {
   onDecrypt?: (id: string) => void
 }
 
+function ProofRow({ label, value, href }: { label: string; value?: string; href?: string }) {
+  if (!value) return null
+  const display = value.length > 24 ? `${value.slice(0, 24)}…` : value
+  return (
+    <div className="flex items-center justify-between text-[10px] font-mono py-1">
+      <span className="text-zinc-600 uppercase tracking-wider">{label}</span>
+      <div className="flex items-center gap-2">
+        {href ? (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2"
+            title="Open in explorer"
+          >
+            {display}
+          </a>
+        ) : (
+          <span className="text-zinc-400">{display}</span>
+        )}
+        <button
+          onClick={() => navigator.clipboard.writeText(value)}
+          className="text-zinc-600 hover:text-zinc-300 transition-colors p-0.5"
+          title="Copy"
+        >
+          <Copy className="w-3 h-3" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function UavpPanel({ metadata }: { metadata?: ChatEntry['metadata'] }) {
   const [open, setOpen] = useState(false)
   if (!metadata) return null
 
-  const items = [
+  const verifierCount = metadata.verifiers ? metadata.verifiers.split(', ').length : 0
+  const submissionItems = [
+    { label: 'Task ID', value: metadata.taskId },
+    { label: 'StoreKey Tx', value: metadata.storeKeyTx, href: metadata.storeKeyTx ? `https://sepolia.arbiscan.io/tx/${metadata.storeKeyTx}` : undefined },
+    { label: 'Prompt CID', value: metadata.promptCID, href: metadata.promptCID ? `https://gateway.pinata.cloud/ipfs/${metadata.promptCID}` : undefined },
+    { label: 'Request ID', value: metadata.requestIdDisplay },
+    { label: 'Leader', value: metadata.leader },
+    { label: `Verifiers (${verifierCount})`, value: metadata.verifiers },
+    { label: 'Model', value: metadata.modelId },
+  ].filter((i) => i.value)
+
+  const resultItems = [
     { label: 'Receipt Root', value: metadata.receiptRoot },
     { label: 'IPFS CID', value: metadata.receiptsCID },
     { label: 'Trace Hash', value: metadata.traceHash },
   ].filter((i) => i.value)
 
-  if (items.length === 0) return null
+  const hasProofs = submissionItems.length > 0 || resultItems.length > 0
+  if (!hasProofs) return null
 
   return (
     <div className="mt-3 rounded-lg border border-zinc-800 bg-zinc-900/40 overflow-hidden">
@@ -56,7 +108,7 @@ function UavpPanel({ metadata }: { metadata?: ChatEntry['metadata'] }) {
         className="w-full flex items-center justify-between px-3 py-2 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
       >
         <span className="flex items-center gap-1.5 font-medium uppercase tracking-wider">
-          <ShieldCheck className="w-3 h-3" /> UAVP Proof
+          <ShieldCheck className="w-3 h-3" /> On-chain Proof
         </span>
         {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
       </button>
@@ -68,24 +120,24 @@ function UavpPanel({ metadata }: { metadata?: ChatEntry['metadata'] }) {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="px-3 pb-3 space-y-2">
-              {items.map((item) => (
-                <div
-                  key={item.label}
-                  className="flex items-center justify-between text-[10px] font-mono"
-                >
-                  <span className="text-zinc-600">{item.label}</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-zinc-400">{item.value!.slice(0, 12)}...{item.value!.slice(-4)}</span>
-                    <button
-                      onClick={() => navigator.clipboard.writeText(item.value!)}
-                      className="text-zinc-600 hover:text-zinc-300 transition-colors"
-                    >
-                      <Copy className="w-3 h-3" />
-                    </button>
-                  </div>
+            <div className="px-3 pb-3">
+              {submissionItems.length > 0 && (
+                <div className="space-y-0.5">
+                  {submissionItems.map((item) => (
+                    <ProofRow key={item.label} label={item.label} value={item.value} href={item.href} />
+                  ))}
                 </div>
-              ))}
+              )}
+              {resultItems.length > 0 && submissionItems.length > 0 && (
+                <div className="my-2 border-t border-zinc-800" />
+              )}
+              {resultItems.length > 0 && (
+                <div className="space-y-0.5">
+                  {resultItems.map((item) => (
+                    <ProofRow key={item.label} label={item.label} value={item.value} />
+                  ))}
+                </div>
+              )}
             </div>
           </motion.div>
         )}
@@ -182,6 +234,7 @@ export function ChatView({ entries, onSuggestionClick, onDecrypt }: ChatViewProp
               )}
             </div>
 
+            {/* On-chain proof only shown for completed (done) messages — active inference lives in the right sidebar */}
             {entry.role === 'assistant' && entry.status === 'done' && (
               <UavpPanel metadata={entry.metadata} />
             )}
@@ -198,5 +251,3 @@ export function ChatView({ entries, onSuggestionClick, onDecrypt }: ChatViewProp
     </div>
   )
 }
-
-

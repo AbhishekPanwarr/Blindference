@@ -86,7 +86,7 @@ async def test_text_inference_internal_result_and_verifier_submissions_reach_quo
     leader_result = await http_client.post(
         "/internal/task/result",
         json={
-            "job_id": created["job_id"],
+            "jobId": created["job_id"],
             "output_cid": f"bafyoutput{uuid4().hex}",
             "commitment_hash": "0xabc123",
             "encrypted_output_key_high": "333",
@@ -106,7 +106,7 @@ async def test_text_inference_internal_result_and_verifier_submissions_reach_quo
     verifier_result = await http_client.post(
         "/internal/task/verify",
         json={
-            "job_id": created["job_id"],
+            "jobId": created["job_id"],
             "verifier_address": verifiers[0],
             "commitment_hash": "0xabc123",
             "verdict": "CONFIRM",
@@ -237,7 +237,7 @@ async def test_text_leader_result_persists_onchain_output_key_handles(client) ->
     leader_result = await http_client.post(
         "/internal/task/result",
         json={
-            "job_id": created["job_id"],
+            "jobId": created["job_id"],
             "output_cid": f"bafyoutput{uuid4().hex}",
             "commitment_hash": "0xabc123",
             "encrypted_output_key_high": "333",
@@ -253,8 +253,8 @@ async def test_text_leader_result_persists_onchain_output_key_handles(client) ->
     assert leader_result.status_code == 200
 
     persisted = await app.state.services.quorum_service.get_request(created["job_id"])
-    assert persisted.encrypted_output_key_high == "777333"
-    assert persisted.encrypted_output_key_low == "777444"
-    assert persisted.metadata["output_key_store_handles"] == {"high": "777333", "low": "777444"}
-    assert persisted.metadata["text_leader_result"]["encrypted_output_key_high"] == "777333"
-    assert persisted.metadata["text_leader_result"]["encrypted_output_key_low"] == "777444"
+    # Raw handles take priority over encrypted_input structs (avoids InvalidSigner in store_text_prompt_key)
+    assert persisted.encrypted_output_key_high == "333"
+    assert persisted.encrypted_output_key_low == "444"
+    assert persisted.metadata["text_leader_result"]["encrypted_output_key_high"] == "333"
+    assert persisted.metadata["text_leader_result"]["encrypted_output_key_low"] == "444"

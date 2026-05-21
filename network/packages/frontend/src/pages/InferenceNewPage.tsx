@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi'
-import { Lock, ShieldAlert, Cpu, CheckCircle2, Loader2, ChevronDown, ArrowUp, MessageSquare, BarChart2 } from 'lucide-react'
+import { Lock, ShieldAlert, ShieldCheck, Copy, Cpu, CheckCircle2, Loader2, ChevronDown, ArrowUp, MessageSquare, BarChart2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Hex } from 'viem'
 import axios from 'axios'
@@ -32,6 +32,12 @@ const TEXT_MODEL_OPTIONS = {
     provider: 'gemini',
     model: 'gemini-2.5-flash',
   },
+  opt_125m: {
+    id: 'facebook/opt-125m',
+    label: 'OPT 125M (Local)',
+    provider: 'local',
+    model: 'facebook/opt-125m',
+  },
 } as const
 type TextModelKey = keyof typeof TEXT_MODEL_OPTIONS
 
@@ -58,6 +64,18 @@ const MODEL_BINDINGS = {
       falsePositives: '0.8%',
       hallucinations: '< 0.2%',
       benchmark: '86.2 MMLU',
+    },
+  },
+  'opt-125m': {
+    modelId: 'facebook/opt-125m',
+    provider: 'local',
+    model: 'facebook/opt-125m',
+    baseFee: 2,
+    telemetry: {
+      accuracy: 'N/A (dev model)',
+      falsePositives: 'N/A',
+      hallucinations: 'N/A',
+      benchmark: '125M params',
     },
   },
 } as const
@@ -121,19 +139,53 @@ const TRACE_STEPS = [
 ]
 
 type StepStatus = 'pending' | 'active' | 'done' | 'error'
-function stepStatus(key: string, stage: string, requestId: string | null, jobStatus: string | null): StepStatus {
+function stepStatus(key: string, stage: string, requestId: string | null, jobStatus: string | null, decrypted: boolean): StepStatus {
+  // Local stages (before ICL submission)
   if (!requestId) {
     if (key === 'encrypt') return stage === 'encrypting' ? 'active' : stage === 'uploading' || stage === 'submitting' ? 'done' : 'pending'
     if (key === 'icl') return stage === 'uploading' ? 'active' : stage === 'submitting' ? 'done' : 'pending'
     return 'pending'
   }
+
   const order = ['encrypt', 'icl', 'leader', 'quorum', 'onchain', 'decrypt']
   const idx = order.indexOf(key)
-  let reached = 1
-  if (jobStatus === 'ASSIGNED' || jobStatus === 'EXECUTING') reached = 2
-  if (jobStatus === 'VERIFYING') reached = 3
-  if (jobStatus === 'ACCEPTED') reached = 5
-  if (jobStatus === 'ACCEPTED' && key === 'decrypt') return 'active'
+
+  // Granular ICL stage mapping
+  let reached = 0
+  switch (jobStatus) {
+    case 'QUEUED':
+      reached = 1 // encrypt done, icl active
+      break
+    case 'ASSIGNED':
+      reached = 2 // icl done, leader active
+      break
+    case 'EXECUTING':
+      reached = 3 // leader done, quorum active
+      break
+    case 'VERIFYING':
+      reached = 4 // quorum done, onchain active
+      break
+    case 'ACCEPTED':
+      reached = 5 // onchain done, decrypt active (waiting for user)
+      break
+    case 'REJECTED':
+    case 'DISPUTED':
+      // Something went wrong — mark current step as error, previous as done
+      if (idx < reached) return 'done'
+      if (idx === reached) return 'error'
+      return 'pending'
+    default:
+      reached = 0
+  }
+
+  // Decrypt step is only done after the user actually decrypts
+  if (key === 'decrypt') {
+    if (jobStatus === 'ACCEPTED' && decrypted) return 'done'
+    if (jobStatus === 'ACCEPTED' && !decrypted) return 'active'
+    if (reached > 5) return 'done'
+    return 'pending'
+  }
+
   if (idx < reached) return 'done'
   if (idx === reached) return 'active'
   return 'pending'
@@ -154,7 +206,7 @@ export function InferenceNewPage() {
   const { data: walletClient } = useWalletClient()
   const { client: cofheClient, isReady } = useCofheClient()
   const store = useInferenceStore()
-  const { messages, pushUserMessage, updateAssistantStatus, failAssistantMessage, setActiveRequestId, status, decryptMessage } = useChat()
+  const { messages, pushUserMessage, updateAssistantStatus, updateAssistantMetadata, failAssistantMessage, setActiveRequestId, status, decryptMessage } = useChat()
 
   const selectedModel = TEXT_MODEL_OPTIONS[selectedModelKey]
   const currentRiskModel = MODEL_BINDINGS[store.modelId]
@@ -213,6 +265,11 @@ export function InferenceNewPage() {
       const encryptedPromptKey = await encryptPromptKeyForTextRequest(cofheClient, promptKey)
       const taskId = generateTaskId()
 
+      updateAssistantMetadata(assistantId, {
+        taskId,
+        modelId: selectedModel.id,
+      })
+
       console.log('[Blindference] CoFHE encryption success:', {
         taskId,
         highCtHash: encryptedPromptKey.encryptedPromptKey.high,
@@ -228,7 +285,7 @@ export function InferenceNewPage() {
       try {
         quorumPreview = await inferenceApi.getQuorumPreview({
           model_id: selectedModel.id,
-          min_tier: 1,
+          min_tier: 0,
           verifier_count: 2,
           zdr_required: false,
         })
@@ -243,7 +300,7 @@ export function InferenceNewPage() {
         allowedNodes = address ? [address] : []
       }
 
-      await storePromptKeyForTextRequest({
+      const promptKeyStoreTx = await storePromptKeyForTextRequest({
         taskId,
         encryptedHighInput: encryptedPromptKey.metadata.cofhe_prompt_key_inputs.high as never,
         encryptedLowInput: encryptedPromptKey.metadata.cofhe_prompt_key_inputs.low as never,
@@ -253,11 +310,15 @@ export function InferenceNewPage() {
         walletClient,
       })
 
+      if (promptKeyStoreTx) {
+        updateAssistantMetadata(assistantId, { storeKeyTx: promptKeyStoreTx })
+      }
+
       // If quorum preview failed we stored the key on-chain but cannot submit
       if (!quorumPreview) {
         const msg =
           'Encrypted key stored on-chain successfully, but no inference nodes are available. ' +
-          'Start at least 3 blindference-node instances (1 leader + 2 verifiers) to form a quorum.'
+          'Start at least 3 blindference-node instances (1 leader + 2 verifiers) and ensure they register with the ICL via /admin/bootstrap-demo-nodes or real attestation to form a quorum.'
         setError(msg)
         failAssistantMessage(assistantId, msg)
         setChatStage('idle')
@@ -273,6 +334,7 @@ export function InferenceNewPage() {
         'Encrypted prompt upload timed out. Check the ICL and Pinata connectivity, then try again.',
       )
       const promptCID = uploadResp.data.cid
+      updateAssistantMetadata(assistantId, { promptCID })
 
       setChatStage('submitting')
       const response = await inferenceApi.submitText({
@@ -291,7 +353,7 @@ export function InferenceNewPage() {
           model_id: selectedModel.id,
           coverage_enabled: false,
         },
-        min_tier: 1,
+        min_tier: 0,
         zdr_required: false,
         verifier_count: 2,
         metadata: {
@@ -302,7 +364,7 @@ export function InferenceNewPage() {
           model: selectedModel.model,
           is_agent_job: false,
           uavp_enabled: true,
-          prompt_key_store_tx: '',
+          prompt_key_store_tx: promptKeyStoreTx,
           prompt_key_store_status: 'stored_by_user',
           prompt_key_store_address: promptKeyStoreAddress,
         },
@@ -316,6 +378,12 @@ export function InferenceNewPage() {
       if (!requestId) {
         throw new Error('The ICL response did not include a request identifier.')
       }
+
+      updateAssistantMetadata(assistantId, {
+        requestIdDisplay: requestId,
+        leader: quorumPreview.data.leader,
+        verifiers: quorumPreview.data.verifiers.join(', '),
+      })
 
       updateAssistantStatus(assistantId, 'processing', requestId)
       setActiveRequestId(requestId)
@@ -396,7 +464,7 @@ export function InferenceNewPage() {
 
       const quorumPreview = await inferenceApi.getQuorumPreview({
         model_id: currentRiskModel.modelId,
-        min_tier: 1,
+        min_tier: 0,
         verifier_count: 2,
         zdr_required: false,
       })
@@ -408,6 +476,7 @@ export function InferenceNewPage() {
             issuer: address,
             recipient: nodeAddress,
             name: `Blindference ${currentRiskModel.modelId} ${Date.now()} -> ${nodeAddress}`,
+            expiration: Math.floor(Date.now() / 1000) + 30 * 24 * 3600, // 30 days
           })
           return {
             node: nodeAddress,
@@ -430,7 +499,7 @@ export function InferenceNewPage() {
         coverage_type: store.coverageEnabled ? 'HALLUCINATION' : null,
         max_fee_gnk: totalDisplay,
         developer_address: address,
-        min_tier: 1,
+        min_tier: 0,
         zdr_required: false,
         verifier_count: 2,
         metadata: {
@@ -572,7 +641,7 @@ export function InferenceNewPage() {
                     Model Selection
                   </label>
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    {(['llama3-70b', 'gemini-pro'] as const).map((id) => {
+                    {(['llama3-70b', 'gemini-pro', 'opt-125m'] as const).map((id) => {
                       const isSelected = store.modelId === id
                       const m = MODEL_BINDINGS[id]
                       return (
@@ -591,7 +660,7 @@ export function InferenceNewPage() {
                             {id.replace('-', ' ')}
                           </span>
                           <span className="text-xs text-zinc-500">
-                            {id === 'gemini-pro' ? 'Google API' : 'DePIN execution'}
+                            {id === 'gemini-pro' ? 'Google API' : id === 'opt-125m' ? 'Local GPU' : 'DePIN execution'}
                           </span>
                         </button>
                       )
@@ -801,7 +870,9 @@ export function InferenceNewPage() {
         <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-500 mb-8">Execution Trace</p>
         <div className="relative flex flex-col gap-0">
           {TRACE_STEPS.map((step, i) => {
-            const ss = stepStatus(step.key, chatStage, latestRequestId, jobStatus)
+            const latestAssistant = [...messages].reverse().find(m => m.role === 'assistant' && m.requestId === latestRequestId)
+            const decrypted = latestAssistant?.status === 'done' || false
+            const ss = stepStatus(step.key, chatStage, latestRequestId, jobStatus, decrypted)
             const isLast = i === TRACE_STEPS.length - 1
             return (
               <div key={step.key} className="flex gap-3 relative">
@@ -817,16 +888,20 @@ export function InferenceNewPage() {
                       transition={{ repeat: Infinity, duration: 1.4 }}
                       className="w-4 h-4 rounded-full bg-white/80"
                     />
+                  ) : ss === 'error' ? (
+                    <div className="w-4 h-4 rounded-full bg-red-500/80 flex items-center justify-center">
+                      <div className="w-2 h-2 rounded-full bg-red-400" />
+                    </div>
                   ) : (
                     <div className="w-4 h-4 rounded-full border border-zinc-700 bg-zinc-900" />
                   )}
                 </div>
                 <div className={`pb-7 ${ss === 'pending' ? 'opacity-40' : ''}`}>
-                  <div className={`text-sm font-medium ${ss === 'done' ? 'text-zinc-200' : ss === 'active' ? 'text-white' : 'text-zinc-500'}`}>
+                  <div className={`text-sm font-medium ${ss === 'done' ? 'text-zinc-200' : ss === 'active' ? 'text-white' : ss === 'error' ? 'text-red-400' : 'text-zinc-500'}`}>
                     {step.label}
                   </div>
-                  {(ss === 'active' || ss === 'done') && (
-                    <div className="text-[11px] text-zinc-600 mt-0.5 font-mono">{step.sub}</div>
+                  {(ss === 'active' || ss === 'done' || ss === 'error') && (
+                    <div className={`text-[11px] mt-0.5 font-mono ${ss === 'error' ? 'text-red-500/70' : 'text-zinc-600'}`}>{step.sub}</div>
                   )}
                   {ss === 'active' && latestRequestId && step.key === 'leader' && status?.quorum.leader && (
                     <div className="mt-1.5 text-[10px] text-zinc-500 font-mono break-all">{status.quorum.leader.address.slice(0, 18)}...</div>
@@ -840,15 +915,83 @@ export function InferenceNewPage() {
           })}
         </div>
         {latestRequestId && (
-          <div className="mt-auto pt-6 border-t border-zinc-800">
-            <div className="text-[10px] uppercase text-zinc-600 mb-1">Request ID</div>
-            <div className="font-mono text-[10px] text-zinc-500 break-all">{latestRequestId}</div>
-            {status?.status && (
-              <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-[10px] font-semibold text-zinc-300 uppercase tracking-wide">
-                <div className={`w-1.5 h-1.5 rounded-full ${status.status === 'ACCEPTED' ? 'bg-zinc-200' : 'animate-pulse bg-zinc-400'}`} />
-                {status.status}
-              </div>
-            )}
+          <div className="mt-auto pt-6 border-t border-zinc-800 space-y-4">
+            <div>
+              <div className="text-[10px] uppercase text-zinc-600 mb-1">Request ID</div>
+              <div className="font-mono text-[10px] text-zinc-500 break-all">{latestRequestId}</div>
+              {status?.status && (
+                <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-[10px] font-semibold text-zinc-300 uppercase tracking-wide">
+                  <div className={`w-1.5 h-1.5 rounded-full ${status.status === 'ACCEPTED' ? 'bg-zinc-200' : 'animate-pulse bg-zinc-400'}`} />
+                  {status.status}
+                </div>
+              )}
+            </div>
+
+            {/* Active On-chain Proof panel for current inference */}
+            {(() => {
+              const activeMsg = [...messages].reverse().find(m => m.role === 'assistant' && m.requestId === latestRequestId)
+              const md = activeMsg?.metadata
+              if (!md) return null
+              const items = [
+                { label: 'Task ID', value: md.taskId },
+                { label: 'StoreKey Tx', value: md.storeKeyTx, href: md.storeKeyTx ? `https://sepolia.arbiscan.io/tx/${md.storeKeyTx}` : undefined },
+                { label: 'Prompt CID', value: md.promptCID, href: md.promptCID ? `https://gateway.pinata.cloud/ipfs/${md.promptCID}` : undefined },
+                { label: 'Leader', value: md.leader },
+                { label: 'Verifiers', value: md.verifiers },
+                { label: 'Model', value: md.modelId },
+              ].filter(i => i.value)
+              if (items.length === 0) return null
+              return (
+                <div className="border-t border-zinc-800 pt-4">
+                  <div className="text-[10px] uppercase text-zinc-600 mb-2 flex items-center gap-1.5">
+                    <ShieldCheck className="w-3 h-3" />
+                    On-chain Proof
+                  </div>
+                  <AnimatePresence mode="popLayout">
+                    <motion.div
+                      key={latestRequestId}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.25 }}
+                      className="space-y-1"
+                    >
+                      {items.map((item, i) => (
+                        <motion.div
+                          key={item.label}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.25, delay: i * 0.06 }}
+                          className="flex items-center justify-between text-[10px] font-mono"
+                        >
+                          <span className="text-zinc-600 uppercase tracking-wider">{item.label}</span>
+                          <div className="flex items-center gap-1.5">
+                            {item.href ? (
+                              <a
+                                href={item.href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2"
+                              >
+                                {item.value!.slice(0, 18)}{item.value!.length > 18 ? '…' : ''}
+                              </a>
+                            ) : (
+                              <span className="text-zinc-400">{item.value!.slice(0, 18)}{item.value!.length > 18 ? '…' : ''}</span>
+                            )}
+                            <button
+                              onClick={() => navigator.clipboard.writeText(item.value!)}
+                              className="text-zinc-600 hover:text-zinc-300 transition-colors p-0.5"
+                              title="Copy"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+              )
+            })()}
           </div>
         )}
       </div>

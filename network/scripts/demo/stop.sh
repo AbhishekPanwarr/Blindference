@@ -59,7 +59,7 @@ case "${target}" in
     stop_service node-runtime 'python -m blindference_node.cli start'
     ;;
   *)
-    echo "Usage: bash wave2_network/scripts/demo/stop.sh [all|icl|leader|verifier1|verifier2|frontend|nodes]" >&2
+    echo "Usage: bash network/scripts/demo/stop.sh [all|icl|leader|verifier1|verifier2|frontend|nodes]" >&2
     exit 1
     ;;
 esac

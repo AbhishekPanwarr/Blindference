@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 import json
 import logging
+from typing import TYPE_CHECKING
 
 import httpx
 
@@ -48,6 +49,9 @@ from services.chain_service import ChainService
 from services.node_selector import NodeSelector
 from services.verdict_aggregator import VerdictAggregator
 
+if TYPE_CHECKING:
+    from services.model_registry_service import ModelRegistryService
+
 
 logger = logging.getLogger("blindference.icl.quorum")
 
@@ -59,11 +63,13 @@ class QuorumService:
         chain_service: ChainService,
         node_selector: NodeSelector,
         verdict_aggregator: VerdictAggregator,
+        model_registry_service: "ModelRegistryService" | None = None,
     ):
         self.database = database
         self.chain_service = chain_service
         self.node_selector = node_selector
         self.verdict_aggregator = verdict_aggregator
+        self.model_registry_service = model_registry_service
 
     def _is_text_mode(self, payload: InferenceRequestCreate) -> bool:
         return payload.mode.lower() == "text"
@@ -74,11 +80,13 @@ class QuorumService:
         min_tier: int,
         zdr_required: bool,
         verifier_count: int,
+        model_id: str | None = None,
     ) -> dict[str, list[str] | str]:
         return await self.node_selector.select_quorum(
             min_tier=min_tier,
             zdr_required=zdr_required,
             verifier_count=verifier_count,
+            model_id=model_id,
         )
 
     async def create_request(self, payload: InferenceRequestCreate) -> InferenceRequestResponse:
@@ -97,6 +105,7 @@ class QuorumService:
             min_tier=payload.min_tier,
             zdr_required=payload.zdr_required,
             verifier_count=payload.verifier_count,
+            model_id=payload.model_id,
         )
         quorum = self._resolve_requested_quorum(payload, selected_quorum)
         encrypted_features = payload.normalized_encrypted_features()
@@ -137,7 +146,7 @@ class QuorumService:
 
         request_record = InferenceRequestRecord(
             task_id=task_id,
-            invocation_id=self.chain_service.web3_client.task_id_to_invocation_id(task_id),
+            invocation_id=str(self.chain_service.web3_client.task_id_to_invocation_id(task_id)),
             developer_address=self.chain_service.web3_client.checksum_address(payload.developer_address),
             model_id=payload.model_id,
             encrypted_features=[feature.to_wire() for feature in encrypted_features],
@@ -215,14 +224,23 @@ class QuorumService:
         if payload.text_request is None:
             raise ValueError("text_request is required when mode='text'")
 
+        effective_model_id = payload.text_request.model_id or payload.model_id or "text-inference"
+
+        # Look up the model's min_tier from the catalog and enforce it
+        effective_min_tier = payload.min_tier
+        if self.model_registry_service is not None:
+            model_info = await self.model_registry_service.get_model(effective_model_id)
+            if model_info is not None:
+                catalog_min_tier = model_info.get("min_tier", 0)
+                if catalog_min_tier > effective_min_tier:
+                    effective_min_tier = catalog_min_tier
+
         selected_quorum = await self.preview_quorum(
-            min_tier=payload.min_tier,
+            min_tier=effective_min_tier,
             zdr_required=payload.zdr_required,
             verifier_count=payload.verifier_count,
         )
         quorum = self._resolve_requested_quorum(payload, selected_quorum)
-
-        effective_model_id = payload.text_request.model_id or payload.model_id or "text-inference"
         required_nodes = [
             quorum["leader_address"],
             *list(quorum["verifier_addresses"]),
@@ -256,11 +274,12 @@ class QuorumService:
         )
         metadata = dict(payload.metadata)
         metadata["coverage_requested"] = bool(payload.text_request.coverage_enabled or payload.coverage_type)
+        # Coerce uint256 values to strings so MongoDB BSON (int64-only) doesn't overflow
         metadata["text_request"] = {
             "prompt_cid": payload.text_request.prompt_cid,
             "encrypted_prompt_key": {
-                "high": payload.text_request.encrypted_prompt_key.high,
-                "low": payload.text_request.encrypted_prompt_key.low,
+                "high": str(payload.text_request.encrypted_prompt_key.high),
+                "low": str(payload.text_request.encrypted_prompt_key.low),
             },
             "model_id": payload.text_request.model_id,
             "coverage_enabled": payload.text_request.coverage_enabled,
@@ -268,7 +287,7 @@ class QuorumService:
 
         request_record = InferenceRequestRecord(
             task_id=task_id,
-            invocation_id=self.chain_service.web3_client.task_id_to_invocation_id(task_id),
+            invocation_id=str(self.chain_service.web3_client.task_id_to_invocation_id(task_id)),
             developer_address=self.chain_service.web3_client.checksum_address(payload.developer_address),
             model_id=effective_model_id,
             mode="text",
@@ -278,7 +297,7 @@ class QuorumService:
             loan_id=payload.loan_id,
             coverage_type=payload.coverage_type,
             max_fee_gnk=payload.max_fee_gnk,
-            min_tier=payload.min_tier,
+            min_tier=effective_min_tier,
             zdr_required=payload.zdr_required,
             verifier_count=payload.verifier_count,
             leader_address=quorum["leader_address"],
@@ -323,6 +342,7 @@ class QuorumService:
         metadata["task_registered_tx"] = registration_tx_hash
 
         stored_prompt_key_handles: dict[str, str]
+        prompt_key_store_pending = False
         existing_prompt_key_store_tx = metadata.get("prompt_key_store_tx")
         if existing_prompt_key_store_tx:
             metadata["prompt_key_store_status"] = metadata.get("prompt_key_store_status") or "stored_by_user"
@@ -338,29 +358,49 @@ class QuorumService:
                 fallback_high_handle=payload.text_request.encrypted_prompt_key.high,
                 fallback_low_handle=payload.text_request.encrypted_prompt_key.low,
             )
-            prompt_key_store = await self.chain_service.store_text_prompt_key(
-                task_id=request_record.task_id,
-                encrypted_high_input=prompt_key_inputs["high"],
-                encrypted_low_input=prompt_key_inputs["low"],
-                allowed_nodes=required_nodes,
-            )
-            metadata["prompt_key_store_address"] = self.chain_service.settings.PROMPT_KEY_STORE_ADDRESS
-            metadata["prompt_key_store_tx"] = prompt_key_store.get("tx_hash")
-            metadata["prompt_key_store_status"] = prompt_key_store.get("status")
-            stored_prompt_key_handles = {
-                "high": str(prompt_key_store["stored_high_handle"]),
-                "low": str(prompt_key_store["stored_low_handle"]),
-            }
+            try:
+                prompt_key_store = await self.chain_service.store_text_prompt_key(
+                    task_id=request_record.task_id,
+                    encrypted_high_input=prompt_key_inputs["high"],
+                    encrypted_low_input=prompt_key_inputs["low"],
+                    allowed_nodes=required_nodes,
+                )
+                metadata["prompt_key_store_address"] = self.chain_service.settings.PROMPT_KEY_STORE_ADDRESS
+                metadata["prompt_key_store_tx"] = prompt_key_store.get("tx_hash")
+                metadata["prompt_key_store_status"] = prompt_key_store.get("status")
+                stored_prompt_key_handles = {
+                    "high": str(prompt_key_store["stored_high_handle"]),
+                    "low": str(prompt_key_store["stored_low_handle"]),
+                }
+            except Exception as exc:
+                # Fhenix CoFHE enforces InvalidSigner: only the address that created
+                # the encrypted input can call FHE.asEuint128().  The ICL wallet is
+                # different from the frontend user wallet, so we must ask the frontend
+                # to call PromptKeyStore.storeKey() directly.
+                logger.warning(
+                    "Prompt key on-chain storage failed (likely InvalidSigner) for request %s: %s. "
+                    "Falling back to pending_store_key — frontend must call storeKey.",
+                    request_record.request_id,
+                    exc,
+                )
+                prompt_key_store_pending = True
+                metadata["prompt_key_store_status"] = "pending"
+                metadata["prompt_key_store_error"] = str(exc)
+                metadata["prompt_key_store_address"] = self.chain_service.settings.PROMPT_KEY_STORE_ADDRESS
+                stored_prompt_key_handles = {
+                    "high": str(payload.text_request.encrypted_prompt_key.high),
+                    "low": str(payload.text_request.encrypted_prompt_key.low),
+                }
 
         metadata["prompt_key_store_handles"] = {
-            "high": stored_prompt_key_handles["high"],
-            "low": stored_prompt_key_handles["low"],
+            "high": str(stored_prompt_key_handles["high"]),
+            "low": str(stored_prompt_key_handles["low"]),
         }
         metadata["text_request"] = {
             **dict(metadata["text_request"]),
             "encrypted_prompt_key": {
-                "high": stored_prompt_key_handles["high"],
-                "low": stored_prompt_key_handles["low"],
+                "high": str(stored_prompt_key_handles["high"]),
+                "low": str(stored_prompt_key_handles["low"]),
             },
         }
 
@@ -378,6 +418,8 @@ class QuorumService:
                     self.chain_service.web3_client.keccak_text(f"mock-coverage-purchase:{request_record.task_id}")
                 )
             )
+
+        status = "pending_store_key" if prompt_key_store_pending else "queued"
         await self.database[INFERENCE_REQUESTS].update_one(
             {"request_id": request_record.request_id},
             {
@@ -385,12 +427,75 @@ class QuorumService:
                     "metadata": metadata,
                     "encrypted_prompt_key_high": stored_prompt_key_handles["high"],
                     "encrypted_prompt_key_low": stored_prompt_key_handles["low"],
+                    "status": status,
                     "updated_at": datetime.now(timezone.utc),
                 }
             },
         )
-        await self._dispatch_request_to_quorum(request_record.request_id)
+
+        if not prompt_key_store_pending:
+            await self._dispatch_request_to_quorum(request_record.request_id)
+
         return await self.get_request(request_record.request_id)
+
+    async def confirm_prompt_key_store(
+        self,
+        request_id: str,
+        prompt_key_store_tx: str,
+    ) -> InferenceRequestResponse | TextInferenceResult:
+        """Confirm frontend prompt-key on-chain storage and dispatch.
+
+        Args:
+            request_id: The inference request UUID.
+            prompt_key_store_tx: Transaction hash of the frontend's
+                ``PromptKeyStore.storeKey`` call.
+
+        Returns:
+            Updated request response.
+        """
+        request_document = await self.database[INFERENCE_REQUESTS].find_one({"request_id": request_id})
+        if request_document is None:
+            raise KeyError(f"inference request {request_id} not found")
+        if request_document.get("status") != "pending_store_key":
+            return await self._to_text_result(request_document)
+
+        metadata = dict(request_document.get("metadata", {}))
+        metadata["prompt_key_store_tx"] = prompt_key_store_tx
+        metadata["prompt_key_store_status"] = "stored_by_user"
+
+        # Verify the key is actually on-chain by querying the contract
+        try:
+            stored_handles = await self.chain_service.get_text_prompt_key_handles(
+                task_id=request_document["task_id"],
+            )
+            if stored_handles["high"] == "0" and stored_handles["low"] == "0":
+                raise ValueError(
+                    "PromptKeyStore does not contain a key for this task_id — "
+                    "verify the frontend storeKey transaction was mined and uses the correct task_id."
+                )
+            metadata["prompt_key_store_handles"] = stored_handles
+        except Exception as exc:
+            logger.warning(
+                "Could not verify prompt key on-chain for request %s: %s",
+                request_id,
+                exc,
+            )
+            # Still proceed — the nodes will fail at claim time if the key is truly missing
+
+        await self.database[INFERENCE_REQUESTS].update_one(
+            {"request_id": request_id},
+            {
+                "$set": {
+                    "metadata": metadata,
+                    "status": "queued",
+                    "updated_at": datetime.now(timezone.utc),
+                }
+            },
+        )
+
+        await self._dispatch_request_to_quorum(request_id)
+        refreshed = await self.database[INFERENCE_REQUESTS].find_one({"request_id": request_id})
+        return await self._to_text_result(refreshed)
 
     async def list_requests(self) -> list[InferenceRequestResponse]:
         cursor = self.database[INFERENCE_REQUESTS].find({})
@@ -465,6 +570,31 @@ class QuorumService:
         if document.get("text_mode"):
             return await self._to_text_result(document)
         return await self._to_response(document)
+
+    async def _get_request_by_id_or_task(self, job_id: str) -> dict[str, Any]:
+        """Look up an inference request by *request_id* or *task_id*.
+
+        The internal API sends ``task_id`` as ``jobId`` to nodes, but
+        many internal methods look up by ``request_id``.  This helper
+        bridges the two identifiers.
+        """
+        document = await self.database[INFERENCE_REQUESTS].find_one({"request_id": job_id})
+        if document is not None:
+            return document
+        document = await self.database[INFERENCE_REQUESTS].find_one({"task_id": job_id})
+        if document is not None:
+            return document
+        raise KeyError(f"inference request {job_id} not found")
+
+    async def _get_assignment_by_id_or_task(self, job_id: str) -> dict[str, Any]:
+        """Look up a quorum assignment by *request_id* or *task_id*."""
+        document = await self.database[QUORUM_ASSIGNMENTS].find_one({"request_id": job_id})
+        if document is not None:
+            return document
+        document = await self.database[QUORUM_ASSIGNMENTS].find_one({"task_id": job_id})
+        if document is not None:
+            return document
+        raise ValueError("quorum assignment missing for inference request")
 
     async def attach_permit(
         self,
@@ -572,12 +702,13 @@ class QuorumService:
         job_id: str,
         payload: dict[str, object],
     ) -> dict[str, object]:
-        request_document = await self.database[INFERENCE_REQUESTS].find_one({"request_id": job_id})
-        if request_document is None:
-            raise KeyError(f"inference request {job_id} not found")
+        request_document = await self._get_request_by_id_or_task(job_id)
 
         if request_document.get("text_mode"):
-            text_payload = LeaderTextResultSubmission.model_validate(payload)
+            normalized_payload = {**payload}
+            if "jobId" in normalized_payload and "job_id" not in normalized_payload:
+                normalized_payload["job_id"] = normalized_payload.pop("jobId")
+            text_payload = LeaderTextResultSubmission.model_validate(normalized_payload)
             return await self.submit_text_leader_result(text_payload)
 
         raise ValueError("internal text result endpoint only supports text-mode tasks")
@@ -586,15 +717,11 @@ class QuorumService:
         self,
         payload: LeaderTextResultSubmission,
     ) -> dict[str, object]:
-        request_document = await self.database[INFERENCE_REQUESTS].find_one({"request_id": payload.job_id})
-        if request_document is None:
-            raise KeyError(f"inference request {payload.job_id} not found")
+        request_document = await self._get_request_by_id_or_task(payload.job_id)
         if not request_document.get("text_mode"):
             raise ValueError("task is not a text-mode request")
 
-        assignment = await self.database[QUORUM_ASSIGNMENTS].find_one({"request_id": payload.job_id})
-        if assignment is None:
-            raise ValueError("quorum assignment missing for inference request")
+        assignment = await self._get_assignment_by_id_or_task(payload.job_id)
 
         verdict = payload.verdict.upper() if isinstance(payload.verdict, str) else None
         if verdict not in {None, "CONFIRM", "REJECT"}:
@@ -630,24 +757,35 @@ class QuorumService:
             stored_output_key_handles = await self.chain_service.get_text_prompt_key_handles(
                 task_id=output_key_store_job_id,
             )
-        elif payload.encrypted_output_key_inputs:
+        elif payload.encrypted_output_key_high is not None and payload.encrypted_output_key_low is not None:
+            # Node already encrypted the output key with CoFHE and sent us the handles.
+            # We store them on-chain via PromptKeyStore.storeOutputKey (onlyICL).
             output_key_store_job_id = self.chain_service.web3_client.keccak_text(
                 f"{request_document['task_id']}:output-key"
             )
-            output_key_store = await self.chain_service.store_text_prompt_key(
-                task_id=output_key_store_job_id,
-                encrypted_high_input=payload.encrypted_output_key_inputs["high"],
-                encrypted_low_input=payload.encrypted_output_key_inputs["low"],
-                allowed_nodes=[request_document["developer_address"]],
-            )
-            output_key_store_tx = output_key_store.get("tx_hash")
-            metadata["output_key_store_job_id"] = output_key_store_job_id
-            metadata["output_key_store_tx"] = output_key_store_tx
-            metadata["output_key_store_address"] = self.chain_service.settings.PROMPT_KEY_STORE_ADDRESS
-            stored_output_key_handles = {
-                "high": str(output_key_store["stored_high_handle"]),
-                "low": str(output_key_store["stored_low_handle"]),
-            }
+            try:
+                high_handle = int(str(payload.encrypted_output_key_high), 0)
+                low_handle = int(str(payload.encrypted_output_key_low), 0)
+                output_key_store = await self.chain_service.store_output_key(
+                    task_id=output_key_store_job_id,
+                    high_handle=high_handle,
+                    low_handle=low_handle,
+                    user_address=request_document["developer_address"],
+                )
+                output_key_store_tx = output_key_store.get("tx_hash")
+                stored_output_key_handles = {
+                    "high": str(output_key_store["stored_high_handle"]),
+                    "low": str(output_key_store["stored_low_handle"]),
+                }
+                metadata["output_key_store_job_id"] = output_key_store_job_id
+                metadata["output_key_store_tx"] = output_key_store_tx
+                metadata["output_key_store_address"] = self.chain_service.settings.PROMPT_KEY_STORE_ADDRESS
+            except Exception as exc:
+                logger.warning(
+                    "Failed to store output key on-chain for job %s: %s",
+                    payload.job_id,
+                    exc,
+                )
 
         if stored_output_key_handles:
             metadata["output_key_store_handles"] = stored_output_key_handles
@@ -665,7 +803,7 @@ class QuorumService:
         )
 
         await self.database[INFERENCE_REQUESTS].update_one(
-            {"request_id": payload.job_id},
+            {"request_id": request_document["request_id"]},
             {
                 "$set": {
                     "output_cid": payload.output_cid,
@@ -744,12 +882,13 @@ class QuorumService:
         job_id: str,
         payload: dict[str, object],
     ) -> dict[str, object]:
-        request_document = await self.database[INFERENCE_REQUESTS].find_one({"request_id": job_id})
-        if request_document is None:
-            raise KeyError(f"inference request {job_id} not found")
+        request_document = await self._get_request_by_id_or_task(job_id)
 
         if request_document.get("text_mode"):
-            text_payload = VerifierTextVerdict.model_validate(payload)
+            normalized_payload = {**payload}
+            if "jobId" in normalized_payload and "job_id" not in normalized_payload:
+                normalized_payload["job_id"] = normalized_payload.pop("jobId")
+            text_payload = VerifierTextVerdict.model_validate(normalized_payload)
             return await self.submit_text_verifier_verdict(text_payload)
 
         raise ValueError("internal text verify endpoint only supports text-mode tasks")
@@ -758,15 +897,11 @@ class QuorumService:
         self,
         payload: VerifierTextVerdict,
     ) -> dict[str, object]:
-        request_document = await self.database[INFERENCE_REQUESTS].find_one({"request_id": payload.job_id})
-        if request_document is None:
-            raise KeyError(f"inference request {payload.job_id} not found")
+        request_document = await self._get_request_by_id_or_task(payload.job_id)
         if not request_document.get("text_mode"):
             raise ValueError("task is not a text-mode request")
 
-        assignment = await self.database[QUORUM_ASSIGNMENTS].find_one({"request_id": payload.job_id})
-        if assignment is None:
-            raise ValueError("quorum assignment missing for inference request")
+        assignment = await self._get_assignment_by_id_or_task(payload.job_id)
 
         verifier_address = self.chain_service.web3_client.checksum_address(payload.verifier_address)
         if verifier_address not in assignment["verifier_addresses"]:
@@ -776,8 +911,9 @@ class QuorumService:
         if verdict not in {"CONFIRM", "REJECT"}:
             raise ValueError("verifier verdict must be CONFIRM or REJECT")
 
+        request_id = request_document["request_id"]
         verdict_record = VerifierVerdictRecord(
-            request_id=payload.job_id,
+            request_id=request_id,
             task_id=request_document["task_id"],
             verifier_address=verifier_address,
             accepted=verdict == "CONFIRM",
@@ -787,7 +923,7 @@ class QuorumService:
             updated_at=datetime.now(timezone.utc),
         )
         await self.database[VERIFIER_VERDICTS].update_one(
-            {"request_id": payload.job_id, "verifier_address": verifier_address},
+            {"request_id": request_id, "verifier_address": verifier_address},
             {"$set": verdict_record.model_dump()},
             upsert=True,
         )
@@ -959,22 +1095,19 @@ class QuorumService:
             chain_tx_hash=chain_result["tx_hash"],
         )
 
-    async def _attempt_finalize_request(self, request_id: str) -> InferenceCommitResponse | None:
-        request_document = await self.database[INFERENCE_REQUESTS].find_one({"request_id": request_id})
-        if request_document is None:
-            raise KeyError(f"inference request {request_id} not found")
+    async def _attempt_finalize_request(self, job_id: str) -> InferenceCommitResponse | None:
+        request_document = await self._get_request_by_id_or_task(job_id)
         if request_document["status"] != "queued":
             return None
 
-        assignment = await self.database[QUORUM_ASSIGNMENTS].find_one({"request_id": request_id})
-        if assignment is None:
-            raise ValueError("quorum assignment missing for inference request")
+        assignment = await self._get_assignment_by_id_or_task(job_id)
 
         metadata = dict(request_document.get("metadata", {}))
         leader_submission = metadata.get("leader_submission")
         if not isinstance(leader_submission, dict):
             return None
 
+        request_id = request_document["request_id"]
         verifier_cursor = self.database[VERIFIER_VERDICTS].find({"request_id": request_id})
         verifier_documents: list[dict] = []
         async for verifier_document in verifier_cursor:
@@ -1021,18 +1154,14 @@ class QuorumService:
             ),
         )
 
-    async def _attempt_finalize_text_request(self, request_id: str) -> TextInferenceResult | None:
-        request_document = await self.database[INFERENCE_REQUESTS].find_one({"request_id": request_id})
-        if request_document is None:
-            raise KeyError(f"inference request {request_id} not found")
+    async def _attempt_finalize_text_request(self, job_id: str) -> TextInferenceResult | None:
+        request_document = await self._get_request_by_id_or_task(job_id)
         if not request_document.get("text_mode"):
             return None
         if request_document.get("status") != "queued":
             return await self._to_text_result(request_document)
 
-        assignment = await self.database[QUORUM_ASSIGNMENTS].find_one({"request_id": request_id})
-        if assignment is None:
-            raise ValueError("quorum assignment missing for inference request")
+        assignment = await self._get_assignment_by_id_or_task(job_id)
 
         metadata = dict(request_document.get("metadata", {}))
         leader_result = metadata.get("text_leader_result")
@@ -1043,6 +1172,7 @@ class QuorumService:
         if not isinstance(leader_hash, str) or not leader_hash:
             raise ValueError("text leader result missing commitment hash")
 
+        request_id = request_document["request_id"]
         verifier_cursor = self.database[VERIFIER_VERDICTS].find({"request_id": request_id})
         verifier_documents: list[dict] = []
         async for verifier_document in verifier_cursor:
@@ -1399,6 +1529,17 @@ class QuorumService:
                     callback_url,
                 )
 
+    async def record_node_claim(self, job_id: str, node_address: str) -> None:
+        """Record that *node_address* has claimed *job_id* to prevent re-dispatch."""
+        checksum = self.chain_service.web3_client.checksum_address(node_address)
+        await self.database[INFERENCE_REQUESTS].update_one(
+            {"task_id": job_id},
+            {
+                "$addToSet": {"claimed_nodes": checksum},
+                "$set": {"updated_at": datetime.now(timezone.utc)},
+            },
+        )
+
     async def _get_pending_assignments(self, node_address: str) -> list[str]:
         """Return task IDs that are assigned to *node_address* and still pending."""
         checksum = self.chain_service.web3_client.checksum_address(node_address)
@@ -1406,10 +1547,13 @@ class QuorumService:
 
         cursor = self.database[INFERENCE_REQUESTS].find({
             "$or": [
-                {"leader_address": checksum},
+                # Leader: only if they haven't already submitted a result
+                {"leader_address": checksum, "output_cid": None},
+                # Verifier: always eligible until they claim
                 {"verifier_addresses": checksum},
             ],
             "status": {"$in": ["queued", "dispatched", "running"]},
+            "claimed_nodes": {"$nin": [checksum]},
         })
         async for document in cursor:
             assigned_ids.append(document["task_id"])
@@ -1418,12 +1562,15 @@ class QuorumService:
 
     async def _dispatch_pending_tasks_for_node(self, operator_address: str) -> None:
         checksum_address = self.chain_service.web3_client.checksum_address(operator_address)
-        cursor = self.database[INFERENCE_REQUESTS].find({"status": "queued"})
+        cursor = self.database[INFERENCE_REQUESTS].find({
+            "status": "queued",
+            "claimed_nodes": {"$nin": [checksum_address]},
+        })
         async for document in cursor:
             if (
                 document.get("leader_address") == checksum_address
-                or checksum_address in document.get("verifier_addresses", [])
-            ):
+                and document.get("output_cid") is None
+            ) or checksum_address in document.get("verifier_addresses", []):
                 await self._dispatch_request_to_quorum(document["request_id"], [checksum_address])
 
     async def _get_runtime_map(self) -> dict[str, str]:

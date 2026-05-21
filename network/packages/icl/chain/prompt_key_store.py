@@ -60,6 +60,23 @@ class PromptKeyStoreClient:
         )
         return self.web3_client.send_transaction(function)
 
+    def store_output_key(
+        self,
+        *,
+        job_id: str,
+        high_handle: int,
+        low_handle: int,
+        user_address: str,
+    ) -> dict[str, Any]:
+        """Call PromptKeyStore.storeOutputKey(jobId, KoH, KoL, user) on-chain."""
+        function = self.contract.functions.storeOutputKey(
+            self.web3_client.ensure_bytes32(job_id),
+            int(high_handle),
+            int(low_handle),
+            self.web3_client.checksum_address(user_address),
+        )
+        return self.web3_client.send_transaction(function)
+
     def _normalize_encrypted_uint128_input(self, value: dict[str, Any]) -> tuple[int, int, int, bytes]:
         if not isinstance(value, dict):
             raise ValueError("CoFHE encrypted prompt-key input must be an object")

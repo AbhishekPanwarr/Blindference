@@ -20,7 +20,8 @@ The daemon starts three concurrent loops:
 
 | Loop | Frequency | Purpose |
 |------|-----------|---------|
-| **Heartbeat** | Every 60s | Proves liveness to ICL and on-chain registry |
+| **ICL Heartbeat** | Every 60s | Proves liveness to ICL (free REST call) |
+| **On-Chain Heartbeat** | Every 10 days | Proves liveness to NodeRegistry (gas tx) |
 | **Attestation Watchdog** | Every 10min | Auto-re-attests if certificate expires within 6h |
 | **Assignment Poller** | Every 5s | Polls ICL for pending inference jobs |
 
@@ -43,7 +44,9 @@ sequenceDiagram
     par Heartbeat Loop
         loop Every 60s
             Node->>ICL: POST /internal/heartbeat
-            Node->>Chain: updateHeartbeat (if registry deployed)
+        end
+        loop Every 10 days
+            Node->>Chain: NodeRegistry.heartbeat()
         end
     and Watchdog
         loop Every 10min

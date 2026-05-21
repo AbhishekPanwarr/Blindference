@@ -164,6 +164,16 @@ export function useChat() {
     updateHistoryEntry(assistantId, { status: 'error', errorMsg })
   }, [])
 
+  const updateAssistantMetadata = useCallback((assistantId: string, metadataPatch: Partial<ChatEntry['metadata']>) => {
+    setMessages(prev => prev.map(m => {
+      if (m.id !== assistantId) return m
+      return {
+        ...m,
+        metadata: { ...m.metadata, ...metadataPatch },
+      }
+    }))
+  }, [])
+
   const decryptMessage = useCallback(async (assistantId: string) => {
     const msg = messages.find(m => m.id === assistantId && m.role === 'assistant')
     if (!msg || !msg.outputCID || !msg.encryptedOutputKeyHigh || !msg.encryptedOutputKeyLow || !cofheClient || !isReady) return
@@ -183,5 +193,5 @@ export function useChat() {
     }
   }, [messages, cofheClient, isReady])
 
-  return { messages, pushUserMessage, updateAssistantStatus, failAssistantMessage, setActiveRequestId, status, decryptMessage }
+  return { messages, pushUserMessage, updateAssistantStatus, updateAssistantMetadata, failAssistantMessage, setActiveRequestId, status, decryptMessage }
 }

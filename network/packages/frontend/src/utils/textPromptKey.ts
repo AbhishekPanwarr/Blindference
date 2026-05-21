@@ -86,7 +86,17 @@ export async function decryptOutputKey(
   highHandle: string,
   lowHandle: string,
 ): Promise<Uint8Array> {
-  const permit = await client.permits.getOrCreateSelfPermit()
+  let permit = await client.permits.getOrCreateSelfPermit()
+
+  // getOrCreateSelfPermit returns the active permit even if it is expired,
+  // because the SDK only checks `type === 'self'`.  If the stored permit
+  // has expired, remove it and create a fresh one.
+  const nowSec = Math.floor(Date.now() / 1000)
+  if (permit.expiration < nowSec) {
+    await client.permits.removeActivePermit()
+    permit = await client.permits.getOrCreateSelfPermit()
+  }
+
   const high = await client.decryptForView(BigInt(highHandle), FheTypes.Uint128).withPermit(permit).execute()
   const low = await client.decryptForView(BigInt(lowHandle), FheTypes.Uint128).withPermit(permit).execute()
   return combineKeyHalves(high, low)

@@ -3,7 +3,7 @@
 set -euo pipefail
 
 if [[ $# -lt 1 ]]; then
-  echo "Usage: bash wave2_network/scripts/demo/run-node.sh <leader|verifier1|verifier2>" >&2
+  echo "Usage: bash network/scripts/demo/run-node.sh <leader|verifier1|verifier2>" >&2
   exit 1
 fi
 

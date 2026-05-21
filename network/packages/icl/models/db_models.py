@@ -14,7 +14,7 @@ def utcnow() -> datetime:
 class InferenceRequestRecord(BaseModel):
     request_id: str = Field(default_factory=lambda: uuid4().hex)
     task_id: str
-    invocation_id: int
+    invocation_id: str
     developer_address: str
     model_id: str
     mode: Literal["risk", "text"] = "risk"
@@ -48,6 +48,7 @@ class InferenceRequestRecord(BaseModel):
     confirm_count: int = 0
     reject_count: int = 0
     dispute_deadline: datetime | None = None
+    claimed_nodes: list[str] = Field(default_factory=list)
 
 
 class QuorumAssignmentRecord(BaseModel):
@@ -129,6 +130,7 @@ class PermitRecord(BaseModel):
 class OperatorRecord(BaseModel):
     operator_address: str
     model_tiers: list[int]
+    supported_model_ids: list[str] = Field(default_factory=list)
     location: str
     zdr_compliant: bool
     jurisdiction: str

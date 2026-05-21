@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 interface InferenceState {
   // Form state
-  modelId: 'llama3-70b' | 'gemini-pro';
+  modelId: 'llama3-70b' | 'gemini-pro' | 'opt-125m';
   creditScore: number;
   loanAmount: number;
   accountAge: number;
@@ -16,7 +16,7 @@ interface InferenceState {
   error: string | null;
   
   // Actions
-  setModelId: (id: 'llama3-70b' | 'gemini-pro') => void;
+  setModelId: (id: 'llama3-70b' | 'gemini-pro' | 'opt-125m') => void;
   setCreditScore: (val: number) => void;
   setLoanAmount: (val: number) => void;
   setAccountAge: (val: number) => void;

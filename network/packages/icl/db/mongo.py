@@ -114,6 +114,9 @@ class InMemoryCollection:
             if op == "$in":
                 if doc_val not in op_val:
                     return False
+            elif op == "$nin":
+                if doc_val in op_val:
+                    return False
             elif op == "$eq":
                 if doc_val != op_val:
                     return False
@@ -160,8 +163,8 @@ def get_mongo_client(settings: Settings | None = None) -> AsyncIOMotorClient:
         resolved_settings = settings or get_settings()
         _client = AsyncIOMotorClient(
             resolved_settings.MONGO_URI,
-            serverSelectionTimeoutMS=1_000,
-            connectTimeoutMS=1_000,
+            serverSelectionTimeoutMS=10_000,
+            connectTimeoutMS=10_000,
         )
     return _client
 

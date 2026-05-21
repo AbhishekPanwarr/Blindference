@@ -4,11 +4,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
-WAVE2_ROOT="${REPO_ROOT}/wave2_network"
-ICL_DIR="${WAVE2_ROOT}/packages/icl"
-NODE_DIR="${WAVE2_ROOT}/packages/node-reineira"
-FRONTEND_DIR="${WAVE2_ROOT}/packages/frontend"
-DEMO_SCRIPT_DIR="${WAVE2_ROOT}/scripts/demo"
+NETWORK_ROOT="${REPO_ROOT}/network"
+ICL_DIR="${NETWORK_ROOT}/packages/icl"
+NODE_DIR="${NETWORK_ROOT}/packages/node-reineira"
+FRONTEND_DIR="${NETWORK_ROOT}/packages/frontend"
+DEMO_SCRIPT_DIR="${NETWORK_ROOT}/scripts/demo"
 LOG_DIR="${DEMO_SCRIPT_DIR}/logs"
 PID_DIR="${DEMO_SCRIPT_DIR}/pids"
 
