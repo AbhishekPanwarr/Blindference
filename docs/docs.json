@@ -1,7 +1,11 @@
 {
-  "$schema": "https://mintlify.com/schema.json",
   "name": "Blindference Docs",
   "theme": "mint",
+  "colors": {
+    "primary": "#0D9373",
+    "light": "#55D799",
+    "dark": "#0D9373"
+  },
   "logo": {
     "dark": "/logo/logo-dark.svg",
     "light": "/logo/logo-light.svg"
@@ -43,60 +47,62 @@
       "url": "resources/contract-addresses"
     }
   ],
-  "navigation": [
-    {
-      "group": "Get Started",
-      "pages": [
-        "introduction",
-        "what-is-blindference",
-        "architecture"
-      ]
-    },
-    {
-      "group": "Compute",
-      "pages": [
-        "compute/introduction",
-        "compute/quickstart",
-        "compute/installation",
-        "compute/configuration",
-        "compute/attestation",
-        "compute/models",
-        "compute/backends",
-        "compute/running",
-        "compute/monitoring",
-        "compute/troubleshooting",
-        "compute/rewards"
-      ]
-    },
-    {
-      "group": "Build",
-      "pages": [
-        "build/introduction",
-        "build/quickstart",
-        "build/architecture",
-        "build/cofhe-encryption",
-        "build/icl-api",
-        "build/contracts",
-        "build/deployment",
-        "build/examples/risk-scoring",
-        "build/examples/text-inference"
-      ]
-    },
-    {
-      "group": "API Reference",
-      "pages": [
-        "api-reference/icl-api"
-      ]
-    },
-    {
-      "group": "Resources",
-      "pages": [
-        "resources/changelog",
-        "resources/contract-addresses",
-        "resources/troubleshooting"
-      ]
-    }
-  ],
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get Started",
+        "pages": [
+          "introduction",
+          "what-is-blindference",
+          "architecture"
+        ]
+      },
+      {
+        "group": "Compute",
+        "pages": [
+          "compute/introduction",
+          "compute/quickstart",
+          "compute/installation",
+          "compute/configuration",
+          "compute/attestation",
+          "compute/models",
+          "compute/backends",
+          "compute/running",
+          "compute/monitoring",
+          "compute/troubleshooting",
+          "compute/rewards"
+        ]
+      },
+      {
+        "group": "Build",
+        "pages": [
+          "build/introduction",
+          "build/quickstart",
+          "build/architecture",
+          "build/cofhe-encryption",
+          "build/icl-api",
+          "build/contracts",
+          "build/deployment",
+          "build/examples/risk-scoring",
+          "build/examples/text-inference"
+        ]
+      },
+      {
+        "group": "API Reference",
+        "pages": [
+          "api-reference/icl-api"
+        ]
+      },
+      {
+        "group": "Resources",
+        "pages": [
+          "resources/changelog",
+          "resources/contract-addresses",
+          "resources/troubleshooting"
+        ]
+      }
+    ]
+  },
   "footerSocials": {
     "twitter": "https://twitter.com/blindference",
     "github": "https://github.com/baync180705/blindference",
