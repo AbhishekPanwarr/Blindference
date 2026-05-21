@@ -5,6 +5,18 @@ description: 'Start the daemon and manage your node lifecycle'
 
 # Running a Node
 
+## Prerequisites
+
+Before starting the daemon, you must have:
+
+1. **Initialized your node** — `blindference-node init` completed
+2. **Attested with the ICL** — `blindference-node attest --mock` (or interactive flow)
+
+Without attestation, the daemon will exit with:
+```
+Error: No attestation found. Run `blindference-node attest` first.
+```
+
 ## Start the Daemon
 
 ```bash

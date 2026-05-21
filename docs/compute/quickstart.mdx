@@ -85,7 +85,67 @@ Configuration saved to ~/.blindference/config.json
   ============================================================
 ```
 
-## Step 3: Start the Daemon
+## Step 3: Attest Your Node
+
+Before running, you must attest your node with the ICL:
+
+```bash
+# Interactive attestation (choose mock or TEE)
+blindference-node attest
+
+# Or skip interactive menu and use mock directly
+blindference-node attest --mock
+
+# Or with custom development key
+blindference-node attest --mock --tee-key mydevkey
+```
+
+### Interactive Attestation Flow
+
+```
+Attestation type:
+  [1] Mock (development)
+  [2] TEE / TPM (production)
+Select [1]:
+```
+
+- **Option 1 (Mock)**: Uses `weloveblindference` key — fastest, no hardware needed
+- **Option 2 (TEE)**: For production hardware attestation (SGX/TDX/TPM)
+
+### On-Chain Registration (Optional)
+
+After ICL attestation, the CLI asks:
+
+```
+Do you want to register on-chain? [Y/n]:
+  → Gas estimate : 487,231 units
+  → Est. cost    : 0.000058 ETH
+  → Send registration transaction? [Y/n]:
+```
+
+Mock/development tiers can skip this. Production tiers require it.
+
+### Example Output
+
+```
+============================================================
+  Blindference Node — Attestation
+============================================================
+  Node address : 0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5
+  Attestation  : mock (development)
+  Challenge ID : 5c4f336c-0b17-478c-90dc-26c7378170c6
+  Cert hash    : 0xc5ebc8e0bf4e4e12a623831a6fdd52d4
+  Expiry       : 1779419149
+  ICL tier     : 0
+  Final tier   : 0
+
+Attestation saved to ~/.blindference/config.json
+============================================================
+  Attestation complete!
+============================================================
+```
+
+## Step 4: Start the Daemon
 
 ```bash
 blindference-node run
