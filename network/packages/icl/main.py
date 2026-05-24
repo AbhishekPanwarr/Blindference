@@ -106,7 +106,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
-        allow_credentials=True,
+        allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -123,6 +123,26 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             response.status_code,
             elapsed_ms,
         )
+        return response
+
+    # Custom exception handler ensures CORS headers are present on unhandled
+    # exceptions so the browser can read the error instead of masking it as
+    # a CORS failure.
+    from fastapi.responses import JSONResponse
+
+    @app.exception_handler(Exception)
+    async def cors_aware_exception_handler(request: Request, exc: Exception):
+        logger.error("Unhandled exception on %s %s: %s", request.method, request.url.path, exc, exc_info=True)
+        response = JSONResponse(
+            status_code=500,
+            content={"detail": f"Internal server error: {exc}"},
+        )
+        origin = request.headers.get("origin", "")
+        if origin:
+            response.headers["access-control-allow-origin"] = origin
+        else:
+            response.headers["access-control-allow-origin"] = "*"
+        response.headers["access-control-allow-credentials"] = "false"
         return response
 
     app.include_router(inference_router)

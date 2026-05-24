@@ -14,6 +14,7 @@ from db.collections import (
     DISPUTES,
     INFERENCE_REQUESTS,
     MODEL_CATALOG,
+    NODE_RUNTIMES,
     OPERATORS,
     PERMITS,
     QUORUM_ASSIGNMENTS,
@@ -65,13 +66,32 @@ class InMemoryCollection:
         for index, document in enumerate(self.documents):
             if self._matches(document, query):
                 new_document = deepcopy(document)
-                new_document.update(deepcopy(update.get("$set", {})))
+                # Apply $set
+                if "$set" in update:
+                    new_document.update(deepcopy(update["$set"]))
+                # Apply $inc (add/subtract numeric fields)
+                if "$inc" in update:
+                    for key, delta in deepcopy(update["$inc"]).items():
+                        new_document[key] = new_document.get(key, 0) + delta
+                # Apply $setOnInsert (only relevant for upserts, but apply here for safety)
+                if "$setOnInsert" in update:
+                    for key, val in deepcopy(update["$setOnInsert"]).items():
+                        if key not in new_document:
+                            new_document[key] = val
                 self.documents[index] = new_document
                 return SimpleNamespace(matched_count=1, modified_count=1, upserted_id=None)
 
         if upsert:
             new_document = deepcopy(query)
-            new_document.update(deepcopy(update.get("$set", {})))
+            if "$set" in update:
+                new_document.update(deepcopy(update["$set"]))
+            if "$inc" in update:
+                for key, delta in deepcopy(update["$inc"]).items():
+                    new_document[key] = new_document.get(key, 0) + delta
+            if "$setOnInsert" in update:
+                for key, val in deepcopy(update["$setOnInsert"]).items():
+                    if key not in new_document:
+                        new_document[key] = val
             new_document.setdefault("_id", uuid4().hex)
             self.documents.append(new_document)
             return SimpleNamespace(matched_count=0, modified_count=0, upserted_id=new_document["_id"])
@@ -191,6 +211,7 @@ async def ensure_indexes(database: AsyncIOMotorDatabase) -> None:
     await database[DISPUTES].create_index([("request_id", ASCENDING)], unique=True)
     await database[OPERATORS].create_index([("operator_address", ASCENDING)], unique=True)
     await database[PERMITS].create_index([("task_id", ASCENDING)], unique=True)
+    await database[NODE_RUNTIMES].create_index([("operator_address", ASCENDING)], unique=True)
 
 
 async def ping_database(database: AsyncIOMotorDatabase) -> bool:

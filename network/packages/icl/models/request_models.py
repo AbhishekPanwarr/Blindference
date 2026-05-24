@@ -47,6 +47,9 @@ class InferenceRequestCreate(BaseModel):
     verifier_count: int = Field(default=2, ge=1, le=5)
     metadata: dict[str, Any] = Field(default_factory=dict)
     escrow_id: int = Field(default=0, ge=0)
+    payment_mode: str = Field(default="escrow", description="'escrow' or 'credits'")
+    payment_currency: str = Field(default="cusdc", description="'cusdc' or 'blind'")
+    insurance_opt_in: bool = False
 
     def normalized_encrypted_features(self) -> list[EncryptedFeature]:
         if isinstance(self.encrypted_input, list):

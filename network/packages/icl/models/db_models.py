@@ -53,6 +53,7 @@ class InferenceRequestRecord(BaseModel):
     node_assignments: dict[str, dict[str, Any]] = Field(default_factory=dict)
     leader_output_ready: bool = False
     failure_reason: str | None = None
+    escrow_id: int = 0
 
 
 class QuorumAssignmentRecord(BaseModel):
@@ -157,3 +158,6 @@ class NodeRuntimeRecord(BaseModel):
     callback_url: str
     registered_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime = Field(default_factory=utcnow)
+
+
+

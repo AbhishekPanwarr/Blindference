@@ -22,11 +22,13 @@ class VerdictAggregator:
         for verifier_address in assigned_verifiers:
             verdict = provided_by_address.get(verifier_address.lower())
             if verdict is None:
+                # Missing verifier verdicts default to REJECT (not CONFIRM)
+                # to prevent a single leader from forcing acceptance.
                 normalized_verdicts.append(
                     VerifierVerdictInput(
                         verifier_address=verifier_address,
-                        accepted=True,
-                        confidence=leader_confidence,
+                        accepted=False,
+                        confidence=0,
                     )
                 )
             else:

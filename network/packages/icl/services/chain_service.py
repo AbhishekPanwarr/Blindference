@@ -3,7 +3,10 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
+import subprocess
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger("blindference.icl.chain")
@@ -11,6 +14,7 @@ logger = logging.getLogger("blindference.icl.chain")
 from eth_account import Account
 
 from chain.agent_config_registry import AgentConfigRegistryClient
+from chain.blindference_staking import BlindferenceStakingClient
 from chain.execution_commitment_registry import (
     ROLE_CROSS_VERIFIER,
     ROLE_EXECUTOR,
@@ -48,6 +52,7 @@ class ChainService:
         self.reputation_registry = ReputationRegistryClient(self.web3_client, settings)
         self.reward_accumulator = RewardAccumulatorClient(self.web3_client, settings)
         self.result_registry = ResultRegistryClient(self.web3_client, settings)
+        self.blindference_staking = BlindferenceStakingClient(self.web3_client, settings)
         self._mock_invocations: dict[int, dict[str, Any]] = {}
         self._mock_prompt_key_stores: dict[str, dict[str, Any]] = {}
 
@@ -115,6 +120,25 @@ class ChainService:
                     operator["attestation_type"],
                     operator["attestation_counterparty"],
                 )
+
+            # Phase 4 — BLIND staking soft slashing: exclude nodes with too many failures
+            stake_info = None
+            if self.blindference_staking.is_deployed():
+                try:
+                    stake_info = await asyncio.to_thread(
+                        self.blindference_staking.get_stake_info,
+                        operator["operator_address"],
+                    )
+                except Exception:
+                    stake_info = None
+            if stake_info and stake_info.get("consecutiveFailures", 0) >= 3:
+                logger.warning(
+                    "Excluding node %s from quorum (consecutiveFailures=%s)",
+                    operator["operator_address"],
+                    stake_info["consecutiveFailures"],
+                )
+                continue
+
             if is_valid:
                 active_addresses.append(self.web3_client.checksum_address(operator["operator_address"]))
 
@@ -721,3 +745,137 @@ class ChainService:
 
     def _min_stake_for_tiers(self, model_tiers: list[int]) -> int:
         return max((TIER_MIN_STAKE.get(tier, 0) for tier in model_tiers), default=0)
+
+    async def create_and_fund_escrow(
+        self,
+        *,
+        amount_cusdc: int,
+        job_id: str,
+        owner_address: str,
+        resolver_address: str,
+    ) -> dict[str, Any]:
+        """Create and fund a Reineira escrow for a credit-paid inference job.
+
+        Uses the Reineira SDK via a TypeScript subprocess (create_escrow.ts).
+        Falls back to a deterministic mock ID if the script fails or MOCK_CHAIN is True.
+        """
+        if self.settings.MOCK_CHAIN:
+            escrow_id = int(
+                self.web3_client.keccak_text(f"mock-escrow:{job_id}"),
+                16,
+            ) % (2 ** 64)
+            return {
+                "escrow_id": escrow_id,
+                "tx_hash": self.web3_client.ensure_hex_prefix(
+                    self.web3_client.keccak_text(f"mock-escrow-create:{job_id}")
+                ),
+                "status": "mock",
+            }
+
+        # Resolve path to the ICL scripts directory (where package.json lives)
+        icl_pkg_dir = Path(__file__).resolve().parents[2]  # services/ -> icl/
+        script_path = icl_pkg_dir / "scripts" / "create_escrow.ts"
+
+        if not script_path.exists():
+            logger.warning(
+                "Reineira escrow script not found at %s — using placeholder", script_path
+            )
+            escrow_id = int(
+                self.web3_client.keccak_text(f"placeholder-escrow:{job_id}"),
+                16,
+            ) % (2 ** 64)
+            return {
+                "escrow_id": escrow_id,
+                "tx_hash": None,
+                "status": "placeholder",
+            }
+
+        # Build subprocess environment
+        env = {
+            **os.environ,
+            "ICL_WALLET_PRIVATE_KEY": self.settings.ICL_WALLET_PRIVATE_KEY,
+            "ARBITRUM_SEPOLIA_RPC_URL": self.settings.ARBITRUM_SEPOLIA_RPC,
+            "ARBITRUM_SEPOLIA_RPC": self.settings.ARBITRUM_SEPOLIA_RPC,
+        }
+
+        cmd = [
+            "npx",
+            "ts-node",
+            str(script_path),
+            "--amount",
+            str(amount_cusdc),
+            "--job-id",
+            job_id,
+            "--owner",
+            owner_address,
+            "--resolver",
+            resolver_address,
+        ]
+
+        try:
+            result = await asyncio.to_thread(
+                subprocess.run,
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=120,
+                cwd=str(icl_pkg_dir),
+                env=env,
+            )
+        except subprocess.TimeoutExpired:
+            logger.error("Reineira escrow creation timed out for job=%s", job_id)
+            raise RuntimeError("Escrow creation timed out")
+        except Exception as exc:
+            logger.error("Reineira escrow creation failed for job=%s: %s", job_id, exc)
+            raise RuntimeError(f"Escrow creation failed: {exc}") from exc
+
+        if result.returncode != 0:
+            logger.error(
+                "Reineira escrow creation failed for job=%s: %s",
+                job_id,
+                result.stderr.strip(),
+            )
+            raise RuntimeError(
+                f"Escrow creation failed (exit {result.returncode}): {result.stderr.strip()}"
+            )
+
+        stdout = result.stdout.strip()
+        if not stdout.isdigit():
+            logger.error(
+                "Reineira escrow creation returned non-numeric escrow ID: %s", stdout
+            )
+            raise RuntimeError(f"Invalid escrow ID returned: {stdout}")
+
+        escrow_id = int(stdout)
+        logger.info(
+            "Reineira escrow created and funded: escrow_id=%d job=%s", escrow_id, job_id
+        )
+        return {
+            "escrow_id": escrow_id,
+            "tx_hash": None,  # tx hash is in script stderr logs
+            "status": "live",
+        }
+
+    async def submit_dispute(
+        self,
+        *,
+        task_id: str,
+        evidence_hash: str,
+        evidence_uri: str,
+    ) -> str:
+        """Submit a dispute on-chain via ResultRegistry.
+
+        Returns the transaction hash.
+        """
+        if self.settings.MOCK_CHAIN:
+            return "0x" + "0" * 64
+
+        # Call ResultRegistry.submitDispute
+        # This is a mock implementation for testnet
+        # In production, this would call the actual contract
+        logger.info(
+            "Mock dispute submission: task=%s evidence_hash=%s",
+            task_id,
+            evidence_hash,
+        )
+        return "0x" + "0" * 64

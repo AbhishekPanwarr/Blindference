@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timedelta, timezone
 import json
 import logging
@@ -200,6 +201,11 @@ class QuorumService:
                 self.chain_service.web3_client.keccak_text(f"mock-escrow-create:{request_record.task_id}")
             )
         )
+        if metadata.get("payment_mode") == "credits":
+            metadata["escrow_id"] = int(
+                self.chain_service.web3_client.keccak_text(f"escrow-id:{request_record.task_id}"),
+                16,
+            ) % (2 ** 64)
         if payload.coverage_type:
             metadata["coverage_id"] = metadata.get("coverage_id") or f"cov_{request_record.request_id[:10]}"
             metadata["coverage_purchase_tx"] = (
@@ -213,6 +219,7 @@ class QuorumService:
             {
                 "$set": {
                     "metadata": metadata,
+                    "escrow_id": metadata.get("escrow_id", 0),
                     "updated_at": datetime.now(timezone.utc),
                 }
             },
@@ -421,6 +428,11 @@ class QuorumService:
                 self.chain_service.web3_client.keccak_text(f"mock-escrow-create:{request_record.task_id}")
             )
         )
+        if metadata.get("payment_mode") == "credits":
+            metadata["escrow_id"] = int(
+                self.chain_service.web3_client.keccak_text(f"escrow-id:{request_record.task_id}"),
+                16,
+            ) % (2 ** 64)
         if payload.text_request.coverage_enabled or payload.coverage_type:
             metadata["coverage_id"] = metadata.get("coverage_id") or f"cov_{request_record.request_id[:10]}"
             metadata["coverage_purchase_tx"] = (
@@ -438,6 +450,7 @@ class QuorumService:
                     "metadata": metadata,
                     "encrypted_prompt_key_high": stored_prompt_key_handles["high"],
                     "encrypted_prompt_key_low": stored_prompt_key_handles["low"],
+                    "escrow_id": metadata.get("escrow_id", 0),
                     "status": status,
                     "updated_at": datetime.now(timezone.utc),
                 }
@@ -832,6 +845,15 @@ class QuorumService:
             },
         )
 
+        # Phase 4 — reset on-chain failures on successful completion
+        try:
+            await asyncio.to_thread(
+                self.chain_service.blindference_staking.reset_failures,
+                leader_address,
+            )
+        except Exception as exc:
+            logger.debug("resetFailures failed for leader %s: %s", leader_address, exc)
+
         finalized = await self._attempt_finalize_text_request(payload.job_id)
         return {
             "status": "leader_result_recorded" if finalized is None else "committed",
@@ -896,6 +918,15 @@ class QuorumService:
             },
         )
 
+        # Phase 4 — reset on-chain failures on successful completion
+        try:
+            await asyncio.to_thread(
+                self.chain_service.blindference_staking.reset_failures,
+                verifier_address,
+            )
+        except Exception as exc:
+            logger.debug("resetFailures failed for verifier %s: %s", verifier_address, exc)
+
         finalized = await self._attempt_finalize_request(request_id)
         return {
             "status": "verifier_verdict_recorded" if finalized is None else "committed",
@@ -955,6 +986,15 @@ class QuorumService:
             {"$set": verdict_record.model_dump()},
             upsert=True,
         )
+
+        # Phase 4 — reset on-chain failures on successful completion
+        try:
+            await asyncio.to_thread(
+                self.chain_service.blindference_staking.reset_failures,
+                verifier_address,
+            )
+        except Exception as exc:
+            logger.debug("resetFailures failed for text verifier %s: %s", verifier_address, exc)
 
         finalized = await self._attempt_finalize_text_request(payload.job_id)
         return {
@@ -1244,6 +1284,16 @@ class QuorumService:
                     }
                 },
             )
+
+            # Phase 4 — distribute BLIND rewards via Payment Service (non-blocking)
+            asyncio.create_task(
+                self._distribute_reward(
+                    job_id=job_id,
+                    leader_address=assignment["leader_address"],
+                    verifier_addresses=assignment["verifier_addresses"],
+                )
+            )
+
             refreshed = await self.database[INFERENCE_REQUESTS].find_one({"request_id": request_id})
             return await self._to_text_result(refreshed)
 
@@ -1629,6 +1679,18 @@ class QuorumService:
                 }
             },
         )
+
+        # Phase 4 — record on-chain failure for BLIND staking soft slashing
+        try:
+            result = await asyncio.to_thread(
+                self.chain_service.blindference_staking.record_failure,
+                node_address,
+            )
+            if result:
+                logger.info("Recorded on-chain failure for node %s: %s", node_address, result.get("tx_hash"))
+        except Exception as exc:
+            logger.warning("Failed to record on-chain failure for %s: %s", node_address, exc)
+
         # Check if all nodes have failed — if so, mark the whole job failed
         doc = await self.database[INFERENCE_REQUESTS].find_one({"task_id": task_id})
         if doc:
@@ -1779,3 +1841,47 @@ class QuorumService:
             "verifier_addresses": verifier_addresses,
             "candidate_addresses": candidate_addresses,
         }
+
+    async def _distribute_reward(
+        self,
+        *,
+        job_id: str,
+        leader_address: str,
+        verifier_addresses: list[str],
+    ) -> None:
+        """Call Payment Service to distribute BLIND rewards (best-effort, non-blocking)."""
+        from config import get_settings
+        settings = get_settings()
+        if not settings.PAYMENT_SERVICE_URL:
+            return
+
+        # Default reward: 1 BLIND per job
+        amount_blind_wei = 1 * 10 ** 18
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.post(
+                    f"{settings.PAYMENT_SERVICE_URL}/v1/rewards/distribute",
+                    json={
+                        "job_id": job_id,
+                        "leader_address": leader_address,
+                        "verifier_addresses": verifier_addresses,
+                        "amount_blind_wei": amount_blind_wei,
+                    },
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    logger.info(
+                        "Rewards distributed for job=%s: status=%s distributions=%d",
+                        job_id,
+                        data.get("status"),
+                        len(data.get("distributions", [])),
+                    )
+                else:
+                    logger.warning(
+                        "Reward distribution failed for job=%s: %d %s",
+                        job_id,
+                        resp.status_code,
+                        resp.text,
+                    )
+        except Exception as exc:
+            logger.warning("Reward distribution call failed for job=%s: %s", job_id, exc)

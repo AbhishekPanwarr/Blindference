@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     AGENT_CONFIG_REGISTRY_ADDRESS: str = "0x0000000000000000000000000000000000000000"
     REPUTATION_REGISTRY_ADDRESS: str = "0x0000000000000000000000000000000000000000"
     REWARD_ACCUMULATOR_ADDRESS: str = "0x0000000000000000000000000000000000000000"
+    BLINDFERENCE_STAKING_ADDRESS: str = "0x0000000000000000000000000000000000000000"
     ICL_SERVICE_PRIVATE_KEY: str = Field(
         default="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
         validation_alias="ICL_PRIVATE_KEY",
@@ -53,6 +54,9 @@ class Settings(BaseSettings):
     DEMO_OPERATOR_PRIVATE_KEY1: str | None = None
     DEMO_OPERATOR_PRIVATE_KEY2: str | None = None
     DEMO_OPERATOR_PRIVATE_KEY3: str | None = None
+
+    # Payment Service integration
+    PAYMENT_SERVICE_URL: str = "http://127.0.0.1:8001"
 
     @property
     def packages_dir(self) -> Path:

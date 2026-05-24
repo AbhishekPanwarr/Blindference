@@ -186,7 +186,7 @@ async def claim_task(
         "kpHighHandle": _parse_handle(handles.get("high", "0")),
         "kpLowHandle": _parse_handle(handles.get("low", "0")),
         "outputKeyGranted": True,
-        "claimDeadline": int(time.time()) + 120,
+        "claimDeadline": int(time.time()) + 300,
     }
 
 
