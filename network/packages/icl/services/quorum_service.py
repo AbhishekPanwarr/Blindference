@@ -1610,11 +1610,6 @@ class QuorumService:
             if node_status.get("status") in ("completed", "failed"):
                 continue
 
-            # For verifiers: only return if leader output is ready
-            is_leader = document.get("leader_address") == checksum
-            if not is_leader and not document.get("leader_output_ready", False):
-                continue
-
             assigned_ids.append(task_id)
 
         return assigned_ids
