@@ -90,6 +90,8 @@ contract PromptKeyStore {
         uint256 koLowHandle,
         address userAddress
     ) external onlyICL {
+        require(koHighHandle <= type(uint128).max, "Handle exceeds uint128");
+        require(koLowHandle <= type(uint128).max, "Handle exceeds uint128");
         outputKeys[jobId] = OutputKey({KoH: koHighHandle, KoL: koLowHandle});
         FHE.allow(euint128.wrap(koHighHandle), userAddress);
         FHE.allow(euint128.wrap(koLowHandle), userAddress);
