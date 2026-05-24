@@ -12,7 +12,7 @@ export type DemoStatus = {
   request_id: string
   task_id: string
   mode: 'risk' | 'text'
-  status: 'QUEUED' | 'ASSIGNED' | 'EXECUTING' | 'VERIFYING' | 'ACCEPTED' | 'REJECTED' | 'DISPUTED'
+  status: 'QUEUED' | 'ASSIGNED' | 'EXECUTING' | 'VERIFYING' | 'ACCEPTED' | 'REJECTED' | 'DISPUTED' | 'FAILED'
   result?: {
     risk_score: number
     confidence: number
@@ -48,6 +48,7 @@ export type DemoStatus = {
   escrow_release_tx?: string
   coverage_purchase_tx?: string
   dispute_submission_tx?: string
+  failure_reason?: string
   dispute_resolution_tx?: string
   timestamps: Record<string, number>
   developer_address: string
@@ -66,6 +67,7 @@ function toMillis(value: string | number | null | undefined): number | undefined
 }
 
 function deriveStage(request: BackendInferenceRequest): DemoStatus['status'] {
+  if (request.status === 'failed') return 'FAILED'
   if (request.status === 'accepted') return 'ACCEPTED'
   if (request.status === 'rejected') return 'REJECTED'
   if (request.status === 'disputed') return 'DISPUTED'
@@ -181,6 +183,7 @@ function mapRequestToStatus(request: BackendInferenceRequest, coverageRecommenda
     dispute_resolution_tx: hashLike(
       typeof metadata.dispute_resolution_tx === 'string' ? metadata.dispute_resolution_tx : undefined,
     ),
+    failure_reason: request.failure_reason ?? undefined,
     timestamps: buildTimestamps(request),
     developer_address: request.developer_address,
     raw: request,

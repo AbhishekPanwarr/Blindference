@@ -384,6 +384,15 @@ export function InferenceStatusPage() {
                       </div>
                     </div>
                   </div>
+                ) : status.status === 'FAILED' ? (
+                  <div className="flex flex-col items-center justify-center text-center text-red-500">
+                    <AlertCircle className="mb-4 h-12 w-12" />
+                    <p className="text-sm font-medium leading-relaxed">
+                      Inference failed.
+                      <br />
+                      <span className="text-zinc-500 font-normal">{status.failure_reason ?? 'All quorum nodes failed to produce a result.'}</span>
+                    </p>
+                  </div>
                 ) : status.status === 'REJECTED' ? (
                   <div className="flex flex-col items-center justify-center text-center text-red-500">
                     <AlertCircle className="mb-4 h-12 w-12" />

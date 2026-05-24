@@ -4,7 +4,7 @@ const stages = ['QUEUED', 'ASSIGNED', 'EXECUTING', 'VERIFYING', 'ACCEPTED'];
 
 export function StatusTimeline({ currentStatus, timestamps }: { currentStatus: string; timestamps: Record<string, number> }) {
   let currentIndex = stages.indexOf(currentStatus);
-  if (currentStatus === 'REJECTED') {
+  if (currentStatus === 'REJECTED' || currentStatus === 'FAILED') {
      currentIndex = stages.indexOf('VERIFYING');
   }
 
@@ -16,7 +16,7 @@ export function StatusTimeline({ currentStatus, timestamps }: { currentStatus: s
       {stages.map((stage, idx) => {
         const isCompleted = currentIndex >= idx;
         const isCurrent = currentIndex === idx && currentStatus !== 'ACCEPTED' && currentStatus !== 'REJECTED';
-        const isRejected = currentStatus === 'REJECTED' && idx === stages.length - 1;
+        const isRejected = (currentStatus === 'REJECTED' || currentStatus === 'FAILED') && idx === stages.length - 1;
         const timestamp = timestamps[stage];
 
         return (

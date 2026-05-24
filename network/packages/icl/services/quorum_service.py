@@ -285,6 +285,16 @@ class QuorumService:
             "coverage_enabled": payload.text_request.coverage_enabled,
         }
 
+        # Initialize per-node assignment tracking
+        node_assignments: dict[str, dict[str, Any]] = {}
+        for addr in [quorum["leader_address"], *list(quorum["verifier_addresses"])]:
+            node_assignments[self.chain_service.web3_client.checksum_address(addr)] = {
+                "status": "pending",
+                "claimed_at": None,
+                "completed_at": None,
+                "failure_reason": None,
+            }
+
         request_record = InferenceRequestRecord(
             task_id=task_id,
             invocation_id=str(self.chain_service.web3_client.task_id_to_invocation_id(task_id)),
@@ -307,6 +317,7 @@ class QuorumService:
             encrypted_prompt_key_high=payload.text_request.encrypted_prompt_key.high,
             encrypted_prompt_key_low=payload.text_request.encrypted_prompt_key.low,
             dispute_deadline=now + timedelta(hours=72),
+            node_assignments=node_assignments,
         )
         assignment_record = QuorumAssignmentRecord(
             request_id=request_record.request_id,
@@ -802,6 +813,8 @@ class QuorumService:
             stored_output_key_handles["low"] if stored_output_key_handles else payload.encrypted_output_key_low
         )
 
+        leader_address = self.chain_service.web3_client.checksum_address(assignment["leader_address"])
+        now_iso = datetime.now(timezone.utc).isoformat()
         await self.database[INFERENCE_REQUESTS].update_one(
             {"request_id": request_document["request_id"]},
             {
@@ -810,6 +823,9 @@ class QuorumService:
                     "commitment_hash": payload.commitment_hash,
                     "encrypted_output_key_high": output_key_high,
                     "encrypted_output_key_low": output_key_low,
+                    "leader_output_ready": True,
+                    f"node_assignments.{leader_address}.status": "completed",
+                    f"node_assignments.{leader_address}.completed_at": now_iso,
                     "metadata": metadata,
                     "updated_at": datetime.now(timezone.utc),
                 }
@@ -866,6 +882,18 @@ class QuorumService:
             {"request_id": request_id, "verifier_address": verifier_address},
             {"$set": verdict_record.model_dump()},
             upsert=True,
+        )
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        await self.database[INFERENCE_REQUESTS].update_one(
+            {"request_id": request_id},
+            {
+                "$set": {
+                    f"node_assignments.{verifier_address}.status": "completed",
+                    f"node_assignments.{verifier_address}.completed_at": now_iso,
+                    "updated_at": datetime.now(timezone.utc),
+                }
+            },
         )
 
         finalized = await self._attempt_finalize_request(request_id)
@@ -1532,11 +1560,16 @@ class QuorumService:
     async def record_node_claim(self, job_id: str, node_address: str) -> None:
         """Record that *node_address* has claimed *job_id* to prevent re-dispatch."""
         checksum = self.chain_service.web3_client.checksum_address(node_address)
+        now_iso = datetime.now(timezone.utc).isoformat()
         await self.database[INFERENCE_REQUESTS].update_one(
             {"task_id": job_id},
             {
                 "$addToSet": {"claimed_nodes": checksum},
-                "$set": {"updated_at": datetime.now(timezone.utc)},
+                "$set": {
+                    f"node_assignments.{checksum}.status": "claimed",
+                    f"node_assignments.{checksum}.claimed_at": now_iso,
+                    "updated_at": datetime.now(timezone.utc),
+                },
             },
         )
 
@@ -1544,21 +1577,79 @@ class QuorumService:
         """Return task IDs that are assigned to *node_address* and still pending."""
         checksum = self.chain_service.web3_client.checksum_address(node_address)
         assigned_ids: list[str] = []
+        now = datetime.now(timezone.utc)
 
         cursor = self.database[INFERENCE_REQUESTS].find({
             "$or": [
-                # Leader: only if they haven't already submitted a result
-                {"leader_address": checksum, "output_cid": None},
-                # Verifier: always eligible until they claim
+                {"leader_address": checksum},
                 {"verifier_addresses": checksum},
             ],
             "status": {"$in": ["queued", "dispatched", "running"]},
-            "claimed_nodes": {"$nin": [checksum]},
         })
         async for document in cursor:
-            assigned_ids.append(document["task_id"])
+            task_id = document["task_id"]
+            node_assignments = document.get("node_assignments", {})
+            node_status = node_assignments.get(checksum, {})
+
+            # Check timeout on claimed assignments
+            if node_status.get("status") == "claimed":
+                claimed_at_str = node_status.get("claimed_at")
+                if claimed_at_str:
+                    try:
+                        claimed_at = datetime.fromisoformat(claimed_at_str)
+                        if (now - claimed_at).total_seconds() > 300:  # 5 min timeout
+                            await self._mark_node_assignment_failed(
+                                task_id, checksum, "timeout — no result received within 5 minutes"
+                            )
+                            continue
+                    except Exception:
+                        pass
+                # Still claimed and not timed out — don't re-assign
+                continue
+
+            if node_status.get("status") in ("completed", "failed"):
+                continue
+
+            # For verifiers: only return if leader output is ready
+            is_leader = document.get("leader_address") == checksum
+            if not is_leader and not document.get("leader_output_ready", False):
+                continue
+
+            assigned_ids.append(task_id)
 
         return assigned_ids
+
+    async def _mark_node_assignment_failed(
+        self, task_id: str, node_address: str, reason: str
+    ) -> None:
+        """Mark a single node's assignment as failed and potentially the whole job."""
+        await self.database[INFERENCE_REQUESTS].update_one(
+            {"task_id": task_id},
+            {
+                "$set": {
+                    f"node_assignments.{node_address}.status": "failed",
+                    f"node_assignments.{node_address}.failure_reason": reason,
+                    f"node_assignments.{node_address}.completed_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(timezone.utc),
+                }
+            },
+        )
+        # Check if all nodes have failed — if so, mark the whole job failed
+        doc = await self.database[INFERENCE_REQUESTS].find_one({"task_id": task_id})
+        if doc:
+            assignments = doc.get("node_assignments", {})
+            all_failed = all(a.get("status") == "failed" for a in assignments.values())
+            if all_failed and doc.get("status") in ("queued", "dispatched", "running"):
+                await self.database[INFERENCE_REQUESTS].update_one(
+                    {"task_id": task_id},
+                    {
+                        "$set": {
+                            "status": "failed",
+                            "failure_reason": "All quorum nodes failed — " + reason,
+                            "updated_at": datetime.now(timezone.utc),
+                        }
+                    },
+                )
 
     async def _dispatch_pending_tasks_for_node(self, operator_address: str) -> None:
         checksum_address = self.chain_service.web3_client.checksum_address(operator_address)
