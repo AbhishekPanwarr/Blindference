@@ -10,7 +10,9 @@ Blindference enables users to submit sensitive prompts and data to AI models wit
 - **Access control**: Encryption keys are split into FHE-encrypted halves and stored on-chain via CoFHE, only decryptable by assigned quorum nodes
 - **Execution integrity**: A `1 leader + 2 verifier` quorum runs identical inference and cross-validates results
 - **Economic accountability**: Disputed results trigger on-chain verification with automatic USDC payouts via Reineira
-- **Output privacy**: Only the user can decrypt the final result using their wallet
+   - **Staking & slashing**: Nodes stake BLIND tokens to participate; bad behavior is slashed
+   - **Reward distribution**: Nodes earn BLIND rewards per verified job (60% leader, 20% each verifier)
+   - **Output privacy**: Only the user can decrypt the final result using their wallet
 
 ## Supported Modes
 
@@ -199,6 +201,10 @@ Three architectural options exist for handling this constraint. **Option A** is 
 | BlindferenceAttestor | `0x957CEb3F3E77bF91A001ef9FB2cEeB40A860FD79` | Custom attestation validation |
 | BlindferenceUnderwriter | `0xC7D3706Ca2a42d739429Aec1b452051dA5Eb68f0` | Insurance underwriter |
 | BlindferenceAgent | `0x43132afC4F163C244f7b66Adafee32F6B904994c` | Agent configuration |
+| BLIND Token | `0x232D5470DaaC7AD552a42d876aDEF1f778033cE0` | ERC-20 utility token for staking, payments, and rewards |
+| BlindferenceStaking | `0x222Ac74201Ed58915e42Ee5be626d939fd234D0b` | BLIND staking: stake/unbond/slash. Min 1000 BLIND, 96h unbond, auto-slash at 3 failures |
+| BlindferencePolicyAdapter | `0xc8Ae5892bf5b91726FCb9B2a7EceDee596B795cF` | Mock insurance policy adapter (Tier 1 testnet) |
+| BlindferenceUnderwriter | `0xC7D3706Ca2a42d739429Aec1b452051dA5Eb68f0` | Insurance underwriter |
 
 See [DEPLOYMENT.md](./DEPLOYMENT.md) for full deployment details.
 
@@ -223,10 +229,14 @@ curl -s -X POST http://127.0.0.1:9000/admin/bootstrap-demo-nodes \
   -H 'Content-Type: application/json' \
   -d '{"count":3}'
 
-# 3. Start 3 nodes (in separate terminals)
-# See Blindference-node/ README for node setup
+   # 3. Start 3 nodes (in separate terminals)
+   # See Blindference-node/ README for node setup
 
-# 4. Start the frontend
+# 4. Start the Payment Service (rewards + credits)
+cd network/packages/payment
+./.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8001
+
+# 5. Start the frontend
 cd network/packages/frontend
 npm install
 npm run dev

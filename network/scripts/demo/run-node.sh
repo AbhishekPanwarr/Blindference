@@ -49,4 +49,19 @@ export BLINDFERENCE_NODE_MOCK_CLOUD_INFERENCE=false
 export PYTHONPATH=src
 export PYTHONUNBUFFERED=1
 
+# Phase 4: Auto-stake BLIND tokens if configured
+# Requires blindference-node CLI to be installed (pip install blindference-node)
+BLIND_STAKE_AMOUNT="${BLIND_STAKE_AMOUNT:-0}"
+if [[ "${BLIND_STAKE_AMOUNT}" -gt 0 ]]; then
+    echo "Phase 4: Staking ${BLIND_STAKE_AMOUNT} BLIND..."
+    if command -v blindference-node &> /dev/null; then
+        blindference-node staking stake "${BLIND_STAKE_AMOUNT}" || echo "Warning: Staking failed (may already be staked)"
+    else
+        echo "Warning: blindference-node CLI not found — skipping auto-stake"
+        echo "  Install: pip install blindference-node"
+    fi
+fi
+
+# Start the node daemon
+# NOTE: If using the separate Blindference-node package, use: blindference-node run
 ../icl/.venv/bin/python -m blindference_node.cli start
