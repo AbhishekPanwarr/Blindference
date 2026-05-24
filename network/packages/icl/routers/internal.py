@@ -166,14 +166,6 @@ async def claim_task(
     except Exception:
         handles = {"high": "0", "low": "0"}
 
-    try:
-        await services.chain_service.grant_prompt_key_access(
-            job_id=job_id,
-            node_address=node_address,
-        )
-    except Exception:
-        pass
-
     # Record claim to prevent ICL from re-dispatching to this node
     try:
         await services.quorum_service.record_node_claim(job_id, node_address)

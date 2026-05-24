@@ -370,37 +370,6 @@ class ChainService:
             user_address=user_address,
         )
 
-    async def grant_prompt_key_access(
-        self,
-        *,
-        job_id: str,
-        node_address: str,
-    ) -> dict[str, Any]:
-        """Grant CoFHE decryption access to a node after it claims a job.
-
-        Calls PromptKeyStore.grantDecryptAccess(jobId, node) on-chain.
-        Returns silently if the contract is not deployed or in mock mode.
-        """
-        try:
-            if self.settings.MOCK_CHAIN:
-                return {"status": "granted-mock"}
-
-            if not self.prompt_key_store.enabled:
-                return {"status": "skipped-no-contract"}
-
-            tx_result = await asyncio.to_thread(
-                self.prompt_key_store.grant_decrypt_access,
-                job_id=job_id,
-                node_address=node_address,
-            )
-            return {"status": "granted", "tx_hash": tx_result.get("tx_hash")}
-        except Exception as exc:
-            logger.warning(
-                "grantDecryptAccess failed for job %s, node %s: %s",
-                job_id, node_address, exc,
-            )
-            return {"status": "skipped-error"}
-
     async def finalize_execution(
         self,
         *,
