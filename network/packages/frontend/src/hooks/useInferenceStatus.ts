@@ -67,7 +67,7 @@ function toMillis(value: string | number | null | undefined): number | undefined
 }
 
 function deriveStage(request: BackendInferenceRequest): DemoStatus['status'] {
-  if (request.status === 'failed') return 'FAILED'
+  if (request.failure_reason) return 'FAILED'
   if (request.status === 'accepted') return 'ACCEPTED'
   if (request.status === 'rejected') return 'REJECTED'
   if (request.status === 'disputed') return 'DISPUTED'

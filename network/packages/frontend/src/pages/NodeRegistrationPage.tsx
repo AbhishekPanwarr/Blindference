@@ -21,6 +21,7 @@ const STEPS = [
   { id: 'install', label: 'Install', icon: Terminal },
   { id: 'init', label: 'Initialize', icon: Settings },
   { id: 'configure', label: 'Configure', icon: Lock },
+  { id: 'stake', label: 'Stake BLIND', icon: Wallet },
   { id: 'run', label: 'Run & Verify', icon: Play },
 ]
 
@@ -270,6 +271,69 @@ BLF_STAKE_AMOUNT=0`} />
               )}
 
               {step === 4 && (
+                <>
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-6 space-y-4">
+                    <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                      <Wallet className="w-5 h-5 text-zinc-400" />
+                      Stake BLIND Tokens
+                    </h2>
+                    <p className="text-sm text-zinc-400">
+                      Nodes must stake at least <strong>1000 BLIND</strong> to participate in inference quorums. Staking
+                      provides economic security — stake is slashed if a node produces incorrect output or times out.
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-6 space-y-4">
+                    <h3 className="text-sm font-semibold text-white">Stake Commands</h3>
+                    <CodeBlock code={`# Stake 1000 BLIND (minimum)
+blindference-node staking stake 1000
+
+# Check your stake status
+blindference-node staking status
+
+# Initiate unstake (starts 96h unbonding)
+blindference-node staking unstake
+
+# Complete unstake after unbonding period
+blindference-node staking withdraw`} />
+                  </div>
+
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-6 space-y-4">
+                    <h3 className="text-sm font-semibold text-white">Staking Economics</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                      {[
+                        { title: 'Minimum Stake', value: '1,000 BLIND' },
+                        { title: 'Unbonding Period', value: '96 hours' },
+                        { title: 'Reward per Job', value: '1 BLIND (60% leader, 20% each verifier)' },
+                      ].map((item) => (
+                        <div key={item.title} className="p-3 rounded-lg border border-zinc-800 bg-[#0a0a0b]">
+                          <div className="text-zinc-500 mb-1">{item.title}</div>
+                          <div className="text-zinc-300 font-medium">{item.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-6 space-y-4">
+                    <h3 className="text-sm font-semibold text-white">Slashing Conditions</h3>
+                    <ul className="space-y-2 text-xs text-zinc-400">
+                      {[
+                        'Timeout — no result within 5 minutes → +1 failure strike',
+                        '3 consecutive failures → entire stake is hard-slashed on-chain',
+                        'Successful job completion resets failure count to 0',
+                        'Soft exclusion — nodes with ≥3 failures are excluded from quorum selection',
+                      ].map((item, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <Shield className="w-4 h-4 text-zinc-600 mt-0.5 shrink-0" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </>
+              )}
+
+              {step === 5 && (
                 <>
                   <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-6 space-y-4">
                     <h2 className="text-lg font-semibold text-white flex items-center gap-2">

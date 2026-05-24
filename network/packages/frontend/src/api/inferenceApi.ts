@@ -57,6 +57,9 @@ export type TextInferenceRequestPayload = {
   verifier_addresses?: string[]
   metadata?: Record<string, unknown>
   escrow_id?: number
+  payment_mode?: 'escrow' | 'credits'
+  payment_currency?: 'cusdc' | 'blind'
+  insurance_opt_in?: boolean
 }
 
 export type IpfsUploadResponse = {
@@ -133,6 +136,7 @@ export type BackendInferenceRequest = {
   encrypted_output_key_low?: string | null
   output_cid?: string | null
   commitment_hash?: string | null
+  failure_reason?: string | null
   created_at: string
   updated_at: string
 }
@@ -197,7 +201,7 @@ export const coverageApi = {
   quote(requestId: string) {
     return apiClient.get<CoverageQuote>(`/v1/coverage/${requestId}`)
   },
-  fileDispute(requestId: string, payload: { developer_address: string; evidence_hash: string; evidence_uri: string; notes: string }) {
-    return apiClient.post(`/v1/disputes/${requestId}`, payload)
+  fileDispute(requestId: string, payload: { evidence: string }) {
+    return apiClient.post(`/v1/inference/${requestId}/dispute`, payload)
   },
 }

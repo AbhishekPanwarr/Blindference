@@ -2,6 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { usePublicClient, useWalletClient } from 'wagmi'
 
 import { chains, createCofheClient, createCofheConfig, type CofheClient } from '../lib/cofhe'
+import { createMockCofheClient } from '../utils/textPromptKey'
+
+const USE_MOCK_COFHE = import.meta.env.VITE_COFHE_MOCK === 'true'
 
 export function useCofheClient() {
   const { data: walletClient } = useWalletClient()
@@ -22,23 +25,32 @@ export function useCofheClient() {
     setError(null)
     setIsReady(false)
 
-      try {
-        // fheKeyStorage: null prevents stale/corrupted FHE public keys from
-        // being cached in IndexedDB, which causes serialization errors that
-        // cascade into "Failed to fetch" on subsequent ZK proof verification.
-        const config = createCofheConfig({
-          supportedChains: [chains.arbSepolia, chains.hardhat],
-          useWorkers: false,
-          fheKeyStorage: null,
-        })
-        const cofheClient = createCofheClient(config)
-        // @ts-ignore — viem version mismatch between project and @cofhe/sdk
-        await cofheClient.connect(publicClient, walletClient)
-
-        setClient(cofheClient)
+    try {
+      if (USE_MOCK_COFHE) {
+        console.log('[CoFHE] Using mock client (VITE_COFHE_MOCK=true)')
+        const mockClient = createMockCofheClient()
+        setClient(mockClient)
         setIsReady(true)
         setError(null)
-      } catch (initError) {
+        return
+      }
+
+      // fheKeyStorage: null prevents stale/corrupted FHE public keys from
+      // being cached in IndexedDB, which causes serialization errors that
+      // cascade into "Failed to fetch" on subsequent ZK proof verification.
+      const config = createCofheConfig({
+        supportedChains: [chains.arbSepolia, chains.hardhat],
+        useWorkers: false,
+        fheKeyStorage: null,
+      })
+      const cofheClient = createCofheClient(config)
+      // @ts-ignore — viem version mismatch between project and @cofhe/sdk
+      await cofheClient.connect(publicClient, walletClient)
+
+      setClient(cofheClient)
+      setIsReady(true)
+      setError(null)
+    } catch (initError) {
       setClient(null)
       setIsReady(false)
       setError(

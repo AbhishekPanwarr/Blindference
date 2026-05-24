@@ -6,9 +6,9 @@ import { coverageApi } from '../api/coverageApi'
 
 interface DisputeFormProps {
   requestId: string
-  coverageId: string
-  taskId: string
-  developerAddress: string
+  coverageId?: string
+  taskId?: string
+  developerAddress?: string
   isOpen: boolean
   onClose: () => void
   onSuccess: () => void
@@ -32,15 +32,12 @@ export function DisputeForm({
     setError('')
     try {
       await coverageApi.fileDispute(requestId, {
-        developer_address: developerAddress,
-        evidence_hash: `demo:${taskId}:${Date.now()}`,
-        evidence_uri: `inline://${taskId}`,
-        notes: reason,
+        evidence: reason,
       })
       onSuccess()
       onClose()
-    } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : 'Failed to submit dispute. Try again.')
+    } catch (submitError: any) {
+      setError(submitError.response?.data?.detail || submitError.message || 'Failed to submit dispute. Try again.')
     } finally {
       setIsSubmitting(false)
     }

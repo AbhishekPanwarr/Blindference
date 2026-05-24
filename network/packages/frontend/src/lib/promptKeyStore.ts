@@ -36,6 +36,12 @@ export async function storePromptKeyForTextRequest({
     signature: item.signature as Hex,
   })
 
+  // Ensure allowedNodes is never empty — the contract may revert on empty arrays.
+  // Fallback to the user's own address if no nodes were provided.
+  const safeAllowedNodes = allowedNodes.length > 0 ? allowedNodes : [walletClient.account.address]
+
+  // Dynamic EIP-1559 gas estimation (matches old repo — avoids hardcoded fees
+  // that fall below Arbitrum Sepolia's fluctuating baseFee).
   const latestBlock = await publicClient.getBlock({ blockTag: 'latest' })
   const fallbackPriorityFeePerGas = 2_000_000n
   const maxPriorityFeePerGas = await publicClient
@@ -63,7 +69,7 @@ export async function storePromptKeyForTextRequest({
       taskId,
       toContractInput(encryptedHighInput),
       toContractInput(encryptedLowInput),
-      allowedNodes,
+      safeAllowedNodes,
     ],
     ...feeParams,
   })

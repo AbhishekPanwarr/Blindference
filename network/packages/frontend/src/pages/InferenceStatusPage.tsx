@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { AlertCircle, CheckCircle2, Clock, Lock, Unlock, Copy, ShieldCheck } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Clock, Lock, Unlock, Copy, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 import { DisputeForm } from '../components/DisputeForm'
@@ -520,6 +520,23 @@ export function InferenceStatusPage() {
               </div>
             ))}
           </div>
+
+          {/* Dispute button - only when accepted and has insurance coverage */}
+          {status.status === 'ACCEPTED' && status.coverage_id && (
+            <div className="pt-3 border-t border-zinc-800">
+              <button
+                onClick={() => setIsDisputeOpen(true)}
+                className="w-full flex items-center justify-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/20 transition-colors"
+                type="button"
+              >
+                <ShieldAlert className="w-3.5 h-3.5" />
+                File Dispute
+              </button>
+              <p className="text-[10px] text-zinc-600 text-center mt-1.5">
+                72h window from job completion
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

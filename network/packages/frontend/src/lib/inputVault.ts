@@ -44,6 +44,7 @@ export async function storeEncryptedRiskInputsInVault({
     signature: item.signature as Hex,
   })
 
+  // Dynamic EIP-1559 gas estimation (same pattern as promptKeyStore.ts).
   const latestBlock = await publicClient.getBlock({ blockTag: 'latest' })
   const fallbackPriorityFeePerGas = 2_000_000n
   const maxPriorityFeePerGas = await publicClient
@@ -55,7 +56,6 @@ export async function storeEncryptedRiskInputsInVault({
     baseFeePerGas != null
       ? {
           maxPriorityFeePerGas: priorityFeePerGas,
-          // Add a small buffer above the current base fee to avoid race-condition underpricing.
           maxFeePerGas: baseFeePerGas * 2n + priorityFeePerGas + 1_000_000n,
         }
       : {

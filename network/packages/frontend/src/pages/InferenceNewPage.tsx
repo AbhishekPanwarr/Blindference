@@ -18,6 +18,7 @@ import { readStoredRiskInputHandles, storeEncryptedRiskInputsInVault } from '../
 import { PermitUtils } from '@cofhe/sdk/permits'
 import { cn } from '../utils/helpers'
 import { addHistoryEntry } from '../utils/historyStore'
+import { CreditBalance } from '../components/CreditBalance'
 
 const TEXT_MODEL_OPTIONS = {
   groq_llama_70b: {
@@ -93,7 +94,7 @@ async function encryptText(
   text: string,
   key: Uint8Array
 ): Promise<{ iv: Uint8Array; authTag: Uint8Array; ciphertext: Uint8Array }> {
-  const iv = crypto.getRandomValues(new Uint8Array(16))
+  const iv = crypto.getRandomValues(new Uint8Array(12))
   const cryptoKey = await crypto.subtle.importKey('raw', key, 'AES-GCM', false, ['encrypt'])
   const encrypted = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv, tagLength: 128 },
@@ -216,6 +217,18 @@ export function InferenceNewPage() {
 
   const [chatStage, setChatStage] = useState<'idle' | 'encrypting' | 'uploading' | 'submitting'>('idle')
   const isChatBusy = chatStage !== 'idle'
+
+  // Payment mode state
+  const [paymentMode, setPaymentMode] = useState<'escrow' | 'credits'>('credits')
+  const [paymentCurrency, setPaymentCurrency] = useState<'cusdc' | 'blind'>('cusdc')
+  const [insuranceOptIn, setInsuranceOptIn] = useState(false)
+
+  const jobPriceCusdc = selectedModel.id === 'groq:llama-3.3-70b-versatile' ? 5_000
+    : selectedModel.id === 'gemini:gemini-2.5-flash' ? 3_000
+    : 1_000
+  const jobPriceDisplay = paymentCurrency === 'blind'
+    ? ((jobPriceCusdc / 1e6) * (1 - 0.20) / 0.01).toFixed(2)
+    : (jobPriceCusdc / 1e6).toFixed(3)
 
   const hasMessages = messages.length > 0
   const jobStatus = status?.status ?? null
@@ -356,6 +369,9 @@ export function InferenceNewPage() {
         min_tier: 0,
         zdr_required: false,
         verifier_count: 2,
+        payment_mode: paymentMode,
+        payment_currency: paymentCurrency,
+        insurance_opt_in: insuranceOptIn,
         metadata: {
           cofhe_prompt_key_inputs: encryptedPromptKey.metadata.cofhe_prompt_key_inputs,
           prompt_length: normalizedPrompt.length,
@@ -578,6 +594,9 @@ export function InferenceNewPage() {
                 <BarChart2 className="w-3.5 h-3.5" />
                 Risk Scoring
               </button>
+              <div className="ml-auto">
+                <CreditBalance />
+              </div>
             </div>
 
             {mode === 'chat' ? (
@@ -833,6 +852,75 @@ export function InferenceNewPage() {
                   </div>
 
                   <div className="flex items-center gap-2">
+                    {/* Payment mode toggle */}
+                    <div className="flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-800 px-2 py-1">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMode('credits')}
+                        className={`rounded px-2 py-0.5 text-[10px] font-semibold transition-colors ${
+                          paymentMode === 'credits'
+                            ? 'bg-white text-black'
+                            : 'text-zinc-400 hover:text-zinc-200'
+                        }`}
+                      >
+                        Credits
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMode('escrow')}
+                        className={`rounded px-2 py-0.5 text-[10px] font-semibold transition-colors ${
+                          paymentMode === 'escrow'
+                            ? 'bg-white text-black'
+                            : 'text-zinc-400 hover:text-zinc-200'
+                        }`}
+                      >
+                        Escrow
+                      </button>
+                    </div>
+                    {paymentMode === 'credits' && (
+                      <div className="flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-800 px-2 py-1">
+                        <button
+                          type="button"
+                          onClick={() => setPaymentCurrency('cusdc')}
+                          className={`rounded px-2 py-0.5 text-[10px] font-semibold transition-colors ${
+                            paymentCurrency === 'cusdc'
+                              ? 'bg-emerald-500/20 text-emerald-400'
+                              : 'text-zinc-400 hover:text-zinc-200'
+                          }`}
+                        >
+                          cUSDC
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPaymentCurrency('blind')}
+                          className={`rounded px-2 py-0.5 text-[10px] font-semibold transition-colors ${
+                            paymentCurrency === 'blind'
+                              ? 'bg-emerald-500/20 text-emerald-400'
+                              : 'text-zinc-400 hover:text-zinc-200'
+                          }`}
+                        >
+                          BLIND -20%
+                        </button>
+                      </div>
+                    )}
+                    {paymentMode === 'credits' && (
+                      <label className="flex items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-800 px-2 py-1 cursor-pointer hover:border-zinc-600 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={insuranceOptIn}
+                          onChange={(e) => setInsuranceOptIn(e.target.checked)}
+                          className="w-3 h-3 rounded border-zinc-600 bg-zinc-700 text-emerald-500 focus:ring-emerald-500/20"
+                        />
+                        <span className="text-[10px] text-zinc-400 font-medium">
+                          Insure +2%
+                        </span>
+                      </label>
+                    )}
+                    <span className="text-[10px] text-zinc-500 font-mono">
+                      {paymentMode === 'credits' 
+                        ? `${(Number(jobPriceDisplay) * (1 + (insuranceOptIn ? 0.02 : 0))).toFixed(3)} ${paymentCurrency.toUpperCase()}` 
+                        : 'Free'}
+                    </span>
                     <AnimatePresence>
                       {isChatBusy && (
                         <motion.span
