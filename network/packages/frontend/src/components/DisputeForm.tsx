@@ -30,14 +30,18 @@ export function DisputeForm({
   const handleSubmit = async () => {
     setIsSubmitting(true)
     setError('')
+    console.log(`[Blindference] Filing dispute for job ${requestId}`)
     try {
       await coverageApi.fileDispute(requestId, {
         evidence: reason,
       })
+      console.log('[Blindference] Dispute submitted successfully')
       onSuccess()
       onClose()
     } catch (submitError: any) {
-      setError(submitError.response?.data?.detail || submitError.message || 'Failed to submit dispute. Try again.')
+      const errMsg = submitError.response?.data?.detail || submitError.message || 'Failed to submit dispute. Try again.'
+      console.error('[Blindference] Dispute submission failed:', errMsg)
+      setError(errMsg)
     } finally {
       setIsSubmitting(false)
     }

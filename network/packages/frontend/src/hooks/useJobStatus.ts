@@ -61,9 +61,15 @@ export function useJobStatus(jobId: string) {
       try {
         const response = await jobApi.getStatus(jobId)
         if (!mounted) return
-        setStatus(mapJobResponse(response.data))
+        const mapped = mapJobResponse(response.data)
+        if (mapped.stage === 'COMPLETED') {
+          console.log(`[Blindference] Job ${jobId} COMPLETED. Result hash:`, mapped.resultHash)
+        } else {
+          console.log(`[Blindference] Job ${jobId} status:`, mapped.stage)
+        }
+        setStatus(mapped)
       } catch (error) {
-        console.error('Error polling job status:', error)
+        console.error('[Blindference] Error polling job status:', error)
       }
     }
 

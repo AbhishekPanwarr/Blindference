@@ -270,6 +270,7 @@ export function InferenceNewPage() {
     try {
       setChatStage('encrypting')
       updateAssistantStatus(assistantId, 'encrypting')
+      console.log('[Blindference] Encrypting prompt with AES-256-GCM…')
 
       const promptKey = generateKey()
       const encryptedPrompt = await encryptText(normalizedPrompt, promptKey)
@@ -277,6 +278,7 @@ export function InferenceNewPage() {
 
       const encryptedPromptKey = await encryptPromptKeyForTextRequest(cofheClient, promptKey)
       const taskId = generateTaskId()
+      console.log('[Blindference] CoFHE key encryption success:', { taskId })
 
       updateAssistantMetadata(assistantId, {
         taskId,
@@ -325,6 +327,7 @@ export function InferenceNewPage() {
 
       if (promptKeyStoreTx) {
         updateAssistantMetadata(assistantId, { storeKeyTx: promptKeyStoreTx })
+        console.log('[Blindference] PromptKey stored on-chain: tx =', promptKeyStoreTx)
       }
 
       // If quorum preview failed we stored the key on-chain but cannot submit
@@ -348,8 +351,10 @@ export function InferenceNewPage() {
       )
       const promptCID = uploadResp.data.cid
       updateAssistantMetadata(assistantId, { promptCID })
+      console.log('[Blindference] Prompt uploaded to IPFS: CID =', promptCID)
 
       setChatStage('submitting')
+      console.log('[Blindference] Submitting job to Payment Service…')
       const response = await jobApi.submit({
         user_address: address,
         prompt_cid: promptCID,
@@ -384,6 +389,11 @@ export function InferenceNewPage() {
         throw new Error('The Payment Service response did not include a job identifier.')
       }
 
+      console.log(`[Blindference] Job submitted: job_id = ${jobId}, status = ${payload.status}`)
+      if (payload.escrow_id) {
+        console.log(`[Blindference] Escrow created: escrow_id = ${payload.escrow_id}`)
+      }
+
       updateAssistantMetadata(assistantId, {
         requestIdDisplay: jobId,
         leader: quorumPreview.data.leader,
@@ -402,6 +412,7 @@ export function InferenceNewPage() {
       } else if (submitError instanceof Error) {
         msg = submitError.message
       }
+      console.error('[Blindference] Job submission failed:', msg)
       setError(msg)
       failAssistantMessage(assistantId, msg)
     } finally {

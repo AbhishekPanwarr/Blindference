@@ -1284,6 +1284,8 @@ class QuorumService:
                     verifier_addresses=assignment["verifier_addresses"],
                     result_hash=winning_hash,
                     output_cid=leader_result.get("output_cid"),
+                    encrypted_output_key_high=request_document.get("encrypted_output_key_high"),
+                    encrypted_output_key_low=request_document.get("encrypted_output_key_low"),
                 )
             )
 
@@ -1867,6 +1869,8 @@ class QuorumService:
         error_reason: str | None = None,
         result_hash: str | None = None,
         output_cid: str | None = None,
+        encrypted_output_key_high: str | None = None,
+        encrypted_output_key_low: str | None = None,
     ) -> None:
         """Notify Payment Service that a job has been finalized (success/timeout/rejected)."""
         from config import get_settings
@@ -1885,6 +1889,10 @@ class QuorumService:
             payload["result_hash"] = result_hash
         if output_cid:
             payload["output_cid"] = output_cid
+        if encrypted_output_key_high:
+            payload["encrypted_output_key_high"] = encrypted_output_key_high
+        if encrypted_output_key_low:
+            payload["encrypted_output_key_low"] = encrypted_output_key_low
 
         for attempt in range(1, 4):
             try:

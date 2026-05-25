@@ -41,6 +41,16 @@ class JobService:
         user_address = payload.user_address.lower()
         model_id = payload.model_id
 
+        # On-chain bytes32 identifier: reuse frontend task_id (already bytes32 hex)
+        # or convert the UUID job_id to a valid bytes32 hex string as fallback.
+        if payload.task_id:
+            on_chain_job_id = payload.task_id
+        else:
+            # UUID without hyphens is 32 hex chars; pad to 64 with leading zeros
+            hex_body = job_id.replace("-", "").lower()
+            hex_body = hex_body.zfill(64)
+            on_chain_job_id = "0x" + hex_body
+
         # 1. Compute price
         price = self.pricing_service.compute_price(model_id, payload.payment_currency)
         amount_cusdc = price.get("amount_cusdc", 0)
@@ -80,9 +90,9 @@ class JobService:
             try:
                 escrow_result = await self.chain_service.create_and_fund_escrow(
                     amount_cusdc=total_cusdc,
-                    job_id=job_id,
+                    job_id=on_chain_job_id,
                     owner_address=user_address,
-                    resolver_address=self.settings.PAYMENT_WALLET_ADDRESS,
+                    resolver_address=self.settings.INFERENCE_GATE_ADDRESS,
                 )
                 escrow_id = escrow_result.get("escrow_id")
                 escrow_tx_hash = escrow_result.get("tx_hash")
@@ -109,7 +119,7 @@ class JobService:
                 insurance_result = await self.chain_service.purchase_insurance(
                     escrow_id=escrow_id,
                     job_price=amount_cusdc,
-                    job_id=job_id,
+                    job_id=on_chain_job_id,
                     user_address=user_address,
                 )
                 coverage_id = insurance_result.get("coverage_id")
@@ -228,14 +238,18 @@ class JobService:
         """
         job = await self.get_job(job_id)
         if job is None:
-            # Fallback: ICL uses task_id as the job identifier in callbacks
-            job = await self.database[JOBS].find_one({"task_id": job_id})
+            # Fallback: ICL uses task_id as the job identifier in callbacks.
+            # Only match RUNNING jobs so we don't update a stale duplicate.
+            job = await self.database[JOBS].find_one({"task_id": job_id, "status": "RUNNING"})
         if job is None:
             raise ValueError(f"Job {job_id} not found")
 
+        # Use the actual DB job_id (UUID) for updates — the ICL callback passes task_id
+        actual_job_id = job["job_id"]
+
         if job.get("status") != "RUNNING":
-            logger.warning("Job %s already finalized (status=%s), skipping", job_id, job.get("status"))
-            return {"job_id": job_id, "status": job.get("status"), "note": "already_finalized"}
+            logger.warning("Job %s already finalized (status=%s), skipping", actual_job_id, job.get("status"))
+            return {"job_id": actual_job_id, "status": job.get("status"), "note": "already_finalized"}
 
         user_address = job["user_address"]
         amount_cusdc = int(job.get("amount_cusdc", 0))
@@ -247,7 +261,7 @@ class JobService:
             # Credits already deducted — mark as spent (no refund needed)
             # Distribute BLIND rewards
             reward_result = await self._distribute_rewards(
-                job_id=job_id,
+                job_id=actual_job_id,
                 leader_address=payload.leader_address,
                 verifier_addresses=payload.verifier_addresses,
             )
@@ -264,9 +278,9 @@ class JobService:
                 for v_addr in payload.verifier_addresses[:2]:
                     rewards_map[v_addr.lower()] = 0.2
 
-            # Update job record
-            await self.database[JOBS].update_one(
-                {"job_id": job_id},
+            # Update job record (use actual DB job_id, not the ICL task_id)
+            result = await self.database[JOBS].update_one(
+                {"job_id": actual_job_id},
                 {
                     "$set": {
                         "status": "COMPLETED",
@@ -274,6 +288,8 @@ class JobService:
                         "verifier_addresses": payload.verifier_addresses,
                         "result_hash": payload.result_hash,
                         "output_cid": payload.output_cid,
+                        "encrypted_output_key_high": payload.encrypted_output_key_high,
+                        "encrypted_output_key_low": payload.encrypted_output_key_low,
                         "rewards_distributed": reward_result.get("status") == "distributed",
                         "reward_tx_hashes": [
                             d.get("tx_hash")
@@ -285,9 +301,12 @@ class JobService:
                     }
                 },
             )
+            if result.matched_count == 0:
+                logger.error("Job update failed: no document matched for job_id=%s", actual_job_id)
+                raise RuntimeError(f"Job update failed for {actual_job_id}")
 
             return {
-                "job_id": job_id,
+                "job_id": actual_job_id,
                 "status": "COMPLETED",
                 "rewards": reward_result,
             }
@@ -300,10 +319,10 @@ class JobService:
                         user_address=user_address,
                         amount_cusdc=str(amount_cusdc),
                         amount_blind=str(amount_blind),
-                        reason=f"job_{payload.status}:{job_id}",
+                        reason=f"job_{payload.status}:{actual_job_id}",
                     )
                 except Exception as exc:
-                    logger.error("Refund failed for job=%s: %s", job_id, exc)
+                    logger.error("Refund failed for job=%s: %s", actual_job_id, exc)
 
             # Record failures for timed-out nodes
             if payload.status == "timeout":
@@ -311,8 +330,8 @@ class JobService:
                     [payload.leader_address] + payload.verifier_addresses
                 )
 
-            await self.database[JOBS].update_one(
-                {"job_id": job_id},
+            result = await self.database[JOBS].update_one(
+                {"job_id": actual_job_id},
                 {
                     "$set": {
                         "status": "FAILED" if payload.status == "timeout" else "REFUNDED",
@@ -323,9 +342,12 @@ class JobService:
                     }
                 },
             )
+            if result.matched_count == 0:
+                logger.error("Job update failed: no document matched for job_id=%s", actual_job_id)
+                raise RuntimeError(f"Job update failed for {actual_job_id}")
 
             return {
-                "job_id": job_id,
+                "job_id": actual_job_id,
                 "status": "FAILED" if payload.status == "timeout" else "REFUNDED",
                 "refunded_cusdc": amount_cusdc,
                 "refunded_blind": amount_blind,

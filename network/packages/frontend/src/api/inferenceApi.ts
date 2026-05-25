@@ -79,6 +79,8 @@ export type JobStatusResponse = {
   error_reason: string | null
   result_hash: string | null
   output_cid: string | null
+  encrypted_output_key_high: string | null
+  encrypted_output_key_low: string | null
   rewards_distributed: boolean
   reward_tx_hashes: string[]
   created_at: string

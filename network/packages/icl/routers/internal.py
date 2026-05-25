@@ -172,10 +172,33 @@ async def claim_task(
     if not job_id or not node_address:
         raise HTTPException(status_code=400, detail="jobId and nodeAddress are required")
 
+    # Try on-chain first, then fall back to metadata handles stored by the frontend
+    handles: dict[str, str | int] = {"high": "0", "low": "0"}
+    onchain_handles: dict[str, str] | None = None
     try:
-        handles = await services.chain_service.get_text_prompt_key_handles(task_id=job_id)
+        onchain_handles = await services.chain_service.get_text_prompt_key_handles(task_id=job_id)
     except Exception:
-        handles = {"high": "0", "low": "0"}
+        pass
+
+    # Use on-chain handles only if they contain real data; otherwise fallback to metadata
+    if onchain_handles and str(onchain_handles.get("high", "0")) not in ("0", "", "None"):
+        handles = onchain_handles  # type: ignore[assignment]
+    else:
+        try:
+            request_doc = await services.database["inference_requests"].find_one({"task_id": job_id})
+            if request_doc:
+                metadata = request_doc.get("metadata", {})
+                raw_inputs = metadata.get("cofhe_prompt_key_inputs")
+                if isinstance(raw_inputs, dict):
+                    high_val = raw_inputs.get("high")
+                    low_val = raw_inputs.get("low")
+                    if isinstance(high_val, dict) and isinstance(low_val, dict):
+                        handles = {
+                            "high": str(high_val.get("ctHash", "0")),
+                            "low": str(low_val.get("ctHash", "0")),
+                        }
+        except Exception:
+            pass
 
     # Record claim to prevent ICL from re-dispatching to this node
     try:

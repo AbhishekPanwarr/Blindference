@@ -64,3 +64,38 @@ async def list_node_jobs(
         })
 
     return {"node_address": checksum, "count": len(jobs), "jobs": jobs}
+
+
+@router.get("/{address}/earnings")
+async def get_node_earnings(
+    address: str,
+    request: Request = None,
+) -> dict[str, Any]:
+    """Return total BLIND earned and job count for a node."""
+    if request is None:
+        raise HTTPException(status_code=500, detail="Request context unavailable")
+
+    services = request.app.state.services
+    database = services.database
+    checksum = address.lower()
+
+    cursor = database[JOBS].find(
+        {
+            "status": "COMPLETED",
+            "$or": [
+                {"leader_address": checksum},
+                {"verifier_addresses": checksum},
+            ],
+        }
+    )
+
+    total_blind = 0.0
+    jobs_count = 0
+    async for doc in cursor:
+        rewards_map = doc.get("rewards") or {}
+        amount = rewards_map.get(checksum)
+        if amount is not None:
+            total_blind += float(amount)
+            jobs_count += 1
+
+    return {"total_blind_earned": total_blind, "jobs_count": jobs_count}

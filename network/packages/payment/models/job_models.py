@@ -44,6 +44,8 @@ class JobRecord(BaseModel):
     error_reason: str | None = None
     result_hash: str | None = None
     output_cid: str | None = None
+    encrypted_output_key_high: str | None = None
+    encrypted_output_key_low: str | None = None
     rewards_distributed: bool = False
     reward_tx_hashes: list[str] = Field(default_factory=list)
     rewards: dict[str, float] = Field(default_factory=dict)
@@ -61,3 +63,5 @@ class JobCompletionRequest(BaseModel):
     error_reason: str | None = None
     result_hash: str | None = None
     output_cid: str | None = None
+    encrypted_output_key_high: str | None = None
+    encrypted_output_key_low: str | None = None

@@ -256,8 +256,8 @@ function mapJobToDemoStatus(job: JobStatusResponse): DemoStatus {
         ? {
             output_cid: job.output_cid ?? undefined,
             commitment_hash: job.result_hash ?? undefined,
-            encrypted_output_key_high: undefined,
-            encrypted_output_key_low: undefined,
+            encrypted_output_key_high: job.encrypted_output_key_high ?? undefined,
+            encrypted_output_key_low: job.encrypted_output_key_low ?? undefined,
           }
         : undefined,
     quorum: {
@@ -299,7 +299,13 @@ export function useInferenceStatus(requestId: string) {
         // Phase 1: try Payment Service job API first
         const jobResponse = await jobApi.getStatus(requestId).catch(() => null)
         if (jobResponse && mounted) {
-          setStatus(mapJobToDemoStatus(jobResponse.data))
+          const mapped = mapJobToDemoStatus(jobResponse.data)
+          if (mapped.status === 'ACCEPTED') {
+            console.log(`[Blindference] Job ${requestId} COMPLETED. Result:`, mapped.text_result)
+          } else {
+            console.log(`[Blindference] Job ${requestId} status:`, mapped.status)
+          }
+          setStatus(mapped)
           return
         }
 
