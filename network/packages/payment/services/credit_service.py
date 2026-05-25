@@ -147,6 +147,70 @@ class CreditService:
 
         return await self.get_balance(user_address)
 
+    async def check_balance(self, user_address: str, amount_cusdc: str = "0", amount_blind: str = "0") -> bool:
+        """Check if a user has sufficient credits without deducting."""
+        user_address = user_address.lower()
+        balance = await self.get_balance(user_address)
+
+        amount_cusdc_int = int(amount_cusdc)
+        amount_blind_int = int(amount_blind)
+        balance_cusdc_int = int(balance["balance_cusdc"])
+        balance_blind_int = int(balance["balance_blind"])
+
+        if amount_cusdc_int > 0 and balance_cusdc_int < amount_cusdc_int:
+            return False
+        if amount_blind_int > 0 and balance_blind_int < amount_blind_int:
+            return False
+        return True
+
+    async def refund(
+        self,
+        user_address: str,
+        amount_cusdc: str = "0",
+        amount_blind: str = "0",
+        reason: str = "",
+    ) -> dict[str, Any]:
+        """Refund credits to a user's account."""
+        user_address = user_address.lower()
+
+        amount_cusdc_int = int(amount_cusdc)
+        amount_blind_int = int(amount_blind)
+
+        updates: dict[str, Any] = {"$set": {"last_updated": datetime.now(timezone.utc)}}
+        if amount_cusdc_int > 0:
+            amount_dec = _to_decimal128(amount_cusdc_int)
+            neg_amount_dec = _to_decimal128(-amount_cusdc_int)
+            updates["$inc"] = {
+                "balance_cusdc": amount_dec,
+                "total_spent_cusdc": neg_amount_dec,
+            }
+        if amount_blind_int > 0:
+            amount_dec = _to_decimal128(amount_blind_int)
+            neg_amount_dec = _to_decimal128(-amount_blind_int)
+            inc = updates.get("$inc", {})
+            inc["balance_blind"] = amount_dec
+            inc["total_spent_blind"] = neg_amount_dec
+            updates["$inc"] = inc
+
+        result = await self.database[CREDITS].update_one(
+            {"user_address": user_address},
+            updates,
+        )
+
+        if result.matched_count == 0:
+            logger.warning("Refund failed: credit account not found for %s", user_address)
+            raise InsufficientCredits("Credit account not found")
+
+        logger.info(
+            "Refunded credits to %s: cUSDC=%s BLIND=%s reason=%s",
+            user_address,
+            amount_cusdc,
+            amount_blind,
+            reason,
+        )
+
+        return await self.get_balance(user_address)
+
     async def deduct(
         self,
         user_address: str,
@@ -175,14 +239,16 @@ class CreditService:
         updates: dict[str, Any] = {"$set": {"last_updated": datetime.now(timezone.utc)}}
         if amount_cusdc_int > 0:
             amount_dec = _to_decimal128(amount_cusdc_int)
+            neg_amount_dec = _to_decimal128(-amount_cusdc_int)
             updates["$inc"] = {
-                "balance_cusdc": -amount_dec,
+                "balance_cusdc": neg_amount_dec,
                 "total_spent_cusdc": amount_dec,
             }
         if amount_blind_int > 0:
             amount_dec = _to_decimal128(amount_blind_int)
+            neg_amount_dec = _to_decimal128(-amount_blind_int)
             inc = updates.get("$inc", {})
-            inc["balance_blind"] = -amount_dec
+            inc["balance_blind"] = neg_amount_dec
             inc["total_spent_blind"] = amount_dec
             updates["$inc"] = inc
 

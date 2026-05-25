@@ -29,7 +29,7 @@ class InferenceRequestRecord(BaseModel):
     verifier_count: int
     leader_address: str
     verifier_addresses: list[str]
-    status: Literal["queued", "accepted", "rejected", "disputed"] = "queued"
+    status: Literal["queued", "accepted", "rejected", "disputed", "pending_store_key"] = "queued"
     created_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime = Field(default_factory=utcnow)
     metadata: dict[str, Any] = Field(default_factory=dict)

@@ -3,9 +3,11 @@ import { useEffect, useState } from 'react'
 import {
   coverageApi,
   inferenceApi,
+  jobApi,
   type BackendInferenceRequest,
   type BackendInferenceStatusResponse,
   type BackendTextInferenceStatus,
+  type JobStatusResponse,
 } from '../api/inferenceApi'
 
 export type DemoStatus = {
@@ -234,6 +236,57 @@ function mapTextStatusToDemoStatus(
   }
 }
 
+function mapJobToDemoStatus(job: JobStatusResponse): DemoStatus {
+  const stage: DemoStatus['status'] =
+    job.status === 'COMPLETED'
+      ? 'ACCEPTED'
+      : job.status === 'FAILED' || job.status === 'REFUNDED'
+        ? 'REJECTED'
+        : job.status === 'PENDING_PAYMENT'
+          ? 'QUEUED'
+          : 'EXECUTING'
+
+  return {
+    request_id: job.job_id,
+    task_id: job.job_id,
+    mode: 'text',
+    status: stage,
+    text_result:
+      stage === 'ACCEPTED'
+        ? {
+            output_cid: job.output_cid ?? undefined,
+            commitment_hash: job.result_hash ?? undefined,
+            encrypted_output_key_high: undefined,
+            encrypted_output_key_low: undefined,
+          }
+        : undefined,
+    quorum: {
+      leader: job.leader_address
+        ? { address: job.leader_address, status: stage === 'ACCEPTED' ? 'COMPLETE' : 'EXECUTING' }
+        : null,
+      verifiers: (job.verifier_addresses ?? []).map((address) => ({
+        address,
+        verdict: stage === 'ACCEPTED' ? 'CONFIRM' : null,
+        confidence: 0,
+      })),
+      confirm_count: stage === 'ACCEPTED' ? 3 : 0,
+      reject_count: stage === 'REJECTED' ? 3 : 0,
+    },
+    coverage_id: undefined,
+    coverage_recommendation: undefined,
+    result_commit_tx: undefined,
+    escrow_creation_tx: undefined,
+    escrow_release_tx: undefined,
+    coverage_purchase_tx: undefined,
+    dispute_submission_tx: undefined,
+    dispute_resolution_tx: undefined,
+    failure_reason: job.error_reason ?? undefined,
+    timestamps: {},
+    developer_address: job.user_address,
+    raw: job as unknown as BackendInferenceStatusResponse,
+  }
+}
+
 export function useInferenceStatus(requestId: string) {
   const [status, setStatus] = useState<DemoStatus | null>(null)
 
@@ -243,6 +296,14 @@ export function useInferenceStatus(requestId: string) {
     let mounted = true
     const poll = async () => {
       try {
+        // Phase 1: try Payment Service job API first
+        const jobResponse = await jobApi.getStatus(requestId).catch(() => null)
+        if (jobResponse && mounted) {
+          setStatus(mapJobToDemoStatus(jobResponse.data))
+          return
+        }
+
+        // Fallback to ICL API for legacy request IDs
         const [requestResponse, coverageResponse] = await Promise.all([
           inferenceApi.getStatus(requestId),
           coverageApi.quote(requestId).catch(() => null),

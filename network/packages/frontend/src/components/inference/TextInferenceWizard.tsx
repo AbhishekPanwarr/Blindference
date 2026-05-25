@@ -6,7 +6,7 @@ import { Lock, ShieldAlert, Cpu } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Hex } from 'viem'
 
-import { inferenceApi } from '../../api/inferenceApi'
+import { inferenceApi, jobApi } from '../../api/inferenceApi'
 import { useCofheClient } from '../../hooks/useCofheClient'
 import { storePromptKeyForTextRequest } from '../../lib/promptKeyStore'
 import { encryptPromptKeyForTextRequest } from '../../utils/textPromptKey'
@@ -186,26 +186,19 @@ export function TextInferenceWizard() {
       }
 
       setStage('submitting')
-      const response = await inferenceApi.submitText({
-        developer_address: address,
-        task_id: taskId,
-        mode: 'text',
+      const response = await jobApi.submit({
+        user_address: address,
+        prompt_cid: promptCID,
         model_id: selectedModel.id,
-        leader_address: quorumPreviewData.leader,
-        verifier_addresses: quorumPreviewData.verifiers,
-        text_request: {
-          prompt_cid: promptCID,
-          encrypted_prompt_key: {
-            high: encryptedPromptKey.encryptedPromptKey.high,
-            low: encryptedPromptKey.encryptedPromptKey.low,
-          },
-          model_id: selectedModel.id,
-          coverage_enabled: false,
-        },
+        encrypted_prompt_key_high: encryptedPromptKey.encryptedPromptKey.high,
+        encrypted_prompt_key_low: encryptedPromptKey.encryptedPromptKey.low,
+        payment_mode: 'credits',
+        payment_currency: 'cusdc',
+        insurance_opt_in: false,
+        task_id: taskId,
         min_tier: 0,
         zdr_required: false,
         verifier_count: 2,
-        escrow_id: escrowId ? Number(escrowId) : undefined,
         metadata: {
           cofhe_prompt_key_inputs: encryptedPromptKey.metadata.cofhe_prompt_key_inputs,
           prompt_length: normalizedPrompt.length,

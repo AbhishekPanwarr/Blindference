@@ -12,7 +12,6 @@ from web3 import Web3
 
 from db.collections import CREDITS
 from services import ServiceContainer, get_service_container
-from services.credit_service import InsufficientCredits
 
 
 def _to_decimal128(value: int | str) -> Decimal128:
@@ -51,64 +50,6 @@ async def notify_deposit(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Deposit processing failed: {exc}") from exc
-
-
-@router.post("/deduct")
-async def deduct_credits(
-    payload: dict[str, Any],
-    services: ServiceContainer = Depends(get_service_container),
-) -> dict[str, Any]:
-    """Deduct credits from a user's account. Used by the ICL when an inference is submitted.
-
-    Accepts either:
-      - model_id + currency: auto-computes price and deducts
-      - amount_cusdc + amount_blind: deducts exact amounts
-    """
-    user_address = payload.get("user_address", "")
-    reason = payload.get("reason", "")
-    
-    # Auto-compute price if model_id and currency are provided
-    model_id = payload.get("model_id")
-    currency = payload.get("currency")
-    if model_id and currency:
-        price = services.pricing_service.compute_price(model_id, currency)
-        amount_cusdc = str(price.get("amount_cusdc", 0))
-        amount_blind = str(price.get("amount_blind", 0))
-    else:
-        amount_cusdc = str(payload.get("amount_cusdc", 0))
-        amount_blind = str(payload.get("amount_blind", 0))
-
-    # Insurance opt-in
-    insurance_opt_in = payload.get("insurance_opt_in", False)
-    amount_cusdc_int = int(amount_cusdc)
-    premium_cusdc = "0"
-    if insurance_opt_in and amount_cusdc_int > 0:
-        premium_cusdc = str(int(amount_cusdc_int * 0.02))  # 2% premium
-        logger.info("Insurance opted in: job_price=%s premium=%s", amount_cusdc, premium_cusdc)
-
-    total_deduct_cusdc_int = amount_cusdc_int + int(premium_cusdc)
-    total_deduct_cusdc = str(total_deduct_cusdc_int)
-
-    try:
-        balance = await services.credit_service.deduct(
-            user_address=user_address,
-            amount_cusdc=total_deduct_cusdc,
-            amount_blind=amount_blind,
-            reason=reason,
-        )
-        return {
-            "status": "deducted",
-            "user_address": user_address.lower(),
-            "amount_cusdc": amount_cusdc,
-            "amount_blind": amount_blind,
-            "premium_cusdc": premium_cusdc,
-            "insurance_opt_in": insurance_opt_in,
-            **balance,
-        }
-    except InsufficientCredits as exc:
-        raise HTTPException(status_code=402, detail=str(exc)) from exc
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Credit deduction failed: {exc}") from exc
 
 
 @router.get("/credits/packages")
@@ -254,114 +195,6 @@ async def purchase_credit_package(
     }
 
 
-@router.post("/escrow/create")
-async def create_escrow(
-    payload: dict[str, Any],
-    services: ServiceContainer = Depends(get_service_container),
-) -> dict[str, Any]:
-    """Create and fund a Reineira escrow for an inference job."""
-    amount_cusdc = payload.get("amount_cusdc", 0)
-    job_id = payload.get("job_id", "")
-    owner_address = payload.get("owner_address", "")
-    resolver_address = payload.get("resolver_address", "")
-
-    if not job_id or not owner_address:
-        raise HTTPException(status_code=400, detail="job_id and owner_address are required")
-
-    # No cUSDC was deducted (e.g., BLIND-only payment) — skip live Reineira escrow.
-    if amount_cusdc <= 0:
-        logger.info(
-            "Skipping Reineira escrow creation for job=%s: amount_cusdc=%d (no cUSDC to escrow)",
-            job_id,
-            amount_cusdc,
-        )
-        escrow_id = int(
-            services.chain_service.web3_client.keccak_text(f"no-cusdc-escrow:{job_id}"),
-            16,
-        ) % (2 ** 64)
-        return {
-            "status": "created",
-            "escrow_id": escrow_id,
-            "tx_hash": None,
-            "status_detail": "no_escrow_required",
-        }
-
-    # Validate resolver_address; fall back to the configured InferenceGate if invalid.
-    if not resolver_address or not Web3.is_address(resolver_address):
-        fallback = services.settings.INFERENCE_GATE_ADDRESS
-        logger.warning(
-            "Invalid resolver_address '%s' from caller — falling back to INFERENCE_GATE_ADDRESS %s",
-            resolver_address,
-            fallback,
-        )
-        resolver_address = fallback
-
-    try:
-        result = await services.chain_service.create_and_fund_escrow(
-            amount_cusdc=amount_cusdc,
-            job_id=job_id,
-            owner_address=owner_address,
-            resolver_address=resolver_address,
-        )
-        return {"status": "created", **result}
-    except Exception as exc:
-        stderr = getattr(exc, "stderr", None)
-        if stderr:
-            logger.error("Escrow creation failed (stderr): %s", stderr)
-        logger.error("Escrow creation failed: %s", exc)
-        raise HTTPException(status_code=500, detail=f"Escrow creation failed: {exc}") from exc
-
-
-@router.post("/insurance/purchase")
-async def purchase_insurance(
-    payload: dict[str, Any],
-    services: ServiceContainer = Depends(get_service_container),
-) -> dict[str, Any]:
-    """Purchase insurance coverage for an inference job.
-
-    Body: {
-        "escrow_id": int,
-        "job_price": int,
-        "job_id": str,
-        "user_address": str,
-    }
-    """
-    escrow_id = payload.get("escrow_id", 0)
-    job_price = payload.get("job_price", 0)
-    job_id = payload.get("job_id", "")
-    user_address = payload.get("user_address", "")
-
-    if not escrow_id or not job_id or not user_address:
-        raise HTTPException(
-            status_code=400,
-            detail="escrow_id, job_id, and user_address are required"
-        )
-
-    try:
-        result = await services.chain_service.purchase_insurance(
-            escrow_id=escrow_id,
-            job_price=job_price,
-            job_id=job_id,
-            user_address=user_address,
-        )
-        return {
-            "status": "purchased",
-            **result,
-        }
-    except Exception as exc:
-        logger.error("Insurance purchase failed: %s", exc)
-        # Return mock coverage ID for testnet
-        coverage_id = int(
-            services.chain_service.web3_client.keccak_text(f"mock-coverage:{escrow_id}:{job_id}"),
-            16,
-        ) % (2 ** 64)
-        return {
-            "status": "mock",
-            "coverage_id": coverage_id,
-            "error": str(exc),
-        }
-
-
 @router.post("/escrow/{escrow_id}/release")
 async def release_escrow(
     escrow_id: int,
@@ -440,44 +273,6 @@ async def refund_credits(
     except Exception as exc:
         logger.error("Credit refund failed: %s", exc)
         raise HTTPException(status_code=500, detail=f"Credit refund failed: {exc}") from exc
-
-
-@router.post("/rewards/distribute")
-async def distribute_rewards(
-    payload: dict[str, Any],
-    services: ServiceContainer = Depends(get_service_container),
-) -> dict[str, Any]:
-    """Distribute BLIND rewards to quorum nodes after successful inference.
-
-    Body: {
-        "job_id": str,
-        "leader_address": str,
-        "verifier_addresses": list[str],
-        "amount_blind_wei": int,  # Total reward amount (e.g. 1 * 10**18)
-    }
-    """
-    job_id = payload.get("job_id", "")
-    leader_address = payload.get("leader_address", "")
-    verifier_addresses = payload.get("verifier_addresses", [])
-    amount_blind_wei = payload.get("amount_blind_wei", 0)
-
-    if not job_id or not leader_address or amount_blind_wei <= 0:
-        raise HTTPException(
-            status_code=400,
-            detail="job_id, leader_address, and positive amount_blind_wei are required"
-        )
-
-    try:
-        result = await services.chain_service.distribute_reward(
-            leader_address=leader_address,
-            verifier_addresses=verifier_addresses,
-            amount_blind_wei=amount_blind_wei,
-            job_id=job_id,
-        )
-        return result
-    except Exception as exc:
-        logger.error("Reward distribution failed for job=%s: %s", job_id, exc)
-        raise HTTPException(status_code=500, detail=f"Reward distribution failed: {exc}") from exc
 
 
 @router.get("/debug/{address}")

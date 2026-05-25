@@ -11,6 +11,7 @@ class ServiceContainer:
     credit_service: Any = None
     chain_service: Any = None
     pricing_service: Any = None
+    job_service: Any = None
 
 
 def get_service_container(request: Request) -> ServiceContainer:

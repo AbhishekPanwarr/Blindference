@@ -11,9 +11,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import PaymentServiceSettings, get_settings
 from db.mongo import close_database, ensure_indexes, get_database, ping_database
 from routers.credits import router as credits_router
+from routers.jobs import router as jobs_router
+from routers.nodes import router as nodes_router
 from services import ServiceContainer
 from services.chain_service import ChainService
 from services.credit_service import CreditService
+from services.job_service import JobService
 from services.pricing_service import PricingService
 
 logging.basicConfig(
@@ -43,6 +46,7 @@ def create_app(settings: PaymentServiceSettings | None = None) -> FastAPI:
         chain_service = ChainService(resolved_settings)
         pricing_service = PricingService(resolved_settings)
         credit_service = CreditService(database, resolved_settings)
+        job_service = JobService(database, credit_service, chain_service, pricing_service, resolved_settings)
 
         app.state.settings = resolved_settings
         app.state.services = ServiceContainer(
@@ -51,6 +55,7 @@ def create_app(settings: PaymentServiceSettings | None = None) -> FastAPI:
             chain_service=chain_service,
             credit_service=credit_service,
             pricing_service=pricing_service,
+            job_service=job_service,
         )
 
         logger.info("Blindference Payment Service started")
@@ -89,6 +94,8 @@ def create_app(settings: PaymentServiceSettings | None = None) -> FastAPI:
         return response
 
     app.include_router(credits_router)
+    app.include_router(jobs_router)
+    app.include_router(nodes_router)
 
     @app.get("/")
     async def root() -> dict[str, str]:

@@ -36,6 +36,9 @@ class PaymentServiceSettings(BaseSettings):
     # Wallet that receives BLIND for package purchases (same as ICL wallet for testnet)
     PAYMENT_WALLET_ADDRESS: str = ""
 
+    # ICL URL for forwarding jobs
+    ICL_URL: str = "http://127.0.0.1:8000"
+
     # Credit packages available for purchase
     CREDIT_PACKAGES: list[dict[str, Any]] = Field(default=[
         {

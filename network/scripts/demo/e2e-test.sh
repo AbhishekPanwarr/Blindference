@@ -182,35 +182,24 @@ echo ""
 echo "  Or use the API directly (requires encrypted prompt, CoFHE handles, etc.):"
 echo "    POST ${ICL_URL}/v1/inference/requests"
 echo ""
-echo "  For a quick smoke test of reward distribution, you can call the Payment Service:"
-echo "    curl -X POST ${PAYMENT_URL}/v1/rewards/distribute \\"
-echo "      -H 'Content-Type: application/json' \\"
-echo "      -d '{\"job_id\":\"test-job-1\",\"leader_address\":\"${DEMO_NODE_ADDRESS}\",\"verifier_addresses\":[\"0x0000000000000000000000000000000000000001\",\"0x0000000000000000000000000000000000000002\"],\"amount_blind_wei\":1000000000000000000}'"
+echo "  For a quick smoke test of the full gateway flow, use:"
+echo "    node scripts/demo/smoke-gateway-flow.mjs 'What is FHE?'"
 echo ""
 
 # ------------------------------------------------------------------
-# Step 6: Verify reward distribution
+# Step 6: Verify Payment Service has BLIND for reward distribution
 # ------------------------------------------------------------------
-echo "▸ Step 6: Testing reward distribution endpoint..."
+echo "▸ Step 6: Checking Payment Service wallet BLIND balance..."
 
-# Test the reward endpoint with dummy addresses
-REWARD_RESPONSE=$(curl -sf -X POST "${PAYMENT_URL}/v1/rewards/distribute" \
-    -H 'Content-Type: application/json' \
-    -d "{\"job_id\":\"e2e-test-$(date +%s)\",\"leader_address\":\"${DEMO_NODE_ADDRESS}\",\"verifier_addresses\":[\"0x0000000000000000000000000000000000000001\",\"0x0000000000000000000000000000000000000002\"],\"amount_blind_wei\":1000000000000000000}" 2>/dev/null || echo '{"status":"failed"}')
+PAYMENT_BALANCE=$(cast call "${BLIND_TOKEN}" "balanceOf(address)(uint256)" "${PAYMENT_WALLET}" --rpc-url "${ARBITRUM_SEPOLIA_RPC}" 2>/dev/null || echo "0")
+echo "  Payment Service wallet BLIND balance: ${PAYMENT_BALANCE} wei"
 
-REWARD_STATUS=$(echo "${REWARD_RESPONSE}" | jq -r '.status' || echo "unknown")
-echo "  Reward distribution status: ${REWARD_STATUS}"
-
-if [[ "${REWARD_STATUS}" == "distributed" ]]; then
-    echo "  ✓ Rewards distributed successfully!"
-    echo "  Distributions:"
-    echo "${REWARD_RESPONSE}" | jq -r '.distributions[] | "    - \(.role): \(.node) => \(.amount_wei) wei (\(.status))"' || true
-elif [[ "${REWARD_STATUS}" == "insufficient_balance" || "${REWARD_STATUS}" == "failed" ]]; then
-    echo "  ⚠ Reward distribution failed (likely insufficient BLIND balance in Payment Service wallet)"
+if [[ "${PAYMENT_BALANCE}" -lt 1000000000000000000 ]]; then
+    echo "  ⚠ Payment Service wallet has less than 1 BLIND. Rewards may fail."
     echo "    Fund the wallet with:"
     echo "      cast send ${BLIND_TOKEN} \"transfer(address,uint256)\" ${PAYMENT_WALLET} $(cast to-wei 500) --rpc-url ${ARBITRUM_SEPOLIA_RPC} --private-key <deployer_key>"
 else
-    echo "  ⚠ Unexpected response: ${REWARD_RESPONSE}"
+    echo "  ✓ Payment Service wallet has sufficient BLIND for rewards"
 fi
 
 # ------------------------------------------------------------------
@@ -223,10 +212,12 @@ echo "========================================"
 echo "  E2E Test Complete"
 echo "========================================"
 echo ""
-echo "Next steps for full validation:"
+echo "Next steps for full validation (Phase 3):"
 echo "  1. Start 3 nodes: blindference-node init && blindference-node attest --mock && blindference-node run"
 echo "  2. Open frontend at http://localhost:3000"
-echo "  3. Submit a text inference job with credit payment"
-echo "  4. Watch ICL logs for quorum formation and reward distribution"
-echo "  5. Verify BLIND balances updated on-chain for leader/verifiers"
+echo "  3. Submit a text inference job — frontend → Payment Service → ICL → callback → rewards"
+echo "  4. Watch Payment Service logs for job submission, credit deduction, and callback handling"
+echo "  5. Watch ICL logs for quorum formation and completion callback to Payment Service"
+echo "  6. Verify BLIND balances updated on-chain for leader/verifiers"
+echo "  7. Run smoke test: node scripts/demo/smoke-gateway-flow.mjs 'What is FHE?'"
 echo ""

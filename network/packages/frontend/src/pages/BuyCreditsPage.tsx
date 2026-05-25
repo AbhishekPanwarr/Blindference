@@ -39,7 +39,7 @@ export function BuyCreditsPage() {
   const { data: walletClient } = useWalletClient()
   const publicClient = usePublicClient()
   const navigate = useNavigate()
-  const { balance, refresh } = useCredits(address)
+  const { cusdc: balanceCusdc, blind: balanceBlind, refresh } = useCredits(address)
 
   // Check BLIND token allowance for Payment Service
   const { data: allowance } = useReadContract({
@@ -229,18 +229,18 @@ export function BuyCreditsPage() {
       </div>
 
       {/* Current balance */}
-      {balance && (
+      {(balanceCusdc || balanceBlind) && (
         <div className="mb-8 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
           <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-500 mb-2">
             Credit Balance
           </div>
           <div className="flex gap-6">
             <div>
-              <div className="text-2xl font-mono text-white">{formatWei(balance.cusdc)}</div>
+              <div className="text-2xl font-mono text-white">{formatWei(balanceCusdc)}</div>
               <div className="text-xs text-zinc-500">cUSDC credits (wei)</div>
             </div>
             <div>
-              <div className="text-2xl font-mono text-white">{weiToEth(balance.blind)}</div>
+              <div className="text-2xl font-mono text-white">{weiToEth(balanceBlind)}</div>
               <div className="text-xs text-zinc-500">BLIND credits</div>
             </div>
           </div>

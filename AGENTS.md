@@ -99,12 +99,21 @@ blindference/
 ### 3.1 High-Level Flow (Text Inference)
 
 ```
-Browser (MetaMask) → Frontend (React) → ICL (FastAPI) → Nodes (3x Python)
-                                      ↓
-                                Arbitrum Sepolia (Contracts)
+Browser (MetaMask) → Frontend (React) → Payment Service (FastAPI) → ICL (FastAPI) → Nodes (3x Python)
+                                      ↓                                    ↓
+                                Arbitrum Sepolia (Contracts)      Callback: job complete/fail
 ```
 
-### 3.2 Detailed Text Inference Flow
+**Phase 1 Architecture (Payment Service as Gateway)**: The frontend no longer submits inference requests directly to the ICL. Instead:
+1. Frontend encrypts prompt and calls `PromptKeyStore.storeKey()` via MetaMask
+2. Frontend submits a **job** to the **Payment Service** (`POST /v1/jobs/submit`)
+3. Payment Service validates payment, deducts credits, creates escrow, purchases insurance, then forwards the prepared payload to ICL (`POST /v1/inference/request`)
+4. ICL selects quorum, dispatches to nodes, runs consensus
+5. ICL calls Payment Service callback (`POST /v1/jobs/{job_id}/complete`) with result status
+6. Payment Service distributes rewards (on success) or refunds credits (on failure/timeout)
+7. Frontend polls Payment Service for job status (`GET /v1/jobs/{job_id}`)
+
+### 3.2 Detailed Text Inference Flow (Phase 1 — Payment Service Gateway)
 
 1. **User enters prompt** in browser
 2. **Browser AES-256 encrypts prompt** locally — generates `prompt_key` (32 bytes)
@@ -113,7 +122,13 @@ Browser (MetaMask) → Frontend (React) → ICL (FastAPI) → Nodes (3x Python)
 5. **Browser CoFHE-encrypts each half** via `@cofhe/sdk` → gets `enc_high_handle`, `enc_low_handle`
 6. **Browser calls `PromptKeyStore.storeKey(taskId, encHigh, encLow, allowedNodes)`** via wagmi
    - **CRITICAL**: Must be called by user's wallet, NOT ICL wallet. Fhenix CoFHE enforces `InvalidSigner`.
-7. **Browser submits request to ICL** with `prompt_cid`, `task_id`, `prompt_key_store_tx`
+7. **Frontend submits job to Payment Service** (`POST /v1/jobs/submit`)
+   - Body includes: `task_id`, `user_address`, `model_id`, `prompt_cid`, `encrypted_prompt_key`, `metadata` (with `prompt_key_store_tx`), `amount_credits`
+   - Payment Service validates: user has sufficient credits → returns `402` if not
+   - Payment Service deducts credits immediately, creates on-chain escrow, purchases insurance
+   - Payment Service forwards prepared `InternalInferenceRequest` to ICL (`POST /v1/inference/request`)
+   - On ICL failure, Payment Service retries 3× with exponential backoff
+   - Job state: `PENDING_PAYMENT` → `RUNNING`
 8. **ICL selects quorum**: 1 leader + 2 verifiers from active node pool
 9. **ICL dispatches tasks** to nodes via `POST /internal/assignments/{addr}` (push, not polling)
 10. **Each node**:
@@ -134,7 +149,13 @@ Browser (MetaMask) → Frontend (React) → ICL (FastAPI) → Nodes (3x Python)
 12. **Verifiers** submit verdict: match/no-match against leader's commitment hash
 13. **ICL aggregates**: 2/3 match → `accepted`, <2/3 → `rejected`
 14. **ICL commits accepted result on-chain** via `ResultRegistry`
-15. **Frontend polls status**, decrypts output key, reveals answer
+15. **ICL notifies Payment Service** (`POST /v1/jobs/{job_id}/complete`)
+    - ICL retries 3× with exponential backoff on callback failure
+    - On accepted: Payment Service distributes BLIND rewards (60% leader, 20% each verifier)
+    - On rejected/timeout: Payment Service refunds credits to user
+    - Job state: `RUNNING` → `COMPLETED` | `FAILED` | `REFUNDED`
+16. **Frontend polls Payment Service** (`GET /v1/jobs/{job_id}`) for status
+    - Falls back to ICL (`GET /v1/inference/requests/{id}/status`) for legacy request IDs
 
 ### 3.3 Two-Phase Key Storage (CRITICAL)
 
@@ -155,6 +176,82 @@ Phase 2: Frontend confirms to ICL
                   ICL verifies key exists on-chain via getEncryptedKey(taskId)
                   ICL dispatches to quorum nodes
 ```
+
+### 3.4 Payment Service — Job Lifecycle
+
+**File**: `network/packages/payment/services/job_service.py`
+
+The Payment Service is the **gateway** for all inference requests. It handles payment validation, escrow, insurance, reward distribution, and slashing. The ICL is a pure inference coordinator and never touches payment logic.
+
+```
+Frontend ──▶ POST /v1/jobs/submit
+                  │
+                  ▼
+         ┌─────────────────┐
+         │  Payment Service │
+         │  (Port 8001)     │
+         └─────────────────┘
+                  │
+    ┌─────────────┼─────────────┐
+    ▼             ▼             ▼
+ Validate    Create Escrow   Purchase
+ Credits     (on-chain)      Insurance
+    │             │             │
+    └─────────────┴─────────────┘
+                  │
+                  ▼
+         POST /v1/inference/request
+                  │
+                  ▼
+              ICL (8000)
+                  │
+                  ▼
+         Nodes execute quorum
+                  │
+                  ▼
+         POST /v1/jobs/{id}/complete
+                  │
+                  ▼
+         ┌─────────────────┐
+         │  Payment Service │
+         │  Distribute/Refund │
+         └─────────────────┘
+```
+
+#### Job State Machine
+
+```
+PENDING_PAYMENT ──▶ RUNNING ──▶ COMPLETED  (success → distribute rewards)
+                    │
+                    └──────────▶ FAILED      (timeout/rejected → refund credits)
+                    │
+                    └──────────▶ REFUNDED  (explicit refund)
+```
+
+#### Submit Job (`POST /v1/jobs/submit`)
+
+1. Validate user has sufficient credits (402 if not)
+2. Deduct credits immediately from user balance
+3. Create on-chain escrow (synchronous, wait for tx confirmation ~5s)
+4. Purchase insurance (if opted in)
+5. Forward to ICL (`POST /v1/inference/request`) with 3× retry + exponential backoff
+6. Return `job_id` to frontend, state = `RUNNING`
+
+#### Complete Job (`POST /v1/jobs/{job_id}/complete` — ICL callback)
+
+1. Validate callback from ICL (no auth currently, network-level trust)
+2. If `status == "COMPLETED"`:
+   - Distribute BLIND rewards to leader (60%) and verifiers (20% each)
+   - Rewards stored per-job in `JobRecord.rewards: dict[str, float]`
+3. If `status == "FAILED"` or timeout:
+   - Refund deducted credits to user balance
+4. Job state updated, response returned to ICL
+
+#### Credit/Wei Storage
+
+**CRITICAL**: All credit and wei amounts are stored as MongoDB `Decimal128` (NOT `int64`) to prevent overflow with large wei values. The `_to_decimal128()` helper converts Python `int` → `Decimal128` safely.
+
+**Fixed bug**: `-amount_dec` crashes on `Decimal128` objects. Use `_to_decimal128(-amount_int)` instead.
 
 ---
 
@@ -364,17 +461,25 @@ class InferenceRequestRecord(BaseModel):
 
 ### 5.5 ICL REST API Endpoints
 
-#### Public API (Frontend)
+#### Public API (Frontend — Legacy Wrapper)
 
 | Method | Path | Description |
 |--------|------|-------------|
 | `POST` | `/v1/inference/quorum-preview` | Preview quorum for given constraints |
-| `POST` | `/v1/inference/requests` | Create new inference request |
+| `POST` | `/v1/inference/requests` | Create new inference request (legacy public wrapper — still usable for dev/tests) |
 | `GET`  | `/v1/inference/requests` | List all requests |
 | `GET`  | `/v1/inference/requests/{request_id}` | Get request details |
 | `GET`  | `/v1/inference/requests/{request_id}/status` | Get request status (returns TextInferenceResult for text mode) |
 | `POST` | `/v1/inference/{request_id}/confirm-store-key` | Confirm frontend prompt key storage |
 | `POST` | `/v1/inference/{request_id}/attach-permit` | Attach sharing permit |
+
+#### Internal API (Payment Service → ICL)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/inference/request` | **Internal endpoint** — Payment Service submits prepared `InternalInferenceRequest`. No payment fields. Constructs `InferenceRequestCreate` internally and returns `request_id`. |
+
+**Note**: `POST /v1/inference/request` is the **canonical** entry point for production. `POST /v1/inference/requests` is preserved as a clean public wrapper for development and risk-mode tests.
 
 #### Node API (Internal)
 
@@ -492,8 +597,39 @@ async def _attempt_finalize_text_request(self, job_id: str) -> InferenceCommitRe
     # 4. If 2+ REJECT → rejected
     # 5. If split or insufficient → stays queued
     # 6. On accepted: write to ResultRegistry, release escrow
-    # 7. Phase 4: On accepted, call _distribute_reward() → Payment Service /v1/rewards/distribute
+    # 7. Phase 1: On accepted/timeout/rejected, call _notify_payment_service()
+    #    → POST /v1/jobs/{job_id}/complete to Payment Service
+    #    → Retries 3× with exponential backoff
+    # 8. Phase 2: _distribute_reward() REMOVED from ICL. Rewards handled by Payment Service.
 ```
+
+#### ICL → Payment Service Callback (`_notify_payment_service`)
+
+**File**: `network/packages/icl/services/quorum_service.py`
+
+Called on job finalization (accepted, rejected, or quorum timeout):
+
+```python
+async def _notify_payment_service(self, job_id: str, status: str, result: dict | None = None):
+    """Notify Payment Service of job completion. Retries 3× with exponential backoff."""
+    payload = {
+        "status": status,  # "COMPLETED" | "FAILED"
+        "result": result,
+    }
+    for attempt in range(3):
+        try:
+            resp = await self.httpx_client.post(
+                f"{PAYMENT_SERVICE_CALLBACK_URL}/v1/jobs/{job_id}/complete",
+                json=payload,
+                timeout=10.0,
+            )
+            if resp.status_code == 200:
+                return
+        except Exception:
+            await asyncio.sleep(2 ** attempt)
+```
+
+**Config**: `PAYMENT_SERVICE_CALLBACK_URL` in `icl/config.py` (default: `http://127.0.0.1:8001`)
 
 #### Phase 4 — Soft & Hard Slashing
 
@@ -567,12 +703,12 @@ async def confirm_prompt_key_store(self, request_id: str, prompt_key_store_tx: s
 
 | File | Purpose |
 |------|---------|
-| `src/pages/InferenceNewPage.tsx` | Main inference submission UI. Handles CoFHE encryption, quorum preview, permit creation, storeKey tx, request submission |
+| `src/pages/InferenceNewPage.tsx` | Main inference submission UI. Handles CoFHE encryption, quorum preview, permit creation, storeKey tx, **submits job via `jobApi.submit()` to Payment Service** |
 | `src/pages/InferenceStatusPage.tsx` | Status polling. Shows stages: PREPARING → ENCRYPTING → SUBMITTING → QUORUM_FORMING → CLAIMING → PROCESSING → VERIFYING → COMPLETED/REJECTED/FAILED |
-| `src/hooks/useInferenceStatus.ts` | React Query hook polling `GET /v1/inference/{id}/status` every 3s. Derives stage from response fields |
+| `src/hooks/useInferenceStatus.ts` | **Hybrid polling**: Polls Payment Service (`GET /v1/jobs/{job_id}`) first, falls back to ICL (`GET /v1/inference/requests/{id}/status`) for legacy request IDs every 3s |
 | `src/components/StatusTimeline.tsx` | Visual timeline component. Shows leader + verifier progress |
 | `src/components/StatusBadge.tsx` | Status badge with colors |
-| `src/api/inferenceApi.ts` | Axios-based API client for ICL |
+| `src/api/inferenceApi.ts` | Axios-based API client. **New `jobApi`** with `submit()` and `getStatus()` for Payment Service. Old `submitText()` removed. |
 | `src/utils/encryption.ts` | CoFHE encryption utilities. Wraps `@cofhe/sdk` browser client |
 
 ### 6.3 Status Stages (Frontend)
@@ -1054,44 +1190,107 @@ Content-Type: application/json
 }
 ```
 
-### 13.7 Payment Service — Reward Distribution (Phase 4)
+### 13.7 Payment Service — Job Gateway (Phase 1)
+
+**Base URL**: `http://127.0.0.1:8001` (Payment Service)
+
+#### Submit Job
 
 ```http
-POST /v1/rewards/distribute
+POST /v1/jobs/submit
 Content-Type: application/json
 
 {
-  "job_id": "0xabc123...",
-  "leader_address": "0x...",
-  "verifier_addresses": ["0x...", "0x..."],
-  "amount_blind_wei": 1000000000000000000
+  "task_id": "0xabc123...",
+  "user_address": "0x...",
+  "model_id": "groq:llama-3.3-70b-versatile",
+  "prompt_cid": "Qm...",
+  "encrypted_prompt_key": { "high": "123...", "low": "456..." },
+  "metadata": {
+    "prompt_key_store_tx": "0x...",
+    "cofhe_prompt_key_inputs": { "high": "...", "low": "..." }
+  },
+  "amount_credits": 100
 }
 ```
 
 Response:
 ```json
 {
-  "status": "distributed",
-  "job_id": "0xabc123...",
-  "total_amount_wei": "1000000000000000000",
-  "distributions": [
+  "job_id": "job_0x...",
+  "status": "RUNNING",
+  "request_id": "req_...",
+  "amount_credits": 100,
+  "transaction_hash": "0x..."
+}
+```
+
+**402 Response**: Insufficient credits → `{"detail": "Insufficient credits. Required: 100, Available: 50"}`
+
+#### Get Job Status
+
+```http
+GET /v1/jobs/{job_id}
+```
+
+Response:
+```json
+{
+  "job_id": "job_0x...",
+  "status": "COMPLETED",
+  "user_address": "0x...",
+  "model_id": "groq:llama-3.3-70b-versatile",
+  "amount_credits": 100,
+  "created_at": "2026-05-25T...",
+  "completed_at": "2026-05-25T...",
+  "request_id": "req_...",
+  "transaction_hash": "0x...",
+  "failure_reason": null,
+  "rewards": {
+    "0xleader...": 0.6,
+    "0xverif1...": 0.2
+  }
+}
+```
+
+#### Complete Job (ICL Callback)
+
+```http
+POST /v1/jobs/{job_id}/complete
+Content-Type: application/json
+
+{
+  "status": "COMPLETED",
+  "result": { "request_id": "req_...", "task_id": "0x..." }
+}
+```
+
+**Note**: Old endpoints `POST /v1/deduct`, `POST /v1/escrow/create`, `POST /v1/insurance/purchase`, `POST /v1/rewards/distribute` have been **removed** in Phase 2 cleanup. All payment logic is now internal to `JobService`.
+
+### 13.8 Payment Service — Node Earnings (Phase 4)
+
+```http
+GET /v1/nodes/{address}/jobs?limit=20
+```
+
+Response:
+```json
+{
+  "node_address": "0x...",
+  "total_jobs": 15,
+  "total_earned_blind": 12.5,
+  "jobs": [
     {
-      "node": "0x...",
+      "job_id": "job_0x...",
       "role": "leader",
-      "amount_wei": "600000000000000000",
-      "tx_hash": "0x...",
-      "status": "success"
-    },
-    {
-      "node": "0x...",
-      "role": "verifier",
-      "amount_wei": "200000000000000000",
-      "tx_hash": "0x...",
-      "status": "success"
+      "status": "COMPLETED",
+      "amount_blind_earned": 0.6
     }
   ]
 }
 ```
+
+**Note**: `amount_blind_earned` is human-readable decimal (e.g., `0.6` BLIND). `None` for `RUNNING` jobs.
 
 ---
 
@@ -1218,22 +1417,50 @@ This is why `BlindferenceInputVault` exists — it creates on-chain ACL access b
 
 ## 18. Last Updated
 
-This document was last updated on **2026-05-24** after the following changes:
+This document was last updated on **2026-05-25** after the following changes:
 
-### Phase 4 — Node Staking with BLIND Token
-- Deployed & verified `BlindferenceStaking.sol` at `0x222Ac74201Ed58915e42Ee5be626d939fd234D0b`
-- Added `blindference-node staking` CLI commands: `stake`, `unstake`, `withdraw`, `status`
-- Implemented ICL soft slashing: exclude nodes with ≥3 failures from quorum selection
-- Implemented hard slashing: auto-slash entire stake at 3 consecutive failures via on-chain `recordFailure()`
-- Added `BlindferenceStakingClient` in ICL (`network/packages/icl/chain/blindference_staking.py`)
-- Added Payment Service reward distribution: `POST /v1/rewards/distribute` (1 BLIND/job, 60/20/20 split)
-- Added staking documentation to frontend `NodeRegistrationPage.tsx`
+### Phase 1 — Payment Service Gateway Architecture
+- **Payment Service as single gateway**: Frontend → Payment Service → ICL → Payment Service (callback). ICL never touches payment logic.
+- `payment/services/job_service.py`: Job lifecycle — `submit()` (validate → deduct credits → create escrow → purchase insurance → forward to ICL with 3× retry), `complete_job()` (distribute rewards or refund credits), `get_job()`
+- `payment/routers/jobs.py`: `POST /v1/jobs/submit`, `GET /v1/jobs/{job_id}`, `POST /v1/jobs/{job_id}/complete`
+- `payment/models/job_models.py`: `JobRecord` with `task_id` passthrough and `rewards` dict
+- Frontend: `inferenceApi.ts` added `jobApi.submit()` and `jobApi.getStatus()`; `InferenceNewPage.tsx` calls `jobApi.submit()`; `useInferenceStatus.ts` polls Payment Service first, falls back to ICL for legacy IDs
+- ICL: New internal `POST /v1/inference/request` (no payment fields), constructs `InferenceRequestCreate` internally. Preserved public `POST /v1/inference/requests` as dev wrapper.
+- ICL → Payment Service callback: `_notify_payment_service()` called on acceptance, rejection, and quorum timeout. Retries 3× with exponential backoff.
+- Job state machine: `PENDING_PAYMENT` → `RUNNING` → `COMPLETED` | `FAILED` | `REFUNDED`
+- **402 on insufficient credits**: Returned before any state changes (DB or on-chain)
 
-### Previous Fixes (same day)
-- Removed `leader_output_ready` gate from verifier assignment poll
-- Added per-node assignment tracking with 5-minute timeout
-- Added `FAILED` stage to frontend status display
-- Fixed Groq API key quote stripping bug
-- Fixed `.env` fallback parser quote stripping
-- Published `blindference-node` v0.3.2 to PyPI
-- All tests passing (13 ICL, 84 node, 10 contracts)
+### Phase 2 — ICL Cleanup
+- Removed `payment_mode`, `payment_currency`, `insurance_opt_in` from `InferenceRequestCreate`
+- Removed old payment logic branches from `quorum_service.py` (mock escrow ID generation for credits)
+- Removed `_distribute_reward()` method and its call site from `quorum_service.py`
+- Deleted 4 public endpoints from `payment/routers/credits.py`: `POST /v1/deduct`, `POST /v1/escrow/create`, `POST /v1/insurance/purchase`, `POST /v1/rewards/distribute`
+- Removed `TextInferenceRequestPayload` type and `submitText()` from frontend `inferenceApi.ts`
+- Updated `TextInferenceWizard.tsx` to use `jobApi.submit()`
+- Updated `e2e-test.sh` for new architecture
+
+### Phase 3 — Integration Testing
+- **Fixed 5 integration bugs**:
+  1. Decimal128 negation crash (`-amount_dec` fails on `Decimal128` → `_to_decimal128(-amount_int)`)
+  2. Missing `logger` in `icl/routers/inference.py` internal endpoint
+  3. Missing `metadata` passthrough in `InternalInferenceRequest` → lost `cofhe_prompt_key_inputs`
+  4. Missing `pending_store_key` status in `InferenceRequestResponse` Literal
+  5. Task ID mismatch — frontend generates `taskId` for `storeKey`, Payment Service generated its own UUID. Fixed by adding `task_id` field to `JobSubmitRequest` and wiring it through to ICL.
+- Created `smoke-gateway-flow.mjs` (Payment Service E2E test script)
+- **Blocked**: Fhenix CoFHE testnet (`api.helios.fhenix.zone`) returns `ENOTFOUND`
+
+### Phase 4 — Node CLI: Jobs & Earnings
+- `JobRecord.rewards`: Per-node reward map (`leader: 0.6`, `verifier: 0.2`) on successful completion
+- `payment/routers/nodes.py`: **NEW** `GET /v1/nodes/{address}/jobs?limit=20` — queries jobs collection for leader/verifier matches, returns `job_id`, `role`, `status`, `amount_blind_earned`
+- `Blindference-node/config.py`: Added `payment_service_url: str = "http://127.0.0.1:8001"`
+- `Blindference-node/cli.py`: Added `jobs` click group with `list` (fetches from Payment Service, prints rich table with totals) and `claim` (no-op: "automatically distributed")
+- Node CLI `blindference-node` uses local directory for config/keystore (not global `~/.blindference`)
+- **Receipt.status validation**: Added `_require_receipt_success()` to `registry.py`; fixed all 11 transaction functions
+- **Node attestation fix**: Replaced stub `update_attestation()` with real `NodeRegistry.updateAttestation()` call; padded cert_hash to 32 bytes
+- **Frontend gas estimation**: Added EIP-1559 dynamic gas estimation to `BuyCreditsPage.tsx`
+- `PAYMENT_TEST_GUIDE.md`: Created comprehensive testing guide
+
+### All Tests Pass
+- ICL: 13 passed
+- Node: 84 passed / 1 skipped
+- Frontend: TypeScript 0 errors

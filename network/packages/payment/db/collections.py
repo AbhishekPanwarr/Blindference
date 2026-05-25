@@ -1,1 +1,2 @@
 CREDITS = "credits"
+JOBS = "jobs"

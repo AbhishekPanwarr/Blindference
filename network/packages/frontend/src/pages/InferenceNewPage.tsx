@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import type { Hex } from 'viem'
 import axios from 'axios'
 
-import { inferenceApi } from '../api/inferenceApi'
+import { inferenceApi, jobApi } from '../api/inferenceApi'
 import { ChatView } from '../components/inference/ChatView'
 import { useCofheClient } from '../hooks/useCofheClient'
 import { useChat } from '../hooks/useChat'
@@ -350,28 +350,19 @@ export function InferenceNewPage() {
       updateAssistantMetadata(assistantId, { promptCID })
 
       setChatStage('submitting')
-      const response = await inferenceApi.submitText({
-        developer_address: address,
-        task_id: taskId,
-        mode: 'text',
+      const response = await jobApi.submit({
+        user_address: address,
+        prompt_cid: promptCID,
         model_id: selectedModel.id,
-        leader_address: quorumPreview.data.leader,
-        verifier_addresses: quorumPreview.data.verifiers,
-        text_request: {
-          prompt_cid: promptCID,
-          encrypted_prompt_key: {
-            high: encryptedPromptKey.encryptedPromptKey.high,
-            low: encryptedPromptKey.encryptedPromptKey.low,
-          },
-          model_id: selectedModel.id,
-          coverage_enabled: false,
-        },
-        min_tier: 0,
-        zdr_required: false,
-        verifier_count: 2,
+        encrypted_prompt_key_high: encryptedPromptKey.encryptedPromptKey.high,
+        encrypted_prompt_key_low: encryptedPromptKey.encryptedPromptKey.low,
         payment_mode: paymentMode,
         payment_currency: paymentCurrency,
         insurance_opt_in: insuranceOptIn,
+        task_id: taskId,
+        min_tier: 0,
+        zdr_required: false,
+        verifier_count: 2,
         metadata: {
           cofhe_prompt_key_inputs: encryptedPromptKey.metadata.cofhe_prompt_key_inputs,
           prompt_length: normalizedPrompt.length,
@@ -387,22 +378,20 @@ export function InferenceNewPage() {
       })
 
       const payload = response.data
-      const requestId =
-        ('job_id' in payload && typeof payload.job_id === 'string' && payload.job_id) ||
-        ('request_id' in payload && typeof payload.request_id === 'string' && payload.request_id)
+      const jobId = payload.job_id
 
-      if (!requestId) {
-        throw new Error('The ICL response did not include a request identifier.')
+      if (!jobId) {
+        throw new Error('The Payment Service response did not include a job identifier.')
       }
 
       updateAssistantMetadata(assistantId, {
-        requestIdDisplay: requestId,
+        requestIdDisplay: jobId,
         leader: quorumPreview.data.leader,
         verifiers: quorumPreview.data.verifiers.join(', '),
       })
 
-      updateAssistantStatus(assistantId, 'processing', requestId)
-      setActiveRequestId(requestId)
+      updateAssistantStatus(assistantId, 'processing', jobId)
+      setActiveRequestId(jobId)
     } catch (submitError) {
       let msg = 'Failed to submit text inference request.'
       if (axios.isAxiosError(submitError)) {

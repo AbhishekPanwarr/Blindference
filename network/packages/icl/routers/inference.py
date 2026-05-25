@@ -10,6 +10,8 @@ import httpx
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from web3 import Web3
 
+logger = logging.getLogger("blindference.icl.inference")
+
 try:
     from blindference_utils.ipfs import upload_to_ipfs
 except ImportError:
@@ -21,6 +23,7 @@ except ImportError:
 from middleware.rate_limit import rate_limit_guard
 from models.request_models import (
     InferenceCommitRequest,
+    InternalInferenceRequest,
     LeaderResultSubmissionRequest,
     InferencePermitAttachmentRequest,
     InferenceRequestCreate,
@@ -32,7 +35,7 @@ from models.response_models import (
     IpfsUploadResponse,
     QuorumPreviewResponse,
 )
-from models.text_inference import TextInferenceResult
+from models.text_inference import EncryptedPromptKey, TextInferenceRequest, TextInferenceResult
 from services import ServiceContainer, get_service_container
 
 router = APIRouter(prefix="/v1/inference", tags=["inference"])
@@ -87,56 +90,53 @@ async def get_quorum_preview(
         raise HTTPException(status_code=400, detail=str(error)) from error
 
 
+@router.post("/request", response_model=InferenceRequestResponse | TextInferenceResult)
+async def create_internal_inference_request(
+    payload: InternalInferenceRequest,
+    services: ServiceContainer = Depends(get_service_container),
+) -> InferenceRequestResponse | TextInferenceResult:
+    """Internal endpoint for Payment Service to submit inference jobs (no payment logic)."""
+    try:
+        text_request = TextInferenceRequest(
+            prompt_cid=payload.prompt_cid,
+            encrypted_prompt_key=EncryptedPromptKey(
+                high=payload.encrypted_prompt_key_high,
+                low=payload.encrypted_prompt_key_low,
+            ),
+            model_id=payload.model_id,
+            coverage_enabled=payload.coverage_enabled,
+        )
+        inference_request = InferenceRequestCreate(
+            developer_address=payload.developer_address,
+            task_id=payload.task_id or payload.job_id,
+            model_id=payload.model_id,
+            mode="text",
+            text_request=text_request,
+            permits=payload.permits,
+            min_tier=payload.min_tier,
+            zdr_required=payload.zdr_required,
+            verifier_count=payload.verifier_count,
+            metadata=payload.metadata,
+        )
+        return await services.quorum_service.create_request_status(inference_request)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except Exception as error:
+        logger.exception("Internal inference request failed")
+        raise HTTPException(status_code=500, detail=f"Internal inference request failed: {error}") from error
+
+
 @router.post("/requests", response_model=InferenceRequestResponse | TextInferenceResult)
 async def create_inference_request(
     payload: InferenceRequestCreate,
     _: bool = Depends(rate_limit_guard),
     services: ServiceContainer = Depends(get_service_container),
 ) -> InferenceRequestResponse | TextInferenceResult:
+    """Legacy public endpoint — payment logic removed in Phase 1.
+
+    Use POST /v1/inference/request (internal) via Payment Service gateway.
+    """
     try:
-        if payload.payment_mode == "credits":
-            payment_url = services.settings.PAYMENT_SERVICE_URL
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                # 1. Compute price and deduct credits
-                deduct_resp = await client.post(
-                    f"{payment_url}/v1/deduct",
-                    json={
-                        "user_address": payload.developer_address,
-                        "model_id": payload.model_id,
-                        "currency": payload.payment_currency,
-                        "reason": f"inference_job:{payload.model_id}",
-                    },
-                )
-                if deduct_resp.status_code == 402:
-                    raise HTTPException(status_code=402, detail=deduct_resp.json().get("detail", "Insufficient credits"))
-                deduct_resp.raise_for_status()
-                deduct_data = deduct_resp.json()
-                amount_cusdc = deduct_data.get("amount_cusdc", 0)
-                amount_blind = deduct_data.get("amount_blind", 0)
-
-                # 2. Create Reineira escrow
-                escrow_resp = await client.post(
-                    f"{payment_url}/v1/escrow/create",
-                    json={
-                        "amount_cusdc": amount_cusdc,
-                        "job_id": payload.task_id or "",
-                        "owner_address": payload.developer_address,
-                        "resolver_address": services.settings.PAYMENT_SERVICE_URL,  # TODO: proper resolver
-                    },
-                )
-                escrow_resp.raise_for_status()
-                escrow_result = escrow_resp.json()
-
-            # Store credit payment info in metadata for tracking
-            payload.metadata = {
-                **dict(payload.metadata),
-                "payment_mode": "credits",
-                "payment_currency": payload.payment_currency,
-                "amount_cusdc": amount_cusdc,
-                "amount_blind": amount_blind,
-                "escrow_id": escrow_result.get("escrow_id"),
-                "escrow_creation_tx": escrow_result.get("tx_hash"),
-            }
         return await services.quorum_service.create_request_status(payload)
     except HTTPException:
         raise

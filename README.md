@@ -26,7 +26,10 @@ flowchart LR
     U[User Wallet] --> FE[Frontend]
     FE -->|AES encrypt prompt| ENC[(Encrypted Prompt Blob)]
     FE -->|Store prompt key| PKS[PromptKeyStore]
-    FE -->|Submit request| ICL[ICL]
+    FE -->|Submit job| PS[Payment Service]
+
+    PS -->|Forward request| ICL[ICL]
+    PS -->|Create escrow| CHAIN[Arbitrum Sepolia]
 
     ICL --> L[Leader Node]
     ICL --> V1[Verifier 1]
@@ -45,7 +48,9 @@ flowchart LR
     V1 -->|Verdict| ICL
     V2 -->|Verdict| ICL
 
-    ICL --> FE
+    ICL -->|Callback| PS
+    PS -->|Distribute rewards| CHAIN
+    PS -->|Job status| FE
     PKS --> FE
 ```
 
@@ -88,17 +93,20 @@ blindference/
 3. Encrypted blob uploaded to Pinata IPFS
 4. AES key split into two uint128 halves
 5. Each half CoFHE-encrypted and stored in PromptKeyStore contract
-6. User submits request to ICL with quorum preview
-7. ICL selects 1 leader + 2 verifiers from active node pool
-8. ICL dispatches tasks to nodes with CoFHE sharing permits
-9. Nodes decrypt prompt key halves via CoFHE ACL
-10. Nodes download encrypted blob from IPFS
-11. Nodes run identical inference via Groq/Gemini
-12. Leader submits result hash + output key to ICL
-13. Verifiers submit verdicts (match/no-match)
-14. ICL aggregates: 2/3 match = accepted, <2/3 = rejected
-15. Accepted result committed on-chain via ResultRegistry
-16. Frontend polls status, decrypts output key, reveals answer
+6. User submits job to Payment Service (credit validation, escrow, insurance)
+7. Payment Service forwards prepared request to ICL
+8. ICL selects 1 leader + 2 verifiers from active node pool
+9. ICL dispatches tasks to nodes with CoFHE sharing permits
+10. Nodes decrypt prompt key halves via CoFHE ACL
+11. Nodes download encrypted blob from IPFS
+12. Nodes run identical inference via Groq/Gemini
+13. Leader submits result hash + output key to ICL
+14. Verifiers submit verdicts (match/no-match)
+15. ICL aggregates: 2/3 match = accepted, <2/3 = rejected
+16. ICL commits accepted result on-chain via ResultRegistry
+17. ICL notifies Payment Service of completion
+18. Payment Service distributes BLIND rewards (success) or refunds credits (failure)
+19. Frontend polls Payment Service status, decrypts output key, reveals answer
 ```
 
 ### Risk Scoring Flow
@@ -220,19 +228,19 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for full deployment details.
 ### Running the Full Stack Locally
 
 ```bash
-# 1. Start the ICL coordinator
+# 1. Start the ICL coordinator (inference + quorum)
 cd network/packages/icl
-./.venv/bin/uvicorn main:app --host 127.0.0.1 --port 9000
+./.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
 
 # 2. In another terminal, bootstrap demo operators
-curl -s -X POST http://127.0.0.1:9000/admin/bootstrap-demo-nodes \
+curl -s -X POST http://127.0.0.1:8000/admin/bootstrap-demo-nodes \
   -H 'Content-Type: application/json' \
   -d '{"count":3}'
 
-   # 3. Start 3 nodes (in separate terminals)
-   # See Blindference-node/ README for node setup
+# 3. Start 3 nodes (in separate terminals)
+# See Blindference-node/ README for node setup
 
-# 4. Start the Payment Service (rewards + credits)
+# 4. Start the Payment Service (gateway: credits, escrow, rewards)
 cd network/packages/payment
 ./.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8001
 

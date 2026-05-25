@@ -201,11 +201,6 @@ class QuorumService:
                 self.chain_service.web3_client.keccak_text(f"mock-escrow-create:{request_record.task_id}")
             )
         )
-        if metadata.get("payment_mode") == "credits":
-            metadata["escrow_id"] = int(
-                self.chain_service.web3_client.keccak_text(f"escrow-id:{request_record.task_id}"),
-                16,
-            ) % (2 ** 64)
         if payload.coverage_type:
             metadata["coverage_id"] = metadata.get("coverage_id") or f"cov_{request_record.request_id[:10]}"
             metadata["coverage_purchase_tx"] = (
@@ -428,11 +423,6 @@ class QuorumService:
                 self.chain_service.web3_client.keccak_text(f"mock-escrow-create:{request_record.task_id}")
             )
         )
-        if metadata.get("payment_mode") == "credits":
-            metadata["escrow_id"] = int(
-                self.chain_service.web3_client.keccak_text(f"escrow-id:{request_record.task_id}"),
-                16,
-            ) % (2 ** 64)
         if payload.text_request.coverage_enabled or payload.coverage_type:
             metadata["coverage_id"] = metadata.get("coverage_id") or f"cov_{request_record.request_id[:10]}"
             metadata["coverage_purchase_tx"] = (
@@ -1285,12 +1275,15 @@ class QuorumService:
                 },
             )
 
-            # Phase 4 — distribute BLIND rewards via Payment Service (non-blocking)
+            # Notify Payment Service of successful completion
             asyncio.create_task(
-                self._distribute_reward(
+                self._notify_payment_service(
                     job_id=job_id,
+                    status="success",
                     leader_address=assignment["leader_address"],
                     verifier_addresses=assignment["verifier_addresses"],
+                    result_hash=winning_hash,
+                    output_cid=leader_result.get("output_cid"),
                 )
             )
 
@@ -1308,6 +1301,16 @@ class QuorumService:
                         "reject_count": max(0, total_nodes - winning_count),
                     }
                 },
+            )
+            # Notify Payment Service of rejected completion
+            asyncio.create_task(
+                self._notify_payment_service(
+                    job_id=job_id,
+                    status="rejected",
+                    leader_address=assignment["leader_address"],
+                    verifier_addresses=assignment["verifier_addresses"],
+                    error_reason=f"Quorum rejected: {winning_count} confirms vs {required_confirmations} required",
+                )
             )
             refreshed = await self.database[INFERENCE_REQUESTS].find_one({"request_id": request_id})
             return await self._to_text_result(refreshed)
@@ -1707,6 +1710,18 @@ class QuorumService:
                         }
                     },
                 )
+                # Notify Payment Service of timeout/failure
+                assignment_doc = await self.database[QUORUM_ASSIGNMENTS].find_one({"task_id": task_id})
+                if assignment_doc:
+                    asyncio.create_task(
+                        self._notify_payment_service(
+                            job_id=task_id,
+                            status="timeout",
+                            leader_address=assignment_doc.get("leader_address", ""),
+                            verifier_addresses=assignment_doc.get("verifier_addresses", []),
+                            error_reason="All quorum nodes failed — " + reason,
+                        )
+                    )
 
     async def _dispatch_pending_tasks_for_node(self, operator_address: str) -> None:
         checksum_address = self.chain_service.web3_client.checksum_address(operator_address)
@@ -1842,46 +1857,59 @@ class QuorumService:
             "candidate_addresses": candidate_addresses,
         }
 
-    async def _distribute_reward(
+    async def _notify_payment_service(
         self,
         *,
         job_id: str,
+        status: str,
         leader_address: str,
         verifier_addresses: list[str],
+        error_reason: str | None = None,
+        result_hash: str | None = None,
+        output_cid: str | None = None,
     ) -> None:
-        """Call Payment Service to distribute BLIND rewards (best-effort, non-blocking)."""
+        """Notify Payment Service that a job has been finalized (success/timeout/rejected)."""
         from config import get_settings
         settings = get_settings()
-        if not settings.PAYMENT_SERVICE_URL:
+        if not settings.PAYMENT_SERVICE_CALLBACK_URL:
             return
 
-        # Default reward: 1 BLIND per job
-        amount_blind_wei = 1 * 10 ** 18
-        try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                resp = await client.post(
-                    f"{settings.PAYMENT_SERVICE_URL}/v1/rewards/distribute",
-                    json={
-                        "job_id": job_id,
-                        "leader_address": leader_address,
-                        "verifier_addresses": verifier_addresses,
-                        "amount_blind_wei": amount_blind_wei,
-                    },
+        payload = {
+            "status": status,
+            "leader_address": leader_address,
+            "verifier_addresses": verifier_addresses,
+        }
+        if error_reason:
+            payload["error_reason"] = error_reason
+        if result_hash:
+            payload["result_hash"] = result_hash
+        if output_cid:
+            payload["output_cid"] = output_cid
+
+        for attempt in range(1, 4):
+            try:
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    resp = await client.post(
+                        f"{settings.PAYMENT_SERVICE_CALLBACK_URL}/v1/jobs/{job_id}/complete",
+                        json=payload,
+                    )
+                    if resp.status_code == 200:
+                        logger.info(
+                            "Payment Service notified for job=%s: status=%s attempt=%d",
+                            job_id, status, attempt,
+                        )
+                        return
+                    else:
+                        logger.warning(
+                            "Payment Service notification failed for job=%s: %d %s attempt=%d",
+                            job_id, resp.status_code, resp.text, attempt,
+                        )
+            except Exception as exc:
+                logger.warning(
+                    "Payment Service notification call failed for job=%s: %s attempt=%d",
+                    job_id, exc, attempt,
                 )
-                if resp.status_code == 200:
-                    data = resp.json()
-                    logger.info(
-                        "Rewards distributed for job=%s: status=%s distributions=%d",
-                        job_id,
-                        data.get("status"),
-                        len(data.get("distributions", [])),
-                    )
-                else:
-                    logger.warning(
-                        "Reward distribution failed for job=%s: %d %s",
-                        job_id,
-                        resp.status_code,
-                        resp.text,
-                    )
-        except Exception as exc:
-            logger.warning("Reward distribution call failed for job=%s: %s", job_id, exc)
+            if attempt < 3:
+                await asyncio.sleep(2 ** attempt)
+
+        logger.error("Failed to notify Payment Service for job=%s after 3 attempts", job_id)

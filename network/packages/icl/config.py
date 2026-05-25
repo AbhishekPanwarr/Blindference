@@ -57,6 +57,7 @@ class Settings(BaseSettings):
 
     # Payment Service integration
     PAYMENT_SERVICE_URL: str = "http://127.0.0.1:8001"
+    PAYMENT_SERVICE_CALLBACK_URL: str = "http://127.0.0.1:8001"
 
     @property
     def packages_dir(self) -> Path:

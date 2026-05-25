@@ -2,61 +2,48 @@
 
 This document tracks major releases and architectural changes to the Blindference protocol.
 
-## Latest Release — Wave 4
+## Latest Release — Phase 5 (Payment Service Gateway)
 
-### Major Changes
+### Phase 1 — Payment Service Gateway Architecture
 
-#### 1. Blindference-Node PyPI Package
+The frontend no longer submits inference requests directly to the ICL. The **Payment Service** is now the single gateway:
 
-A standalone Python package for operators joining the network:
+- **Frontend** → `POST /v1/jobs/submit` → **Payment Service** validates credits, deducts balance, creates on-chain escrow, purchases insurance, then forwards to ICL
+- **ICL** runs quorum inference, then calls `POST /v1/jobs/{id}/complete` back to Payment Service
+- **Payment Service** distributes BLIND rewards on success, refunds credits on failure/timeout
+- Job state machine: `PENDING_PAYMENT` → `RUNNING` → `COMPLETED` | `FAILED` | `REFUNDED`
+- ICL internal endpoint `POST /v1/inference/request` — no payment fields, constructs request internally
+- Old public payment endpoints removed: `/v1/deduct`, `/v1/escrow/create`, `/v1/insurance/purchase`, `/v1/rewards/distribute`
 
-- Published as `blindference-node` on PyPI (v0.3.0+)
-- Auto-publish workflow: tags `v*` trigger GitHub Actions → PyPI
-- Supports both `bridge` mode (TypeScript CoFHE subprocess) and `python` mode (direct HTTP)
-- Auto-re-attestation: nodes self-heal on startup and via watchdog (no manual intervention)
-- Configuration-driven: single `BLINDFERENCE_NODE_CONFIG_PATH` JSON file controls all behavior
+### Phase 2 — ICL Cleanup
 
-#### 2. Professional Documentation Site
+- Removed `payment_mode`, `payment_currency`, `insurance_opt_in` from `InferenceRequestCreate`
+- Removed old payment logic and `_distribute_reward()` from `quorum_service.py`
+- Removed `TextInferenceRequestPayload` and `submitText()` from frontend API
+- Updated `TextInferenceWizard.tsx` to use `jobApi.submit()`
 
-Mintlify-powered docs at `blindference/docs/`:
+### Phase 3 — Integration Testing
 
-- **Compute section** (8 pages): Node operator quickstart, installation, configuration, attestation, running, monitoring, troubleshooting, rewards
-- **Build section** (9 pages + 2 examples): Agent developer quickstart, architecture, CoFHE encryption, ICL API, contracts, deployment, risk-scoring example, text-inference example
-- **API Reference**: Full ICL REST API documentation
-- **Resources**: Changelog, contract addresses, troubleshooting
-- Dark Blindference theme (`#0d0d0d` background, white/zinc-400 accents)
-- Auto-validation CI: checks `mint.json` navigation, page existence, logo paths, broken links
+Discovered and fixed 5 integration bugs:
+1. Decimal128 negation crash (`-amount_dec` fails on `Decimal128` objects)
+2. Missing `logger` in ICL internal endpoint
+3. Missing `metadata` passthrough lost `cofhe_prompt_key_inputs`
+4. Missing `pending_store_key` status in `InferenceRequestResponse` Literal
+5. Task ID mismatch — frontend vs Payment Service UUID generation. Added `task_id` to `JobSubmitRequest`
+- Created `smoke-gateway-flow.mjs` for Payment Service E2E testing
+- **Blocked**: Fhenix CoFHE testnet (`api.helios.fhenix.zone`) returns `ENOTFOUND`
 
-#### 3. Full Quorum Test Passed
+### Phase 4 — Node CLI: Jobs & Earnings
 
-End-to-end operational validation with 3 nodes + ICL:
-
-- ICL selected leader + 2 verifiers correctly
-- All 3 nodes received task assignments and claimed successfully
-- Nodes processed through CoFHE decrypt → IPFS fetch → inference pipeline
-- ICL bugs discovered and fixed during live quorum testing
-
-#### 4. ICL Production Hardening
-
-Critical fixes found during quorum testing:
-
-- **In-memory DB operators**: `_matches()` now supports `$or`, `$in`, `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`
-- **Assignment dispatch**: `_get_pending_assignments()` returns `task_id` (not `request_id`)
-- **Pydantic compatibility**: `get_assignments()` uses `getattr()` for model field access
-- **Hex handle parsing**: `claim_task()` parses `0x`-prefixed handles with `int(val, 16)`
-- **MongoDB Atlas persistence**: `USE_MONGO=true` with fallback to in-memory when unavailable
-- **`HEARTBEAT_GRACE_SECONDS: 300`**: ICL can restart without losing active nodes (was 3600)
-
-#### 5. Branding Cleanup
-
-Removed all hackathon-era "Wave" naming:
-
-- `wave2_network/` → `network/` (all path references updated)
-- `Wave3Popup.tsx` → `ProtocolUpdatePopup.tsx`
-- `WAVE2_SUBMISSION.md` → `SUBMISSION.md`
-- `fhenix-fhe.md` → `FHE_INTEGRATION.md`
-- `LLM_CONTEXT.md` → `CONTEXT.md`
-- No "Wave 2", "Wave 3", "wave2", "wave3" references remain in source or docs
+- `payment/routers/nodes.py`: New `GET /v1/nodes/{address}/jobs?limit=20` endpoint for operator earnings history
+- `JobRecord.rewards`: Per-node reward map (60% leader, 20% each verifier)
+- `Blindference-node/cli.py`: New `jobs list` and `jobs claim` commands
+- `Blindference-node/config.py`: Added `payment_service_url` field
+- Node CLI uses local directory for config/keystore (not global `~/.blindference`)
+- Receipt.status validation added to `registry.py`; fixed all 11 transaction functions
+- Node attestation fix: real `NodeRegistry.updateAttestation()` call with 32-byte cert_hash padding
+- Frontend gas estimation: EIP-1559 dynamic gas estimation on `BuyCreditsPage.tsx`
+- `PAYMENT_TEST_GUIDE.md`: Comprehensive testing guide created
 
 ### Contract Deployments (Arbitrum Sepolia)
 

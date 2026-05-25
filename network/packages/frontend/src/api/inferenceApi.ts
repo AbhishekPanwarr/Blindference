@@ -1,4 +1,4 @@
-import { apiClient } from './client'
+import { apiClient, paymentApiClient } from './client'
 
 type TextInferenceRequest = {
   promptCID: string
@@ -36,30 +36,53 @@ export type InferenceRequestPayload = {
   metadata: Record<string, unknown>
 }
 
-export type TextInferenceRequestPayload = {
-  developer_address: string
+export type JobSubmitPayload = {
+  user_address: string
+  prompt_cid: string
+  model_id: string
+  encrypted_prompt_key_high: string
+  encrypted_prompt_key_low: string
+  payment_mode?: 'credits' | 'escrow'
+  payment_currency?: 'cusdc' | 'blind'
+  insurance_opt_in?: boolean
   task_id?: string
-  mode: 'text'
-  model_id?: string
-  text_request: {
-    prompt_cid: string
-    encrypted_prompt_key: {
-      high: string
-      low: string
-    }
-    model_id?: string
-    coverage_enabled?: boolean
-  }
+  permits?: Array<{
+    node: string
+    permit: Record<string, unknown> | string
+  }>
   min_tier?: number
   zdr_required?: boolean
   verifier_count?: number
-  leader_address?: string
-  verifier_addresses?: string[]
   metadata?: Record<string, unknown>
-  escrow_id?: number
-  payment_mode?: 'escrow' | 'credits'
-  payment_currency?: 'cusdc' | 'blind'
-  insurance_opt_in?: boolean
+}
+
+export type JobSubmitResponse = {
+  job_id: string
+  status: string
+  escrow_id?: number | null
+  coverage_id?: number | null
+}
+
+export type JobStatusResponse = {
+  job_id: string
+  user_address: string
+  model_id: string
+  amount_cusdc: string
+  amount_blind: string
+  insurance_opt_in: boolean
+  insurance_premium_cusdc: string
+  escrow_id: number | null
+  coverage_id: number | null
+  status: string
+  leader_address: string | null
+  verifier_addresses: string[]
+  error_reason: string | null
+  result_hash: string | null
+  output_cid: string | null
+  rewards_distributed: boolean
+  reward_tx_hashes: string[]
+  created_at: string
+  updated_at: string
 }
 
 export type IpfsUploadResponse = {
@@ -177,9 +200,6 @@ export const inferenceApi = {
   submit(payload: InferenceRequestPayload) {
     return apiClient.post<BackendInferenceRequest>('/v1/inference/requests', payload)
   },
-  submitText(payload: TextInferenceRequestPayload) {
-    return apiClient.post<BackendInferenceRequest | BackendTextInferenceStatus>('/v1/inference/requests', payload)
-  },
   uploadPromptBlob(blob: Blob, filename = 'blindference-text-prompt.bin') {
     const formData = new FormData()
     formData.append('file', blob, filename)
@@ -194,6 +214,15 @@ export const inferenceApi = {
   },
   list() {
     return apiClient.get<BackendInferenceRequest[]>('/v1/inference')
+  },
+}
+
+export const jobApi = {
+  submit(payload: JobSubmitPayload) {
+    return paymentApiClient.post<JobSubmitResponse>('/v1/jobs/submit', payload)
+  },
+  getStatus(jobId: string) {
+    return paymentApiClient.get<JobStatusResponse>(`/v1/jobs/${jobId}`)
   },
 }
 

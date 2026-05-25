@@ -96,7 +96,7 @@ class InferenceRequestResponse(BaseModel):
     loan_id: str | None = None
     coverage_type: str | None = None
     max_fee_gnk: int
-    status: Literal["queued", "accepted", "rejected", "disputed"]
+    status: Literal["queued", "accepted", "rejected", "disputed", "pending_store_key"]
     min_tier: int
     zdr_required: bool
     verifier_count: int

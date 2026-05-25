@@ -47,9 +47,6 @@ class InferenceRequestCreate(BaseModel):
     verifier_count: int = Field(default=2, ge=1, le=5)
     metadata: dict[str, Any] = Field(default_factory=dict)
     escrow_id: int = Field(default=0, ge=0)
-    payment_mode: str = Field(default="escrow", description="'escrow' or 'credits'")
-    payment_currency: str = Field(default="cusdc", description="'cusdc' or 'blind'")
-    insurance_opt_in: bool = False
 
     def normalized_encrypted_features(self) -> list[EncryptedFeature]:
         if isinstance(self.encrypted_input, list):
@@ -132,3 +129,23 @@ class BootstrapDemoNodesRequest(BaseModel):
 class NodeRuntimeRegistrationRequest(BaseModel):
     operator_address: str
     callback_url: str
+
+
+class InternalInferenceRequest(BaseModel):
+    """Internal inference request from Payment Service (no payment fields)."""
+
+    job_id: str
+    developer_address: str
+    prompt_cid: str
+    model_id: str
+    encrypted_prompt_key_high: str
+    encrypted_prompt_key_low: str
+    permits: list[PermitEntry] = Field(default_factory=list)
+    min_tier: int = Field(default=0, ge=0, le=2)
+    zdr_required: bool = False
+    verifier_count: int = Field(default=2, ge=1, le=5)
+    coverage_enabled: bool = False
+    # Optional deterministic task_id (bytes32 hex) for on-chain key storage.
+    # Falls back to job_id if omitted.
+    task_id: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
