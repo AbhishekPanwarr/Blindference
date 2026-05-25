@@ -3,12 +3,31 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Any
+
+from bson.decimal128 import Decimal128
 
 from db.collections import CREDITS
 from models.db_models import CreditAccountRecord
 
 logger = logging.getLogger("blindference.payment.credits")
+
+
+def _to_decimal128(value: int | str | Decimal128) -> Decimal128:
+    """Convert a Python int or string to MongoDB Decimal128."""
+    if isinstance(value, Decimal128):
+        return value
+    return Decimal128(Decimal(str(value)))
+
+
+def _to_str(value: int | str | Decimal128 | None) -> str:
+    """Convert a MongoDB value back to string for API responses."""
+    if value is None:
+        return "0"
+    if isinstance(value, Decimal128):
+        return str(value.to_decimal())
+    return str(value)
 
 
 class InsufficientCredits(Exception):
@@ -32,12 +51,12 @@ class CreditService:
                 "total_spent_blind": "0",
             }
         return {
-            "balance_cusdc": str(record.get("balance_cusdc", 0)),
-            "balance_blind": str(record.get("balance_blind", 0)),
-            "total_deposited_cusdc": str(record.get("total_deposited_cusdc", 0)),
-            "total_deposited_blind": str(record.get("total_deposited_blind", 0)),
-            "total_spent_cusdc": str(record.get("total_spent_cusdc", 0)),
-            "total_spent_blind": str(record.get("total_spent_blind", 0)),
+            "balance_cusdc": _to_str(record.get("balance_cusdc")),
+            "balance_blind": _to_str(record.get("balance_blind")),
+            "total_deposited_cusdc": _to_str(record.get("total_deposited_cusdc")),
+            "total_deposited_blind": _to_str(record.get("total_deposited_blind")),
+            "total_spent_cusdc": _to_str(record.get("total_spent_cusdc")),
+            "total_spent_blind": _to_str(record.get("total_spent_blind")),
         }
 
     async def process_deposit(self, tx_hash: str, chain_service) -> dict[str, Any]:
@@ -102,16 +121,16 @@ class CreditService:
         user_address = deposited["from"].lower()
         updates: dict[str, Any] = {}
         if deposited["cusdc"] != "0":
-            amount_int = int(deposited["cusdc"])
+            amount_dec = _to_decimal128(deposited["cusdc"])
             updates["$inc"] = {
-                "balance_cusdc": amount_int,
-                "total_deposited_cusdc": amount_int,
+                "balance_cusdc": amount_dec,
+                "total_deposited_cusdc": amount_dec,
             }
         elif deposited["blind"] != "0":
-            amount_int = int(deposited["blind"])
+            amount_dec = _to_decimal128(deposited["blind"])
             updates["$inc"] = {
-                "balance_blind": amount_int,
-                "total_deposited_blind": amount_int,
+                "balance_blind": amount_dec,
+                "total_deposited_blind": amount_dec,
             }
         else:
             raise ValueError("No cUSDC or BLIND deposit detected")
@@ -155,14 +174,16 @@ class CreditService:
 
         updates: dict[str, Any] = {"$set": {"last_updated": datetime.now(timezone.utc)}}
         if amount_cusdc_int > 0:
+            amount_dec = _to_decimal128(amount_cusdc_int)
             updates["$inc"] = {
-                "balance_cusdc": -amount_cusdc_int,
-                "total_spent_cusdc": amount_cusdc_int,
+                "balance_cusdc": -amount_dec,
+                "total_spent_cusdc": amount_dec,
             }
         if amount_blind_int > 0:
+            amount_dec = _to_decimal128(amount_blind_int)
             inc = updates.get("$inc", {})
-            inc["balance_blind"] = -amount_blind_int
-            inc["total_spent_blind"] = amount_blind_int
+            inc["balance_blind"] = -amount_dec
+            inc["total_spent_blind"] = amount_dec
             updates["$inc"] = inc
 
         result = await self.database[CREDITS].update_one(

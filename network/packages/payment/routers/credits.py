@@ -3,14 +3,21 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Any
 
+from bson.decimal128 import Decimal128
 from fastapi import APIRouter, Depends, HTTPException
 from web3 import Web3
 
 from db.collections import CREDITS
 from services import ServiceContainer, get_service_container
 from services.credit_service import InsufficientCredits
+
+
+def _to_decimal128(value: int | str) -> Decimal128:
+    """Convert a Python int or string to MongoDB Decimal128."""
+    return Decimal128(Decimal(str(value)))
 
 router = APIRouter(prefix="/v1", tags=["credits"])
 logger = logging.getLogger("blindference.payment.router")
@@ -211,12 +218,13 @@ async def purchase_credit_package(
     user_address = deposited["from"].lower()
 
     # Credit the user's account
+    credits_dec = _to_decimal128(credits_cusdc)
     await services.database[CREDITS].update_one(
         {"user_address": user_address},
         {
             "$inc": {
-                "balance_cusdc": credits_cusdc,
-                "total_deposited_cusdc": credits_cusdc,
+                "balance_cusdc": credits_dec,
+                "total_deposited_cusdc": credits_dec,
             },
             "$set": {
                 "user_address": user_address,
@@ -396,12 +404,13 @@ async def refund_credits(
 
     try:
         # Credit the user's account
+        amount_dec = _to_decimal128(amount_cusdc_int)
         await services.database[CREDITS].update_one(
             {"user_address": user_address.lower()},
             {
                 "$inc": {
-                    "balance_cusdc": amount_cusdc_int,
-                    "total_deposited_cusdc": amount_cusdc_int,
+                    "balance_cusdc": amount_dec,
+                    "total_deposited_cusdc": amount_dec,
                 },
                 "$set": {
                     "user_address": user_address.lower(),
