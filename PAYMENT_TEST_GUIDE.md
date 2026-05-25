@@ -13,38 +13,114 @@ The ICL never touches payment logic. All payment state lives in the Payment Serv
 
 ---
 
-## Prerequisites
+## Quick Start — 5 Minutes to First Test
 
-### 1. Services Running
+### Step 0: Pre-Flight Checklist
+
+Run this in your shell before starting anything:
 
 ```bash
-# Terminal 1: MongoDB
-mongod --dbpath /var/lib/mongodb
+# Check MongoDB
+mongosh --eval 'db.adminCommand({ping:1})' 2>/dev/null && echo "MongoDB: OK" || echo "MongoDB: START IT FIRST"
 
-# Terminal 2: ICL
+# Check Python envs exist
+ls blindference/network/packages/icl/.venv/bin/uvicorn 2>/dev/null && echo "ICL venv: OK" || echo "ICL venv: MISSING — run: cd blindference/network/packages/icl && python -m venv .venv && source .venv/bin/activate && pip install -e ."
+ls blindference/network/packages/payment/.venv/bin/uvicorn 2>/dev/null && echo "Payment venv: OK" || echo "Payment venv: MISSING"
+
+# Check node CLI
+blindference-node --version 2>/dev/null && echo "Node CLI: OK" || echo "Node CLI: MISSING — run: cd Blindference-node && pip install -e ."
+
+# Check cast (Foundry)
+cast --version 2>/dev/null && echo "Foundry: OK" || echo "Foundry: MISSING — install from https://getfoundry.sh"
+```
+
+### Step 1: Start Services (4 Terminals)
+
+```bash
+# Terminal 1 — MongoDB (if not already running as service)
+sudo systemctl start mongod 2>/dev/null || mongod --dbpath ~/mongodb-data --fork --logpath ~/mongodb.log
+
+# Terminal 2 — ICL
 cd blindference/network/packages/icl
 source .venv/bin/activate
+export $(cat .env | xargs) 2>/dev/null
 uvicorn main:app --host 127.0.0.1 --port 8000 --reload
 
-# Terminal 3: Payment Service
+# Terminal 3 — Payment Service
 cd blindference/network/packages/payment
 source .venv/bin/activate
+export $(cat .env | xargs) 2>/dev/null
 uvicorn main:app --host 127.0.0.1 --port 8001 --reload
 
-# Terminal 4: Frontend
+# Terminal 4 — Frontend (optional, for browser tests)
 cd blindference/network/packages/frontend
 npm run dev -- --host 127.0.0.1
 ```
 
-### 2. Health Checks
+### Step 2: Verify Services Are Up
 
 ```bash
-curl http://127.0.0.1:8000/health
-curl http://127.0.0.1:8001/v1/credits/packages
-curl http://127.0.0.1:3000
+curl -s http://127.0.0.1:8000/health | jq .status 2>/dev/null || echo "ICL: DOWN"
+curl -s http://127.0.0.1:8001/v1/credits/packages | jq '.packages | length' 2>/dev/null || echo "Payment: DOWN"
 ```
 
-### 3. Environment Variables
+Expected: `3` packages from Payment Service.
+
+### Step 3: Start 3 Nodes (3 More Terminals)
+
+```bash
+# Terminal 5 — Node 1 (Leader)
+cd Blindference-node
+blindference-node run
+
+# Terminal 6 — Node 2 (Verifier 1)
+cd Blindference-node
+# Use a different private key via config or env
+BLF_PRIVATE_KEY=0x... blindference-node run
+
+# Terminal 7 — Node 3 (Verifier 2)
+cd Blindference-node
+BLF_PRIVATE_KEY=0x... blindference-node run
+```
+
+> **Tip**: If you only have 1 node configured, the ICL bootstrap demo creates 3 mock operators. For real testing you need 3 actual nodes. See [Blindference-node/AGENTS.md](../Blindference-node/AGENTS.md) for setup.
+
+---
+
+## Smoke Test — Automated (No Browser Needed)
+
+Run the Node.js smoke test script to verify the Payment Service → ICL flow:
+
+```bash
+cd blindference/network/scripts/demo
+# Install deps if first time
+npm install axios
+
+# Run smoke test (requires ICL + Payment Service running)
+node smoke-gateway-flow.mjs
+```
+
+**What it does:**
+1. Submits a job to Payment Service
+2. Verifies 200 response with `job_id`
+3. Polls Payment Service for status
+4. Checks credit balance was deducted
+5. Waits for completion (or timeout)
+
+**Look for:**
+- `✓ Job submitted: job_... status=RUNNING`
+- `✓ Credits deducted: balance=...`
+- `✓ Job completed: status=COMPLETED` (if nodes are running)
+- `✓ Job failed with refund: status=FAILED` (if nodes not running — this is also valid!)
+
+**If it fails early:**
+- Check ICL is on port 8000: `curl http://127.0.0.1:8000/health`
+- Check Payment Service is on port 8001: `curl http://127.0.0.1:8001/v1/credits/packages`
+- Check MongoDB: `mongosh --eval 'db.adminCommand({ping:1})'`
+
+---
+
+## Full Prerequisites
 
 Ensure these are set in `network/packages/payment/.env`:
 ```bash
@@ -959,3 +1035,68 @@ mongosh blindference_payments --eval 'db.jobs.countDocuments({user_address: "0xY
 - This should not happen after Phase 3 fix
 - Check all amounts are converted with `_to_decimal128()`
 - Never use `-amount_dec` directly on Decimal128 objects
+
+### "Fhenix CoFHE testnet ENOTFOUND"
+- The Fhenix testnet (`api.helios.fhenix.zone`) is currently down
+- Nodes cannot decrypt prompts without CoFHE — this blocks the full inference flow
+- **Workaround**: Test Payment Service + ICL integration without actual inference:
+  1. Submit job → verify Payment Service deducts credits and forwards to ICL
+  2. Stop ICL mid-job → verify Payment Service retries and refunds
+  3. Check MongoDB state at each step
+  4. Use `smoke-gateway-flow.mjs` for automated API-only testing
+  5. Test credit purchase, balance queries, and node earnings endpoint without running nodes
+- When CoFHE is back: run full Test 4 with nodes for end-to-end inference
+
+---
+
+## Minimal 5-Test Checklist (15 Minutes)
+
+Don't have time for all 14 tests? Run these 5 in order:
+
+### Test 1: Health Check (1 min)
+```bash
+curl -s http://127.0.0.1:8001/v1/credits/packages | jq '.packages | length'
+```
+**Pass if:** Returns `3`
+
+### Test 2: Credit Purchase (3 min)
+1. Open http://localhost:3000/buy-credits
+2. Buy Starter package with MetaMask
+3. ```bash
+   curl -s "http://127.0.0.1:8001/v1/credits/0xYourAddress" | jq '.balance_cusdc'
+   ```
+**Pass if:** Balance > 0
+
+### Test 3: Job Submit + Deduct (2 min)
+```bash
+curl -s -X POST http://127.0.0.1:8001/v1/jobs/submit \
+  -H "Content-Type: application/json" \
+  -d '{"task_id":"0x'$(openssl rand -hex 32)'","user_address":"0xYourAddress","model_id":"groq:llama-3.3-70b-versatile","prompt_cid":"QmTest","encrypted_prompt_key":{"high":"123","low":"456"},"metadata":{},"amount_credits":10}' | jq '.status'
+```
+**Pass if:** Returns `"RUNNING"`
+
+Then verify balance decreased:
+```bash
+curl -s "http://127.0.0.1:8001/v1/credits/0xYourAddress" | jq '.balance_cusdc'
+```
+**Pass if:** Decreased by exactly 10
+
+### Test 4: Insufficient Credits (1 min)
+```bash
+curl -s -X POST http://127.0.0.1:8001/v1/jobs/submit \
+  -H "Content-Type: application/json" \
+  -d '{"task_id":"0x'$(openssl rand -hex 32)'","user_address":"0xYourAddress","model_id":"groq:llama-3.3-70b-versatile","prompt_cid":"QmTest","encrypted_prompt_key":{"high":"123","low":"456"},"metadata":{},"amount_credits":999999}'
+```
+**Pass if:** HTTP 402, balance unchanged
+
+### Test 5: Kill ICL → Verify Retry/Refund (8 min)
+1. Start ICL: `uvicorn main:app --host 127.0.0.1 --port 8000`
+2. Submit a job (see Test 3)
+3. Kill ICL: `pkill -f "uvicorn main:app --host 127.0.0.1 --port 8000"`
+4. Wait 30 seconds, check Payment Service logs for retry attempts
+5. Check job status: `curl -s "http://127.0.0.1:8001/v1/jobs/job_..." | jq '.status'`
+**Pass if:** Eventually `"FAILED"` with `"failure_reason"` about ICL
+6. Check balance refunded: `curl -s "http://127.0.0.1:8001/v1/credits/0xYourAddress" | jq '.balance_cusdc'`
+**Pass if:** Back to original amount (before Test 3)
+
+**All 5 pass?** Your Payment Service gateway is working correctly.
