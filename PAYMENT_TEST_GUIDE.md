@@ -1,128 +1,94 @@
-# Blindference Payment & Staking — Complete Test Guide
+# Blindference Payment Service — Manual Test Guide (Phase 1-4)
 
-> **Goal**: Verify all payment features work end-to-end: node staking, credit deposits, inference payments, insurance, reward distribution, and slashing.
+> **Goal**: Verify every part of the Payment Service gateway architecture manually: credit purchases, job submission, escrow/insurance, ICL forwarding, callback handling, reward distribution, refunds, node earnings, and edge cases.
+
+**Architecture under test:**
+```
+Frontend → Payment Service (8001) → ICL (8000) → Nodes
+                          ↑______________│
+                          (callback on complete/fail)
+```
+
+The ICL never touches payment logic. All payment state lives in the Payment Service.
 
 ---
 
-## Prerequisites Checklist
+## Prerequisites
 
-Before starting, ensure all services are running:
+### 1. Services Running
 
 ```bash
-# Terminal 1: ICL
-cd /path/to/blindference/network/packages/icl
-uvicorn main:app --host 127.0.0.1 --port 8000
+# Terminal 1: MongoDB
+mongod --dbpath /var/lib/mongodb
 
-# Terminal 2: Payment Service
-cd /path/to/blindference/network/packages/payment
-uvicorn main:app --host 127.0.0.1 --port 8001
+# Terminal 2: ICL
+cd blindference/network/packages/icl
+source .venv/bin/activate
+uvicorn main:app --host 127.0.0.1 --port 8000 --reload
 
-# Terminal 3: MongoDB
-mongod --dbpath /var/lib/mongodb  # or use Docker
+# Terminal 3: Payment Service
+cd blindference/network/packages/payment
+source .venv/bin/activate
+uvicorn main:app --host 127.0.0.1 --port 8001 --reload
 
 # Terminal 4: Frontend
-cd /path/to/blindference/network/packages/frontend
+cd blindference/network/packages/frontend
 npm run dev -- --host 127.0.0.1
 ```
 
-Verify services are healthy:
+### 2. Health Checks
 
 ```bash
-curl http://127.0.0.1:8000/health        # ICL
-curl http://127.0.0.1:8001/v1/credits/packages  # Payment Service
-curl http://127.0.0.1:3000              # Frontend
+curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8001/v1/credits/packages
+curl http://127.0.0.1:3000
+```
+
+### 3. Environment Variables
+
+Ensure these are set in `network/packages/payment/.env`:
+```bash
+MONGODB_URL=mongodb://localhost:27017/blindference_payments
+ARBITRUM_SEPOLIA_RPC=https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY
+BLIND_TOKEN_ADDRESS=0x232D5470DaaC7AD552a42d876aDEF1f778033cE0
+CUSDC_TOKEN_ADDRESS=0x42E47f9bA89712C317f60A72C81A610A2b68c48a
+PAYOUT_CLAIMER_ADDRESS=0xEfB565c7989dd1dEDD0C5B8c95dA24Ef2d94FBbd
+INFERENCE_GATE_ADDRESS=0xF3014a79985f83898912cAe2676226310A546905
+ICL_WALLET_PRIVATE_KEY=0x...        # For on-chain txs
+PAYMENT_SERVICE_WALLET_KEY=0x...    # For reward distribution
+```
+
+Ensure these are set in `network/packages/icl/.env`:
+```bash
+PAYMENT_SERVICE_URL=http://127.0.0.1:8001
+```
+
+### 4. Funding Requirements
+
+| Account | Needs | How to Fund |
+|---------|-------|-------------|
+| Payment Service wallet (`0x7F9B...`) | BLIND for rewards | Deployer sends BLIND |
+| Your MetaMask test wallet | ETH for gas, BLIND to buy credits | Faucet + deployer |
+| Node 1, 2, 3 | ETH for gas | Faucet |
+
+**Fund Payment Service wallet (from deployer):**
+```bash
+cast send 0x232D5470DaaC7AD552a42d876aDEF1f778033cE0 \
+  "transfer(address,uint256)" \
+  0x7F9B413Da50e72415b16Eb9df6e5E59774a338dc \
+  10000000000000000000000 \
+  --rpc-url https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY \
+  --private-key 0x5ea99166e1520909188c93c423bdea9f9a539a7ae29965e7dc92df17a9faaf6b
 ```
 
 ---
 
-## Test 1: Node Staking (CLI)
+## Test 1: Credit Packages & Balance (API)
 
-### 1A. Stake BLIND Tokens
-
-From each node directory:
+### 1A. List Credit Packages
 
 ```bash
-cd real/one/Blindference-node
-blindference-node staking status          # Check current stake (should be 0)
-blindference-node staking stake 1000      # Stake 1000 BLIND
-```
-
-**Expected output:**
-```
-Staking 1000.0 BLIND (1000000000000000000000 wei) …
-  Approving BLIND transfer …
-    Approve tx         : 0x...
-  Staking …
-    Stake tx           : 0x...
-  Staked successfully: 0x...
-  Total staked: 1000.0 BLIND
-```
-
-**What to verify on-chain:**
-```bash
-# Query stake info (replace with node address)
-cast call 0x222Ac74201Ed58915e42Ee5be626d939fd234D0b \
-  "getStakeInfo(address)((uint256,uint256,uint256,uint256,bool))" \
-  0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5 \
-  --rpc-url https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY
-# Expected: (1000000000000000000000, 0, 0, 0, true)
-```
-
-**Repeat for all 3 nodes:**
-- Node 1 (`real/one/Blindference-node`): `0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5`
-- Node 2 (`real/two/Blindference-node`): `0x9Cc0cBfCc4e3F45e2958F6EC0F5e70B500D0bB3E`
-- Node 3 (`real/three/Blindference-node`): `0x61e72a024aE31ed2f0656a37b3B3172CDC364C85`
-
-### 1B. Verify Stake Status
-
-```bash
-blindference-node staking status
-```
-
-**Expected:**
-```
-============================================================
-  BLIND Stake Status
-============================================================
-  Staked          : 1000.00 BLIND
-  Unbonding       : 0.00 BLIND
-  Failures        : 0
-  Active          : Yes
-============================================================
-```
-
-### 1C. Verify Node Appears in ICL Active Pool
-
-```bash
-curl http://127.0.0.1:8000/internal/nodes | jq '.nodes[] | {address, active}'
-```
-
-**Expected:** 3 active nodes listed.
-
-### 1D. Test Unstake Flow (Optional)
-
-```bash
-blindference-node staking unstake         # Initiate 96h unbonding
-blindference-node staking status          # Check unbonding status
-# Wait 96 hours (or mock on testnet)
-blindference-node staking withdraw        # Complete unstake
-```
-
-**Expected after initiate:**
-```
-  Staked          : 0.00 BLIND
-  Unbonding       : 1000.00 BLIND
-  Unbond ready in : 345600s
-```
-
----
-
-## Test 2: Credit Deposits (Frontend + API)
-
-### 2A. Check Credit Packages
-
-```bash
-curl http://127.0.0.1:8001/v1/credits/packages | jq
+curl -s http://127.0.0.1:8001/v1/credits/packages | jq
 ```
 
 **Expected:**
@@ -136,17 +102,21 @@ curl http://127.0.0.1:8001/v1/credits/packages | jq
 }
 ```
 
-### 2B. Check User Credit Balance
+**What to verify:**
+- [ ] 3 packages returned
+- [ ] `price_blind_wei` is a string (not number, to prevent int64 overflow)
+- [ ] Response is fast (< 100ms, no DB query needed)
+
+### 1B. Check User Balance (Empty)
 
 ```bash
-# Replace with your MetaMask address
-curl "http://127.0.0.1:8001/v1/credits/0xYourAddress" | jq
+curl -s "http://127.0.0.1:8001/v1/credits/0xYourMetaMaskAddress" | jq
 ```
 
-**Expected (new user):**
+**Expected:**
 ```json
 {
-  "address": "0xYourAddress",
+  "address": "0xYourMetaMaskAddress",
   "balance_cusdc": 0,
   "total_deposited_cusdc": 0,
   "total_spent_cusdc": 0,
@@ -154,149 +124,258 @@ curl "http://127.0.0.1:8001/v1/credits/0xYourAddress" | jq
 }
 ```
 
-### 2C. Frontend: Buy Credits Page
-
-1. Open http://localhost:3000/buy-credits
-2. Connect MetaMask (Arbitrum Sepolia)
-3. Select "Starter" package
-4. Click "Purchase with BLIND"
-5. Confirm MetaMask transaction
-6. Wait for "Purchase successful!" toast
-
-**What happens on-chain:**
-- You send 100 BLIND to Payment Service wallet (`0x7F9B...`)
-- Payment Service detects the transfer and credits your account with cUSDC-equivalent credits
-
-**Verify via API:**
-```bash
-curl "http://127.0.0.1:8001/v1/credits/0xYourAddress" | jq
-# Expected: balance_cusdc > 0
-```
-
-### 2D. Alternative: Direct cUSDC Deposit
-
-If you have cUSDC:
-```bash
-# Notify Payment Service of a cUSDC deposit tx
-curl -X POST "http://127.0.0.1:8001/v1/credits/deposit" \
-  -H "Content-Type: application/json" \
-  -d '{"tx_hash": "0xYourDepositTxHash", "user_address": "0xYourAddress"}' | jq
-```
+**What to verify:**
+- [ ] All values are `0` for new user
+- [ ] `balance_cusdc` is integer (cents), not wei
 
 ---
 
-## Test 3: Inference with Credit Payment
+## Test 2: Buy Credits via Frontend
 
-### 3A. Frontend: Submit Text Inference
+### 2A. Frontend Flow
 
-1. Open http://localhost:3000
-2. Switch to "Text Inference" tab
-3. Enter prompt: "What is 2+2?"
-4. Select model: `groq:llama-3.3-70b-versatile`
-5. Select payment mode: **Credits**
-6. Select currency: **cUSDC** (or BLIND)
-7. Optional: Check "Insurance coverage" (+2% premium)
-8. Click "Submit"
-9. MetaMask: Confirm `storeKey` transaction (stores encrypted prompt key)
-10. Wait for status to reach **COMPLETED**
+1. Open http://localhost:3000/buy-credits
+2. Connect MetaMask (Arbitrum Sepolia)
+3. Select "Starter" package (100 BLIND)
+4. Click "Purchase with BLIND"
+5. **MetaMask popup**: Confirm BLIND token transfer to Payment Service wallet
+6. Wait for "Purchase successful!" toast
 
-### 3B. Watch ICL Logs
-
-In ICL terminal, look for:
-
-```
-# Request created
-INFO | Request created: request_id=... task_id=... mode=text
-
-# Quorum forming
-INFO | Quorum formed: request_id=... leader=0x... verifiers=[0x..., 0x...]
-
-# Nodes claiming
-INFO | Node 0x... claimed assignment for task_id=...
-
-# Leader result
-INFO | Leader result submitted: request_id=... commitment_hash=0x...
-
-# Verifier verdicts
-INFO | Verifier verdict: request_id=... verifier=0x... verdict=CONFIRM
-
-# Consensus reached
-INFO | Consensus reached: request_id=... accepted=True confirmations=2
-
-# On-chain commit
-INFO | Result committed on-chain: tx_hash=0x...
-
-# Reward distribution (Phase 4)
-INFO | Rewards distributed for job=... status=distributed distributions=3
-```
-
-### 3C. Verify Credit Deduction
+### 2B. Verify On-Chain Transfer
 
 ```bash
-curl "http://127.0.0.1:8001/v1/credits/0xYourAddress" | jq
-# balance_cusdc should have decreased by job price (+ insurance premium if opted in)
+cast call 0x232D5470DaaC7AD552a42d876aDEF1f778033cE0 \
+  "balanceOf(address)(uint256)" \
+  0x7F9B413Da50e72415b16Eb9df6e5E59774a338dc \
+  --rpc-url https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY
+# Should have increased by package price (100 BLIND = 100000000000000000000 wei)
 ```
 
-### 3D. Verify Job Status in MongoDB
+### 2C. Verify API Balance Updated
 
 ```bash
-mongosh blindference --eval 'db.inference_requests.findOne({}, {status: 1, metadata: 1, leader_address: 1, verifier_addresses: 1})'
+curl -s "http://127.0.0.1:8001/v1/credits/0xYourMetaMaskAddress" | jq
 ```
 
 **Expected:**
 ```json
 {
-  "status": "accepted",
-  "leader_address": "0x...",
-  "verifier_addresses": ["0x...", "0x..."],
-  "metadata": {
-    "prompt_key_store_tx": "0x...",
-    "leader_submission": { ... },
-    "text_leader_result": { ... }
-  }
+  "address": "0xYourMetaMaskAddress",
+  "balance_cusdc": 10000,   // 100 * 100 (cents per credit)
+  "total_deposited_cusdc": 10000,
+  "total_spent_cusdc": 0,
+  "total_refunded_cusdc": 0
 }
 ```
 
----
+**What to verify:**
+- [ ] `balance_cusdc` increased by `base_calls * 100` (100 * 100 = 10,000 cents)
+- [ ] `total_deposited_cusdc` matches
+- [ ] No `total_spent` or `total_refunded` yet
 
-## Test 4: Insurance Purchase
-
-### 4A. Submit Job with Insurance
-
-1. On inference form, check "Insurance coverage"
-2. Job price increases by 2%
-3. Submit and pay
-
-**ICL/Payment Service logs should show:**
-```
-INFO | Insurance opted in: job_price=5000 premium=100
-INFO | Insurance purchased: coverage_id=123 escrow=456 job=...
-```
-
-### 4B. Verify Insurance on Reineira (Optional)
+### 2D. Verify MongoDB Storage (Decimal128)
 
 ```bash
-# Query Reineira coverage
-cast call 0xC7D3706Ca2a42d739429Aec1b452051dA5Eb68f0 \
-  "getCoverage(uint256)" 123 \
-  --rpc-url https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY
+mongosh blindference_payments --eval 'db.credit_balances.findOne({address: "0xYourMetaMaskAddress"})'
 ```
 
-### 4C. File Dispute (if result is wrong)
-
-Frontend: On completed job, click "File Dispute" (only if insurance was purchased).
-
-**What happens:**
-1. Frontend calls ICL dispute endpoint
-2. ICL re-executes inference with new quorum
-3. If result differs → dispute successful, insurance pays out
-4. If result matches → dispute rejected
+**What to verify:**
+- [ ] Document exists with `_id`
+- [ ] `balance` field is `Decimal128` type (not `int64` or `Number`)
+- [ ] `balance` equals `NumberDecimal("10000")`
+- [ ] `total_deposited`, `total_spent`, `total_refunded` are also `Decimal128`
 
 ---
 
-## Test 5: Reward Distribution (Phase 4)
+## Test 3: Submit Job with Insufficient Credits (402)
 
-### 5A. Check Payment Service BLIND Balance
+### 3A. API Test
+
+```bash
+curl -s -X POST http://127.0.0.1:8001/v1/jobs/submit \
+  -H "Content-Type: application/json" \
+  -d '{
+    "task_id": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+    "user_address": "0xYourMetaMaskAddress",
+    "model_id": "groq:llama-3.3-70b-versatile",
+    "prompt_cid": "QmTest",
+    "encrypted_prompt_key": {"high": "123", "low": "456"},
+    "metadata": {},
+    "amount_credits": 999999
+  }' | jq
+```
+
+**Expected:**
+```json
+{
+  "detail": "Insufficient credits. Required: 999999, Available: 10000"
+}
+```
+
+**HTTP status:** `402 Payment Required`
+
+### 3B. Verify No State Changes
+
+```bash
+mongosh blindference_payments --eval 'db.jobs.find({"user_address": "0xYourMetaMaskAddress"}).count()'
+# Expected: 0 (no job document created)
+```
+
+```bash
+curl -s "http://127.0.0.1:8001/v1/credits/0xYourMetaMaskAddress" | jq '.balance_cusdc'
+# Expected: 10000 (no deduction happened)
+```
+
+**What to verify:**
+- [ ] HTTP 402 returned immediately
+- [ ] No job document created in MongoDB
+- [ ] User credit balance unchanged
+- [ ] No on-chain transactions sent
+- [ ] ICL was never contacted
+
+---
+
+## Test 4: Submit Job Successfully (Full Flow)
+
+### 4A. Prepare: Ensure Nodes Are Running
+
+Start 3 nodes (in separate terminals):
+```bash
+cd Blindference-node
+blindference-node run
+```
+
+Verify they appear in ICL:
+```bash
+curl -s http://127.0.0.1:8000/internal/nodes | jq '.nodes | length'
+# Expected: 3
+```
+
+### 4B. Submit Job via API
+
+```bash
+curl -s -X POST http://127.0.0.1:8001/v1/jobs/submit \
+  -H "Content-Type: application/json" \
+  -d '{
+    "task_id": "0x'$(openssl rand -hex 32)'",
+    "user_address": "0xYourMetaMaskAddress",
+    "model_id": "groq:llama-3.3-70b-versatile",
+    "prompt_cid": "QmTestPrompt123",
+    "encrypted_prompt_key": {"high": "12345678901234567890", "low": "98765432109876543210"},
+    "metadata": {
+      "prompt_key_store_tx": "0xabc123",
+      "cofhe_prompt_key_inputs": {"high": "enc_high_123", "low": "enc_low_456"}
+    },
+    "amount_credits": 100
+  }' | jq
+```
+
+**Expected (immediate response):**
+```json
+{
+  "job_id": "job_0x...",
+  "status": "RUNNING",
+  "request_id": "req_...",
+  "amount_credits": 100,
+  "transaction_hash": "0x...",
+  "created_at": "2026-05-25T..."
+}
+```
+
+### 4C. Verify Credit Deduction
+
+```bash
+curl -s "http://127.0.0.1:8001/v1/credits/0xYourMetaMaskAddress" | jq
+```
+
+**Expected:**
+```json
+{
+  "balance_cusdc": 9900,      // 10000 - 100
+  "total_spent_cusdc": 100,
+  ...
+}
+```
+
+**What to verify:**
+- [ ] Balance decreased by exactly 100
+- [ ] `total_spent_cusdc` increased by 100
+- [ ] `total_deposited` unchanged
+
+### 4D. Verify Job Document in MongoDB
+
+```bash
+mongosh blindference_payments --eval 'db.jobs.findOne({}).pretty()'
+```
+
+**What to verify:**
+- [ ] Document has `job_id`, `task_id`, `user_address`, `status: "RUNNING"`
+- [ ] `amount_credits` is `Decimal128` (not int)
+- [ ] `metadata` includes `cofhe_prompt_key_inputs` (passthrough from submit)
+- [ ] `transaction_hash` exists (escrow creation tx)
+- [ ] `request_id` exists (ICL request ID returned from internal endpoint)
+
+### 4E. Verify ICL Received the Request
+
+Check ICL terminal logs:
+```
+INFO | Request created: request_id=... task_id=... mode=text
+INFO | Quorum formed: request_id=... leader=0x... verifiers=[0x..., 0x...]
+```
+
+Or query ICL directly:
+```bash
+curl -s "http://127.0.0.1:8000/v1/inference/requests" | jq '.requests[0]'
+```
+
+**What to verify:**
+- [ ] ICL has a request with matching `task_id`
+- [ ] `status` is `queued` or later
+- [ ] `metadata.prompt_key_store_tx` is `"0xabc123"` (from your submit)
+- [ ] `metadata.cofhe_prompt_key_inputs` is present
+
+### 4F. Watch Job Completion
+
+Poll Payment Service:
+```bash
+curl -s "http://127.0.0.1:8001/v1/jobs/job_0x..." | jq
+```
+
+**During execution:** `status: "RUNNING"`
+**After completion:** `status: "COMPLETED"` or `status: "FAILED"`
+
+**What to verify for COMPLETED:**
+- [ ] `status` changed from `RUNNING` → `COMPLETED`
+- [ ] `completed_at` timestamp present
+- [ ] `rewards` field has leader + verifier addresses with amounts:
+  ```json
+  "rewards": {
+    "0xLeaderAddress...": 0.6,
+    "0xVerifier1Address...": 0.2,
+    "0xVerifier2Address...": 0.2
+  }
+  ```
+- [ ] `request_id` matches ICL's request
+
+### 4G. Verify ICL Callback
+
+Check Payment Service terminal logs:
+```
+INFO | Job completion callback received: job_id=... status=COMPLETED
+INFO | Distributing rewards for job=... leader=0x... verifiers=[0x..., 0x...]
+INFO | Rewards distributed: job=... status=success
+```
+
+**What to verify:**
+- [ ] Callback was received (not 404)
+- [ ] Rewards were distributed (if COMPLETED)
+- [ ] No error logs about callback failures
+
+---
+
+## Test 5: Reward Distribution Verification
+
+### 5A. Check Payment Service BLIND Balance Before
 
 ```bash
 cast call 0x232D5470DaaC7AD552a42d876aDEF1f778033cE0 \
@@ -305,361 +384,578 @@ cast call 0x232D5470DaaC7AD552a42d876aDEF1f778033cE0 \
   --rpc-url https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY
 ```
 
-**If low, fund it:**
-```bash
-# From deployer wallet
-cast send 0x232D5470DaaC7AD552a42d876aDEF1f778033cE0 \
-  "transfer(address,uint256)" \
-  0x7F9B413Da50e72415b16Eb9df6e5E59774a338dc \
-  500000000000000000000 \
-  --rpc-url https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY \
-  --private-key 0x5ea99166e1520909188c93c423bdea9f9a539a7ae29965e7dc92df17a9faaf6b
-```
-
-### 5B. Check Node BLIND Balances Before Job
+### 5B. Check Node BLIND Balances Before
 
 ```bash
-# Node 1
+# Node 1 (leader usually)
 cast call 0x232D5470DaaC7AD552a42d876aDEF1f778033cE0 \
   "balanceOf(address)(uint256)" 0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5 \
   --rpc-url https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY
+
 # Node 2
 cast call 0x232D5470DaaC7AD552a42d876aDEF1f778033cE0 \
   "balanceOf(address)(uint256)" 0x9Cc0cBfCc4e3F45e2958F6EC0F5e70B500D0bB3E \
   --rpc-url https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY
+
 # Node 3
 cast call 0x232D5470DaaC7AD552a42d876aDEF1f778033cE0 \
   "balanceOf(address)(uint256)" 0x61e72a024aE31ed2f0656a37b3B3172CDC364C85 \
   --rpc-url https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY
 ```
 
-### 5C. Submit Job and Verify Rewards
+### 5C. Run a Job and Wait for Completion
 
-After a job completes with consensus:
+Repeat Test 4. After `status: "COMPLETED"`:
+
+### 5D. Verify Node Balances Increased
 
 ```bash
-# Check Payment Service logs for reward distribution
-# Should see: "Rewards distributed for job=... status=distributed"
-
-# Verify node balances increased
-cast call 0x232D5470DaaC7AD552a42d876aDEF1f778033cE0 \
-  "balanceOf(address)(uint256)" 0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5 \
-  --rpc-url https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY
+# Re-run the same cast calls as 5B
 ```
 
-**Expected split:** 1 BLIND per job
-- Leader (60%): 0.6 BLIND
-- Verifier 1 (20%): 0.2 BLIND
-- Verifier 2 (20%): 0.2 BLIND
+**Expected increases (per job):**
+- Leader: +0.6 BLIND
+- Verifier 1: +0.2 BLIND  
+- Verifier 2: +0.2 BLIND
+- Payment Service wallet: -1.0 BLIND
 
-### 5D. Manual Reward Distribution (Testing)
+### 5E. Verify via Node CLI
 
 ```bash
-curl -X POST "http://127.0.0.1:8001/v1/rewards/distribute" \
+cd Blindference-node
+blindference-node jobs list --limit 5
+```
+
+**Expected output:**
+```
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃              BLINDFERENCE NODE — JOB HISTORY             ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃  Node Address : 0x...                                     ┃
+┃  Total Jobs   : 1                                         ┃
+┃  Total Earned : 0.6 BLIND                                 ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+  Job ID          Role      Status     Earned (BLIND)
+  ─────────────────────────────────────────────────────
+  job_0xabc...    leader    COMPLETED  0.6
+```
+
+**What to verify:**
+- [ ] `jobs list` returns the completed job
+- [ ] `role` matches what the node actually did (leader/verifier)
+- [ ] `amount_blind_earned` is correct (0.6 for leader, 0.2 for verifier)
+- [ ] Total earned is sum of all jobs
+
+---
+
+## Test 6: Job Failure → Credit Refund
+
+### 6A. Kill All Nodes Mid-Job
+
+Submit a job, then immediately kill all 3 nodes:
+```bash
+pkill -f "blindference-node run"
+```
+
+### 6B. Wait for Quorum Timeout
+
+After ~5 minutes (node claim timeout) + ICL processing:
+```bash
+curl -s "http://127.0.0.1:8001/v1/jobs/job_0x..." | jq
+```
+
+**Expected:**
+```json
+{
+  "job_id": "job_0x...",
+  "status": "FAILED",
+  "failure_reason": "Quorum timeout — no consensus reached",
+  ...
+}
+```
+
+### 6C. Verify Credit Refund
+
+```bash
+curl -s "http://127.0.0.1:8001/v1/credits/0xYourMetaMaskAddress" | jq
+```
+
+**Expected:**
+```json
+{
+  "balance_cusdc": 10000,      // Refunded back to original amount
+  "total_spent_cusdc": 0,      // Or subtracted then added back
+  "total_refunded_cusdc": 100
+}
+```
+
+**What to verify:**
+- [ ] `status` is `FAILED` (not `RUNNING`)
+- [ ] `failure_reason` is descriptive
+- [ ] Credits were refunded (balance restored)
+- [ ] `total_refunded_cusdc` tracked the refund
+- [ ] No BLIND rewards were distributed
+
+### 6D. Restart Nodes
+
+```bash
+blindference-node run
+```
+
+---
+
+## Test 7: ICL Down → Payment Service Retry
+
+### 7A. Stop ICL
+
+```bash
+# Kill ICL process
+pkill -f "uvicorn main:app --host 127.0.0.1 --port 8000"
+```
+
+### 7B. Submit Job to Payment Service
+
+```bash
+curl -s -X POST http://127.0.0.1:8001/v1/jobs/submit \
   -H "Content-Type: application/json" \
   -d '{
-    "job_id": "test-job-1",
-    "leader_address": "0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5",
-    "verifier_addresses": [
-      "0x9Cc0cBfCc4e3F45e2958F6EC0F5e70B500D0bB3E",
-      "0x61e72a024aE31ed2f0656a37b3B3172CDC364C85"
-    ],
-    "amount_blind_wei": 1000000000000000000
+    "task_id": "0x'$(openssl rand -hex 32)'",
+    "user_address": "0xYourMetaMaskAddress",
+    "model_id": "groq:llama-3.3-70b-versatile",
+    "prompt_cid": "QmTest",
+    "encrypted_prompt_key": {"high": "123", "low": "456"},
+    "metadata": {},
+    "amount_credits": 50
   }' | jq
 ```
 
-**Expected response:**
+**Expected:**
+- Response may still return `job_id` and `status: "RUNNING"`
+- BUT check Payment Service logs for retry attempts:
+  ```
+  WARNING | ICL forwarding failed (attempt 1/3): Connection refused
+  WARNING | ICL forwarding failed (attempt 2/3): Connection refused
+  ERROR | ICL forwarding failed after 3 attempts
+  ```
+
+### 7C. Check Job State
+
+```bash
+curl -s "http://127.0.0.1:8001/v1/jobs/job_0x..." | jq
+```
+
+**Expected:**
 ```json
 {
-  "status": "distributed",
-  "job_id": "test-job-1",
-  "distributions": [
-    { "node": "0xdDef3...", "role": "leader", "amount_wei": "600000000000000000", "status": "success" },
-    { "node": "0x9Cc0c...", "role": "verifier", "amount_wei": "200000000000000000", "status": "success" },
-    { "node": "0x61e72...", "role": "verifier", "amount_wei": "200000000000000000", "status": "success" }
+  "status": "FAILED",
+  "failure_reason": "ICL forwarding failed after retries"
+}
+```
+
+### 7D. Verify Refund
+
+```bash
+curl -s "http://127.0.0.1:8001/v1/credits/0xYourMetaMaskAddress" | jq '.balance_cusdc'
+# Should be refunded (original amount)
+```
+
+**What to verify:**
+- [ ] Payment Service attempted 3 retries with exponential backoff
+- [ ] Job eventually marked as `FAILED`
+- [ ] Credits refunded to user
+- [ ] No on-chain reward txs (since job failed)
+
+### 7E. Restart ICL
+
+```bash
+cd blindference/network/packages/icl
+uvicorn main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+---
+
+## Test 8: Frontend Integration
+
+### 8A. Inference Submission Page
+
+1. Open http://localhost:3000
+2. Connect MetaMask
+3. Enter prompt: "What is the capital of France?"
+4. Select model: `groq:llama-3.3-70b-versatile`
+5. **Check credits indicator** — should show your balance (e.g., "9900 credits")
+6. Click "Submit"
+7. MetaMask: Confirm `storeKey` transaction
+
+**What to verify:**
+- [ ] Frontend calls `POST /v1/jobs/submit` (not `/v1/inference/requests`)
+- [ ] `task_id` is generated by frontend (matches `storeKey` tx)
+- [ ] Request body includes `metadata.prompt_key_store_tx`
+- [ ] No payment mode/currency selection (removed in Phase 2)
+
+### 8B. Status Polling
+
+Watch browser Network tab:
+1. First poll: `GET /v1/jobs/{job_id}` → Payment Service
+2. If legacy `request_id`: falls back to `GET /v1/inference/requests/{request_id}/status`
+
+**What to verify:**
+- [ ] Frontend polls Payment Service first (not ICL)
+- [ ] Status shows `RUNNING` while nodes work
+- [ ] Status shows `COMPLETED` with result
+- [ ] Status timeline shows all stages
+
+### 8C. Buy Credits Page
+
+1. Open http://localhost:3000/buy-credits
+2. Check gas estimation — should show dynamic EIP-1559 estimate
+3. Purchase package
+4. Verify balance updates in header
+
+**What to verify:**
+- [ ] Gas estimation shows `maxFeePerGas` and `maxPriorityFeePerGas`
+- [ ] Purchase succeeds without manual gas limit override
+- [ ] Balance updates in real-time
+
+---
+
+## Test 9: Node Earnings Endpoint
+
+### 9A. Query via API
+
+```bash
+curl -s "http://127.0.0.1:8001/v1/nodes/0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5/jobs?limit=10" | jq
+```
+
+**Expected:**
+```json
+{
+  "node_address": "0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5",
+  "total_jobs": 5,
+  "total_earned_blind": 3.0,
+  "jobs": [
+    {
+      "job_id": "job_0x...",
+      "role": "leader",
+      "status": "COMPLETED",
+      "amount_blind_earned": 0.6
+    },
+    {
+      "job_id": "job_0x...",
+      "role": "verifier",
+      "status": "COMPLETED",
+      "amount_blind_earned": 0.2
+    }
   ]
+}
+```
+
+**What to verify:**
+- [ ] `total_jobs` matches number of completed jobs this node participated in
+- [ ] `total_earned_blind` is sum of all `amount_blind_earned`
+- [ ] Each job has correct `role`
+- [ ] `amount_blind_earned` is decimal (not wei string)
+- [ ] Running jobs show `amount_blind_earned: null`
+
+### 9B. Query Non-Existent Node
+
+```bash
+curl -s "http://127.0.0.1:8001/v1/nodes/0x0000000000000000000000000000000000000000/jobs" | jq
+```
+
+**Expected:**
+```json
+{
+  "node_address": "0x0000...",
+  "total_jobs": 0,
+  "total_earned_blind": 0.0,
+  "jobs": []
 }
 ```
 
 ---
 
-## Test 6: Slashing (Negative Test)
+## Test 10: Insurance Purchase (Optional)
 
-### 6A. Simulate Node Failure
+### 10A. Submit Job with Insurance
 
-Kill one node mid-job (after claiming but before completing):
-
-```bash
-# Find node PID
-ps aux | grep "blindference-node run"
-kill -9 <PID_OF_ONE_NODE>
-```
-
-### 6B. Submit Job and Watch Timeout
-
-Submit a job while one node is down. After 5-minute timeout:
-
-**ICL logs should show:**
-```
-WARNING | Node 0x... timed out for task_id=...
-WARNING | On-chain failure recorded: node=0x... consecutive_failures=1
-```
-
-### 6C. Verify Soft Slashing (Exclusion)
+The `amount_credits` should include a 2% premium. If your base job price is 100 credits, submit with 102:
 
 ```bash
-curl http://127.0.0.1:8000/internal/nodes | jq '.nodes[] | select(.address == "0x...")'
-# Node should be marked inactive or have failures recorded
-```
-
-### 6D. Verify Hard Slashing (3 Failures)
-
-Kill the same node 3 times mid-job:
-
-**After 3rd failure, ICL logs:**
-```
-WARNING | Node 0x... reached MAX_CONSECUTIVE_FAILURES=3 — initiating hard slash
-INFO | Hard slash executed: node=0x... amount=1000000000000000000000 reason="3 consecutive timeouts"
-```
-
-**Verify on-chain:**
-```bash
-cast call 0x222Ac74201Ed58915e42Ee5be626d939fd234D0b \
-  "getStakeInfo(address)((uint256,uint256,uint256,uint256,bool))" \
-  0xKilledNodeAddress \
-  --rpc-url https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY
-# Expected: (0, 0, 0, 0, false) — entire stake slashed
-```
-
-### 6E. Restart Node and Re-stake
-
-```bash
-blindference-node run          # Restart
-blindference-node staking stake 1000  # Must re-stake to rejoin quorum
-```
-
----
-
-## Test 7: Frontend UI Checks
-
-### 7A. Node Registration Page
-
-1. Open http://localhost:3000/node-registration
-2. Verify staking docs are visible:
-   - "Nodes must stake at least 1000 BLIND"
-   - CLI commands: `stake`, `status`, `unstake`, `withdraw`
-   - Slashing conditions listed
-3. Check "Staking Economics" section shows:
-   - Min stake: 1000 BLIND
-   - Unbonding: 96 hours
-   - 3 failures → hard slash
-
-### 7B. Buy Credits Page
-
-1. Open http://localhost:3000/buy-credits
-2. Verify 3 packages displayed: Starter, Pro, Enterprise
-3. Check prices in BLIND
-4. Verify "Connect Wallet" button works
-5. Test purchase flow (MetaMask confirmation)
-
-### 7C. Inference Status Page
-
-1. Submit a job
-2. Navigate to status page
-3. Verify status timeline shows stages:
-   - PREPARING → ENCRYPTING → SUBMITTING → QUORUM_FORMING → CLAIMING → PROCESSING → VERIFYING → COMPLETED
-4. Verify leader and verifier addresses are shown
-5. If insurance purchased, verify "File Dispute" button appears
-6. If job fails, verify FAILED stage with red AlertCircle
-
-### 7D. Credit Balance Component
-
-1. Look for credit balance display in header/nav
-2. Click to open DepositModal
-3. Verify deposit form accepts tx hash
-4. After deposit, verify balance updates
-
----
-
-## Test 8: API Endpoints (Direct Testing)
-
-### 8A. Credit Deduction (ICL → Payment Service)
-
-```bash
-# Simulate ICL deducting credits for a job
-curl -X POST "http://127.0.0.1:8001/v1/deduct" \
+curl -s -X POST http://127.0.0.1:8001/v1/jobs/submit \
   -H "Content-Type: application/json" \
   -d '{
-    "user_address": "0xYourAddress",
-    "amount_cusdc": 5000,
-    "job_id": "test-deduct-1",
-    "insurance_opt_in": false
+    "task_id": "0x'$(openssl rand -hex 32)'",
+    "user_address": "0xYourMetaMaskAddress",
+    "model_id": "groq:llama-3.3-70b-versatile",
+    "prompt_cid": "QmTest",
+    "encrypted_prompt_key": {"high": "123", "low": "456"},
+    "metadata": {"insurance_opt_in": true},
+    "amount_credits": 102
   }' | jq
 ```
 
-### 8B. Credit Refund
+**What to verify:**
+- [ ] Payment Service creates insurance policy on-chain
+- [ ] `transaction_hash` includes insurance purchase tx
+- [ ] Total deducted = 102 credits (100 base + 2 premium)
 
+### 10B. File Dispute (After Job Completes)
+
+If you believe the result is wrong:
 ```bash
-curl -X POST "http://127.0.0.1:8001/v1/credits/refund" \
+curl -s -X POST "http://127.0.0.1:8000/v1/inference/requests/{request_id}/dispute" \
   -H "Content-Type: application/json" \
-  -d '{
-    "user_address": "0xYourAddress",
-    "amount_cusdc": 5000,
-    "reason": "dispute_resolved"
-  }' | jq
+  -d '{"reason": "Result appears incorrect"}'
 ```
 
-### 8C. Debug Credits
-
-```bash
-curl "http://127.0.0.1:8001/v1/credits/debug/0xYourAddress" | jq
-```
+**What to verify:**
+- [ ] Dispute triggers re-execution with new quorum
+- [ ] Insurance pays out if result differs
+- [ ] Refund processed if dispute is successful
 
 ---
 
-## Quick Reference: All Commands
+## Test 11: Decimal128 Storage Verification
 
-### Node CLI (from each node directory)
+This test verifies the critical bug fix for wei overflow.
 
-```bash
-blindference-node staking status           # Show stake
-blindference-node staking stake 1000       # Stake 1000 BLIND
-blindference-node staking unstake          # Start unbonding
-blindference-node staking withdraw         # Complete withdrawal
-blindference-node status                   # Node identity + attestation
-blindference-node run                      # Start job poller
-```
-
-### On-Chain Queries (cast)
+### 11A. Direct MongoDB Inspection
 
 ```bash
-# BLIND token balance
-cast call 0x232D5470DaaC7AD552a42d876aDEF1f778033cE0 \
-  "balanceOf(address)(uint256)" <ADDRESS> \
-  --rpc-url https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY
-
-# Stake info
-cast call 0x222Ac74201Ed58915e42Ee5be626d939fd234D0b \
-  "getStakeInfo(address)((uint256,uint256,uint256,uint256,bool))" <NODE_ADDRESS> \
-  --rpc-url https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY
-
-# Transfer BLIND (from deployer)
-cast send 0x232D5470DaaC7AD552a42d876aDEF1f778033cE0 \
-  "transfer(address,uint256)" <TO> <AMOUNT_WEI> \
-  --rpc-url https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY \
-  --private-key 0x5ea99166e1520909188c93c423bdea9f9a539a7ae29965e7dc92df17a9faaf6b
+mongosh blindference_payments --eval '
+  const job = db.jobs.findOne({status: "COMPLETED"});
+  print("amount_credits type:", typeof job.amount_credits, "value:", job.amount_credits);
+  print("rewards type check:");
+  for (const [addr, amt] of Object.entries(job.rewards || {})) {
+    print("  ", addr, "=", amt, "type:", typeof amt);
+  }
+'
 ```
 
-### Service Health Checks
+**What to verify:**
+- [ ] `amount_credits` is `Decimal128` ( BSON type `19` )
+- [ ] Values are not truncated or negative
+- [ ] `rewards` values are floats (human-readable BLIND)
+
+### 11B. Verify No Int64 Overflow
 
 ```bash
-curl http://127.0.0.1:8000/health
-curl http://127.0.0.1:8000/internal/nodes
-curl http://127.0.0.1:8001/v1/credits/packages
-curl "http://127.0.0.1:8001/v1/credits/<ADDRESS>"
+mongosh blindference_payments --eval '
+  // Try to store a value > 2^63-1 (int64 max)
+  db.test_overflow.insertOne({
+    big_value: NumberDecimal("999999999999999999999999999999")
+  });
+  const doc = db.test_overflow.findOne();
+  print("Stored successfully:", doc.big_value);
+  db.test_overflow.drop();
+'
 ```
+
+**What to verify:**
+- [ ] Large wei values store without overflow
+- [ ] `NumberDecimal` handles arbitrary precision
+
+---
+
+## Test 12: Metadata Passthrough (Phase 3 Bug Fix)
+
+### 12A. Submit with Complex Metadata
+
+```bash
+curl -s -X POST http://127.0.0.1:8001/v1/jobs/submit \
+  -H "Content-Type: application/json" \
+  -d '{
+    "task_id": "0x'$(openssl rand -hex 32)'",
+    "user_address": "0xYourMetaMaskAddress",
+    "model_id": "groq:llama-3.3-70b-versatile",
+    "prompt_cid": "QmTest",
+    "encrypted_prompt_key": {"high": "123", "low": "456"},
+    "metadata": {
+      "prompt_key_store_tx": "0xabc",
+      "cofhe_prompt_key_inputs": {"high": "enc_high", "low": "enc_low"},
+      "custom_field": "should_passthrough",
+      "nested": {"a": 1, "b": [1, 2, 3]}
+    },
+    "amount_credits": 10
+  }' | jq '.request_id'
+```
+
+### 12B. Verify in ICL
+
+```bash
+REQUEST_ID=$(curl -s -X POST http://127.0.0.1:8001/v1/jobs/submit ... | jq -r '.request_id')
+curl -s "http://127.0.0.1:8000/v1/inference/requests/${REQUEST_ID}" | jq '.metadata'
+```
+
+**What to verify:**
+- [ ] `cofhe_prompt_key_inputs` present in ICL metadata
+- [ ] `custom_field` and `nested` objects preserved
+- [ ] No data loss during Payment Service → ICL forwarding
+
+---
+
+## Test 13: Task ID Consistency (Phase 3 Bug Fix)
+
+### 13A. Frontend-Generated Task ID
+
+The frontend generates a deterministic `taskId` from the prompt hash. This must be the same `taskId` used for:
+1. `PromptKeyStore.storeKey(taskId, ...)` — on-chain
+2. `POST /v1/jobs/submit` — body.task_id
+3. ICL internal request — metadata uses same task_id
+
+```bash
+# After submitting from frontend:
+TASK_ID="0x..."  # from browser console or MetaMask tx data
+
+# Check job document
+curl -s "http://127.0.0.1:8001/v1/jobs/job_${TASK_ID}" | jq '.task_id'
+# Should match exactly
+
+# Check ICL request
+curl -s "http://127.0.0.1:8000/v1/inference/requests" | jq '.requests[] | select(.task_id == "'${TASK_ID}'")'
+# Should exist with same task_id
+```
+
+**What to verify:**
+- [ ] `job.task_id` matches frontend-generated `taskId`
+- [ ] ICL `request.task_id` matches
+- [ ] On-chain `PromptKeyStore.getEncryptedKey(taskId)` works
+
+---
+
+## Test 14: Concurrent Job Submission
+
+### 14A. Submit 5 Jobs Rapidly
+
+```bash
+for i in {1..5}; do
+  curl -s -X POST http://127.0.0.1:8001/v1/jobs/submit \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"task_id\": \"0x$(openssl rand -hex 32)\",
+      \"user_address\": \"0xYourMetaMaskAddress\",
+      \"model_id\": \"groq:llama-3.3-70b-versatile\",
+      \"prompt_cid\": \"QmTest${i}\",
+      \"encrypted_prompt_key\": {\"high\": \"123\", \"low\": \"456\"},
+      \"metadata\": {},
+      \"amount_credits\": 10
+    }" &
+done
+wait
+```
+
+### 14B. Check All Jobs Created
+
+```bash
+curl -s "http://127.0.0.1:8001/v1/jobs/"  # If list endpoint exists, or query MongoDB:
+mongosh blindference_payments --eval 'db.jobs.countDocuments({user_address: "0xYourMetaMaskAddress"})'
+```
+
+**What to verify:**
+- [ ] All 5 jobs created with unique `job_id`s
+- [ ] Credit balance decreased by exactly 50 (5 × 10)
+- [ ] No race conditions (balance not under/over-deducted)
+- [ ] ICL received all 5 requests
+
+---
+
+## Quick Reference: All API Endpoints
+
+### Payment Service
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/v1/credits/packages` | GET | List credit packages |
+| `/v1/credits/{address}` | GET | Check user balance |
+| `/v1/jobs/submit` | POST | Submit inference job |
+| `/v1/jobs/{job_id}` | GET | Get job status & rewards |
+| `/v1/jobs/{job_id}/complete` | POST | ICL callback (internal) |
+| `/v1/nodes/{address}/jobs` | GET | Node earnings history |
+
+### ICL (Internal)
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/v1/inference/request` | POST | Payment Service forwards prepared request |
+| `/v1/inference/requests/{id}` | GET | Get request details |
+| `/v1/inference/requests/{id}/status` | GET | Get request status |
 
 ---
 
 ## Log Monitoring Checklist
 
-### ICL Terminal — Watch For
+### Payment Service Terminal
 
-| What | Log Pattern | Severity |
-|------|-------------|----------|
-| Request created | `Request created: request_id=` | INFO |
-| Quorum formed | `Quorum formed: request_id=` | INFO |
-| Node claimed | `Node ... claimed assignment` | INFO |
-| Node timeout | `Node ... timed out` | WARNING |
-| Failure recorded | `On-chain failure recorded` | WARNING |
-| Consensus reached | `Consensus reached: accepted=True` | INFO |
-| Result committed | `Result committed on-chain: tx_hash=` | INFO |
-| Reward distributed | `Rewards distributed for job=` | INFO |
-| Reward failed | `Reward distribution failed` | ERROR |
+| Pattern | Meaning | Severity |
+|---------|---------|----------|
+| `Job submitted: user=... amount=...` | New job received | INFO |
+| `Credits deducted: user=... amount=...` | Balance updated | INFO |
+| `Escrow created: tx=...` | On-chain escrow success | INFO |
+| `Forwarding to ICL: attempt X/3` | Retry in progress | WARNING |
+| `ICL forwarding failed after retries` | ICL unreachable | ERROR |
+| `Job completion callback: job=... status=...` | ICL notified completion | INFO |
+| `Distributing rewards: job=...` | Reward tx starting | INFO |
+| `Rewards distributed: job=...` | Success | INFO |
+| `Refunding credits: user=... amount=...` | Failure refund | INFO |
+| `Insufficient credits` | 402 returned | INFO |
 
-### Payment Service Terminal — Watch For
+### ICL Terminal
 
-| What | Log Pattern | Severity |
-|------|-------------|----------|
-| Credits deducted | `Deducted credits: user=` | INFO |
-| Insurance opted in | `Insurance opted in:` | INFO |
-| Package purchased | `Package purchased: user=` | INFO |
-| Reward distributed | `Rewards distributed: job=` | INFO |
-| Insufficient balance | `Insufficient BLIND balance` | WARNING |
-
-### Node Terminal — Watch For
-
-| What | Log Pattern | Severity |
-|------|-------------|----------|
-| Job claimed | `Claiming assignment` | INFO |
-| Decrypting | `Decrypting prompt key` | INFO |
-| Inference | `Running inference` | INFO |
-| Result submitted | `Submitting result to ICL` | INFO |
-| Heartbeat | `Heartbeat tx` | INFO |
-| Error | `ERROR:` | ERROR |
-
----
-
-## Troubleshooting
-
-### "Insufficient BLIND balance for reward distribution"
-
-**Fix:** Fund Payment Service wallet:
-```bash
-cast send 0x232D5470DaaC7AD552a42d876aDEF1f778033cE0 \
-  "transfer(address,uint256)" 0x7F9B413Da50e72415b16Eb9df6e5E59774a338dc 500000000000000000000 \
-  --rpc-url https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY \
-  --private-key 0x5ea99166e1520909188c93c423bdea9f9a539a7ae29965e7dc92df17a9faaf6b
-```
-
-### "No active nodes in ICL pool"
-
-**Fix:** Ensure nodes are attested, staked, and heartbeating:
-```bash
-blindference-node attest --mock
-blindference-node staking stake 1000
-blindference-node run
-```
-
-### "Node not receiving assignments"
-
-**Check:**
-1. Node status: `blindference-node status` — attestation valid?
-2. ICL heartbeat logs
-3. Node address matches registered address
-4. Node has sufficient stake (≥1000 BLIND)
-
-### "Credit balance not updating after purchase"
-
-**Check:**
-1. MetaMask transaction confirmed on Arbitrum Sepolia
-2. Payment Service logs show transfer detection
-3. Call `/v1/credits/debug/<address>` to inspect raw record
-
----
-
-## Contract Addresses (Arbitrum Sepolia)
-
-| Contract | Address |
-|----------|---------|
-| BLIND Token | `0x232D5470DaaC7AD552a42d876aDEF1f778033cE0` |
-| BlindferenceStaking | `0x222Ac74201Ed58915e42Ee5be626d939fd234D0b` |
-| Payment Service Wallet | `0x7F9B413Da50e72415b16Eb9df6e5E59774a338dc` |
-| NodeRegistry | `0x72C0Ead949Fd2C346598a30AF1A69c3c5Cb86082` |
-| PromptKeyStore | `0x1E22dD12f448B15f1Ca8560fB6B4463834FaAf73` |
-| ResultRegistry | `0xCebd831eCd00915E299b8Ef2666cAbf942dc7150` |
+| Pattern | Meaning | Severity |
+|---------|---------|----------|
+| `Request created: request_id=... task_id=...` | Internal request received | INFO |
+| `Quorum formed: ...` | Nodes selected | INFO |
+| `Node ... claimed` | Node picked up job | INFO |
+| `Consensus reached: accepted=True` | Success | INFO |
+| `Notifying Payment Service: job=...` | Callback sent | INFO |
+| `Payment Service callback failed` | Retry scheduled | WARNING |
 
 ---
 
 ## Success Criteria
 
-- [ ] All 3 nodes staked ≥1000 BLIND and show `Active: Yes`
-- [ ] User can buy credits via frontend
-- [ ] User can submit inference with credit payment
-- [ ] Job completes with consensus (2/3 CONFIRM)
-- [ ] Leader and verifiers receive BLIND rewards
-- [ ] Node balances increase after reward distribution
-- [ ] Insurance can be purchased and disputed
-- [ ] Node with 3 failures gets hard-slashed (stake goes to 0)
-- [ ] Frontend shows correct status timeline for all stages
-- [ ] All ICL, Payment Service, and node logs show expected patterns
+- [ ] **Credit System**: Buy credits → balance updates → MongoDB stores Decimal128
+- [ ] **Job Submission**: Submit job → credits deducted → escrow created → forwarded to ICL
+- [ ] **Insufficient Credits**: 402 returned → no state changes → no on-chain txs
+- [ ] **ICL Retry**: ICL down → 3 retries → job fails → credits refunded
+- [ ] **Job Success**: Nodes complete → ICL callback → rewards distributed → balances increase
+- [ ] **Job Failure**: Nodes fail/timeout → ICL callback → credits refunded → no rewards
+- [ ] **Task ID Consistency**: Frontend `taskId` = Payment Service `task_id` = ICL `task_id` = On-chain `taskId`
+- [ ] **Metadata Passthrough**: `cofhe_prompt_key_inputs` and custom fields survive forwarding
+- [ ] **Node Earnings**: `GET /v1/nodes/{addr}/jobs` returns accurate history
+- [ ] **Frontend Integration**: Uses `jobApi.submit()` → polls Payment Service → shows correct status
+- [ ] **Gas Estimation**: Frontend uses EIP-1559 dynamic gas for credit purchases
+- [ ] **Concurrent Safety**: 5 rapid jobs → correct balance deduction, no race conditions
+
+---
+
+## Troubleshooting
+
+### "Cannot connect to Payment Service"
+- Check `uvicorn` is running on port 8001
+- Check firewall / port binding
+
+### "Credits not deducted"
+- Verify `amount_credits` is sent as integer (not string)
+- Check MongoDB `credit_balances` collection exists
+
+### "ICL forwarding failed"
+- Verify ICL is running on port 8000
+- Check `PAYMENT_SERVICE_URL` in ICL `.env`
+- Check network connectivity between services
+
+### "Rewards not distributed"
+- Check Payment Service wallet has BLIND: `cast call BLIND_TOKEN "balanceOf(address)" PAYMENT_WALLET`
+- Check `PAYMENT_SERVICE_WALLET_KEY` is set correctly
+- Check job `status` is `COMPLETED` (not `FAILED`)
+
+### "Node jobs endpoint returns 0 jobs"
+- Verify node address is checksum format
+- Check `rewards` field exists in completed job documents
+- Ensure jobs are `COMPLETED` (not `RUNNING`)
+
+### "Decimal128 errors in logs"
+- This should not happen after Phase 3 fix
+- Check all amounts are converted with `_to_decimal128()`
+- Never use `-amount_dec` directly on Decimal128 objects
