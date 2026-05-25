@@ -8,6 +8,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
+from db.collections import PERMITS
 from models.internal_models import LeaderTextResultSubmission, VerifierTextVerdict
 from services import ServiceContainer, get_service_container
 
@@ -124,6 +125,15 @@ async def get_assignments(
         kp_high = metadata.get("prompt_key_store_handles", {}).get("high") if isinstance(metadata, dict) else None
         kp_low = metadata.get("prompt_key_store_handles", {}).get("low") if isinstance(metadata, dict) else None
 
+        # Retrieve permit for this node
+        permit_doc = await services.database[PERMITS].find_one({"task_id": task_id})
+        permit = None
+        if permit_doc:
+            for entry in permit_doc.get("permits", []):
+                if entry.get("node_address") == node_address:
+                    permit = entry.get("permit")
+                    break
+
         assignments.append({
             "jobId": str(task_id),
             "role": role,
@@ -134,6 +144,7 @@ async def get_assignments(
             "userAddress": user_address,
             "kpHighHandle": kp_high or metadata.get("cofhe_prompt_key_inputs", {}).get("high", {}).get("ctHash") if isinstance(metadata, dict) else None,
             "kpLowHandle": kp_low or metadata.get("cofhe_prompt_key_inputs", {}).get("low", {}).get("ctHash") if isinstance(metadata, dict) else None,
+            "permit": permit,
         })
 
     return {"assignments": assignments}

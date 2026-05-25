@@ -115,7 +115,7 @@ export type BackendInferenceRequest = {
   loan_id: string | null
   coverage_type: string | null
   max_fee_gnk: number
-  status: 'queued' | 'accepted' | 'rejected' | 'disputed'
+  status: 'queued' | 'accepted' | 'rejected' | 'disputed' | 'failed' | 'pending_store_key'
   min_tier: number
   zdr_required: boolean
   verifier_count: number

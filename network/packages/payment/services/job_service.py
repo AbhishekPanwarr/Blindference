@@ -125,6 +125,7 @@ class JobService:
         now = datetime.now(timezone.utc)
         job_record = JobRecord(
             job_id=job_id,
+            task_id=payload.task_id,
             user_address=user_address,
             model_id=model_id,
             amount_cusdc=str(total_cusdc),
@@ -153,6 +154,7 @@ class JobService:
             "min_tier": payload.min_tier,
             "zdr_required": payload.zdr_required,
             "verifier_count": payload.verifier_count,
+            "metadata": payload.metadata,
         }
         if payload.task_id:
             icl_payload["task_id"] = payload.task_id
@@ -225,6 +227,9 @@ class JobService:
         - Timeout/Rejected: refund credits, record failures, slash if needed.
         """
         job = await self.get_job(job_id)
+        if job is None:
+            # Fallback: ICL uses task_id as the job identifier in callbacks
+            job = await self.database[JOBS].find_one({"task_id": job_id})
         if job is None:
             raise ValueError(f"Job {job_id} not found")
 

@@ -47,6 +47,7 @@ class JobRecord(BaseModel):
     rewards_distributed: bool = False
     reward_tx_hashes: list[str] = Field(default_factory=list)
     rewards: dict[str, float] = Field(default_factory=dict)
+    task_id: str | None = None
     created_at: datetime
     updated_at: datetime
 
