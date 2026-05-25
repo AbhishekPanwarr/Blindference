@@ -3,11 +3,11 @@ import { creditsApi } from '../api/creditsApi'
 
 export function useCredits(address: string | undefined) {
   const [balance, setBalance] = useState<{
-    cusdc: number
-    blind: number
+    cusdc: string
+    blind: string
     loading: boolean
     error: string | null
-  }>({ cusdc: 0, blind: 0, loading: false, error: null })
+  }>({ cusdc: "0", blind: "0", loading: false, error: null })
 
   const fetchBalance = useCallback(async () => {
     if (!address) return
@@ -15,8 +15,8 @@ export function useCredits(address: string | undefined) {
     try {
       const resp = await creditsApi.getBalance(address)
       setBalance({
-        cusdc: resp.data.balance_cusdc,
-        blind: resp.data.balance_blind,
+        cusdc: resp.data.balance_cusdc || "0",
+        blind: resp.data.balance_blind || "0",
         loading: false,
         error: null,
       })

@@ -2,12 +2,12 @@ import { paymentApiClient } from './client'
 
 export type CreditBalance = {
   user_address: string
-  balance_cusdc: number
-  balance_blind: number
-  total_deposited_cusdc: number
-  total_deposited_blind: number
-  total_spent_cusdc: number
-  total_spent_blind: number
+  balance_cusdc: string
+  balance_blind: string
+  total_deposited_cusdc: string
+  total_deposited_blind: string
+  total_spent_cusdc: string
+  total_spent_blind: string
 }
 
 export type CreditPackage = {
@@ -17,7 +17,7 @@ export type CreditPackage = {
   bonus_percent: number
   total_calls: number
   price_blind: number
-  price_blind_wei: number
+  price_blind_wei: string
 }
 
 export type PurchasePackageResponse = CreditBalance & {

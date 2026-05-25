@@ -65,20 +65,22 @@ async def deduct_credits(
     currency = payload.get("currency")
     if model_id and currency:
         price = services.pricing_service.compute_price(model_id, currency)
-        amount_cusdc = price["amount_cusdc"]
-        amount_blind = price["amount_blind"]
+        amount_cusdc = str(price.get("amount_cusdc", 0))
+        amount_blind = str(price.get("amount_blind", 0))
     else:
-        amount_cusdc = payload.get("amount_cusdc", 0)
-        amount_blind = payload.get("amount_blind", 0)
+        amount_cusdc = str(payload.get("amount_cusdc", 0))
+        amount_blind = str(payload.get("amount_blind", 0))
 
     # Insurance opt-in
     insurance_opt_in = payload.get("insurance_opt_in", False)
-    premium_cusdc = 0
-    if insurance_opt_in and amount_cusdc > 0:
-        premium_cusdc = int(amount_cusdc * 0.02)  # 2% premium
-        logger.info("Insurance opted in: job_price=%d premium=%d", amount_cusdc, premium_cusdc)
+    amount_cusdc_int = int(amount_cusdc)
+    premium_cusdc = "0"
+    if insurance_opt_in and amount_cusdc_int > 0:
+        premium_cusdc = str(int(amount_cusdc_int * 0.02))  # 2% premium
+        logger.info("Insurance opted in: job_price=%s premium=%s", amount_cusdc, premium_cusdc)
 
-    total_deduct_cusdc = amount_cusdc + premium_cusdc
+    total_deduct_cusdc_int = amount_cusdc_int + int(premium_cusdc)
+    total_deduct_cusdc = str(total_deduct_cusdc_int)
 
     try:
         balance = await services.credit_service.deduct(
@@ -382,10 +384,11 @@ async def refund_credits(
     }
     """
     user_address = payload.get("user_address", "")
-    amount_cusdc = payload.get("amount_cusdc", 0)
+    amount_cusdc = str(payload.get("amount_cusdc", 0))
     reason = payload.get("reason", "dispute_refund")
 
-    if not user_address or amount_cusdc <= 0:
+    amount_cusdc_int = int(amount_cusdc)
+    if not user_address or amount_cusdc_int <= 0:
         raise HTTPException(
             status_code=400,
             detail="user_address and positive amount_cusdc are required"
@@ -397,8 +400,8 @@ async def refund_credits(
             {"user_address": user_address.lower()},
             {
                 "$inc": {
-                    "balance_cusdc": amount_cusdc,
-                    "total_deposited_cusdc": amount_cusdc,
+                    "balance_cusdc": amount_cusdc_int,
+                    "total_deposited_cusdc": amount_cusdc_int,
                 },
                 "$set": {
                     "user_address": user_address.lower(),
@@ -412,7 +415,7 @@ async def refund_credits(
         balance = await services.credit_service.get_balance(user_address)
 
         logger.info(
-            "Credits refunded: user=%s amount_cusdc=%d reason=%s",
+            "Credits refunded: user=%s amount_cusdc=%s reason=%s",
             user_address,
             amount_cusdc,
             reason,

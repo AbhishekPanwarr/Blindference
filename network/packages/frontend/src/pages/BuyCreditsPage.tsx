@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useAccount, useWalletClient, usePublicClient } from 'wagmi'
+import { useAccount, useWalletClient, usePublicClient, useReadContract } from 'wagmi'
 import { useNavigate } from 'react-router-dom'
 import { CreditCard, CheckCircle, Loader2, ArrowLeft, Zap, Shield, Crown, Info } from 'lucide-react'
 import { creditsApi, type CreditPackage } from '../api/creditsApi'
@@ -15,6 +15,24 @@ const PACKAGE_ICONS: Record<string, React.ReactNode> = {
   enterprise: <Crown className="w-6 h-6 text-purple-500" />,
 }
 
+function formatWei(wei: string | number): string {
+  try {
+    const n = BigInt(wei)
+    return n.toLocaleString()
+  } catch {
+    return String(wei)
+  }
+}
+
+function weiToEth(wei: string | number): string {
+  try {
+    const n = BigInt(wei)
+    return (Number(n) / 1e18).toFixed(2)
+  } catch {
+    return "0"
+  }
+}
+
 export function BuyCreditsPage() {
   const { address } = useAccount()
   const { data: walletClient } = useWalletClient()
@@ -22,11 +40,21 @@ export function BuyCreditsPage() {
   const navigate = useNavigate()
   const { balance, refresh } = useCredits(address)
 
+  // Check BLIND token allowance for Payment Service
+  const { data: allowance } = useReadContract({
+    address: BLIND_TOKEN_ADDRESS || undefined,
+    abi: parseAbi(['function allowance(address owner, address spender) view returns (uint256)']),
+    functionName: 'allowance',
+    args: address && PAYMENT_WALLET_ADDRESS ? [address, PAYMENT_WALLET_ADDRESS] : undefined,
+    query: { enabled: !!address && !!BLIND_TOKEN_ADDRESS && !!PAYMENT_WALLET_ADDRESS },
+  })
+
   const [packages, setPackages] = useState<CreditPackage[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [purchasing, setPurchasing] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [approving, setApproving] = useState(false)
 
   // Fetch packages on mount
   useEffect(() => {
@@ -46,6 +74,42 @@ export function BuyCreditsPage() {
       cancelled = true
     }
   }, [])
+
+  const handleApprove = useCallback(async () => {
+    if (!address || !walletClient || !publicClient) {
+      setError('Connect your wallet first')
+      return
+    }
+    if (!BLIND_TOKEN_ADDRESS || !PAYMENT_WALLET_ADDRESS) {
+      setError('BLIND token or payment wallet not configured')
+      return
+    }
+
+    setApproving(true)
+    setError(null)
+
+    try {
+      const txHash = await walletClient.writeContract({
+        account: address,
+        address: BLIND_TOKEN_ADDRESS,
+        abi: parseAbi([
+          'function approve(address spender, uint256 amount) returns (bool)',
+        ]),
+        functionName: 'approve',
+        args: [PAYMENT_WALLET_ADDRESS, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')],
+      })
+
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+      if (receipt.status !== 'success') {
+        throw new Error('Approval failed on-chain')
+      }
+      setSuccess('BLIND approval successful! You can now purchase packages.')
+    } catch (err: any) {
+      setError(err.response?.data?.detail || err.message || 'Approval failed')
+    } finally {
+      setApproving(false)
+    }
+  }, [address, walletClient, publicClient])
 
   const handlePurchase = useCallback(
     async (pkg: CreditPackage) => {
@@ -103,6 +167,8 @@ export function BuyCreditsPage() {
     )
   }
 
+  const needsApproval = allowance !== undefined && allowance < BigInt(packages[0]?.price_blind_wei || '100000000000000000000')
+
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
       {/* Header */}
@@ -125,17 +191,45 @@ export function BuyCreditsPage() {
       {balance && (
         <div className="mb-8 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
           <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-500 mb-2">
-            Current Balance
+            Credit Balance
           </div>
           <div className="flex gap-6">
             <div>
-              <div className="text-2xl font-mono text-white">{balance.balance_cusdc.toLocaleString()}</div>
-              <div className="text-xs text-zinc-500">cUSDC credits</div>
+              <div className="text-2xl font-mono text-white">{formatWei(balance.cusdc)}</div>
+              <div className="text-xs text-zinc-500">cUSDC credits (wei)</div>
             </div>
             <div>
-              <div className="text-2xl font-mono text-white">{balance.balance_blind.toLocaleString()}</div>
+              <div className="text-2xl font-mono text-white">{weiToEth(balance.blind)}</div>
               <div className="text-xs text-zinc-500">BLIND credits</div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Approval button */}
+      {address && needsApproval && (
+        <div className="mb-6 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-medium text-yellow-400">BLIND Approval Required</div>
+              <div className="text-xs text-yellow-400/70 mt-1">
+                Approve the Payment Service to spend your BLIND tokens for purchases.
+              </div>
+            </div>
+            <button
+              onClick={handleApprove}
+              disabled={approving}
+              className="rounded-lg bg-yellow-500 px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-yellow-400 disabled:opacity-50 flex items-center gap-2"
+            >
+              {approving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Approving...
+                </>
+              ) : (
+                'Approve BLIND'
+              )}
+            </button>
           </div>
         </div>
       )}
@@ -193,7 +287,7 @@ export function BuyCreditsPage() {
 
             <button
               onClick={() => handlePurchase(pkg)}
-              disabled={purchasing === pkg.id || !address || !BLIND_TOKEN_ADDRESS}
+              disabled={purchasing === pkg.id || !address || !BLIND_TOKEN_ADDRESS || needsApproval}
               className="w-full rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {purchasing === pkg.id ? (

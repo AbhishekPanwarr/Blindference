@@ -4,13 +4,31 @@ import { Wallet, Droplets } from 'lucide-react'
 import { useCredits } from '../hooks/useCredits'
 import { DepositModal } from './DepositModal'
 
+function formatCusdc(wei: string): string {
+  try {
+    const n = BigInt(wei)
+    return (Number(n) / 1e6).toFixed(2)
+  } catch {
+    return "0.00"
+  }
+}
+
+function formatBlind(wei: string): string {
+  try {
+    const n = BigInt(wei)
+    return (Number(n) / 1e18).toFixed(2)
+  } catch {
+    return "0.00"
+  }
+}
+
 export function CreditBalance() {
   const { address } = useAccount()
   const { cusdc, blind, loading, refresh } = useCredits(address)
   const [showDeposit, setShowDeposit] = useState(false)
 
-  const cusdcFormatted = (cusdc / 1e6).toFixed(2)
-  const blindFormatted = (blind / 1e18).toFixed(2)
+  const cusdcFormatted = formatCusdc(cusdc)
+  const blindFormatted = formatBlind(blind)
 
   return (
     <>
