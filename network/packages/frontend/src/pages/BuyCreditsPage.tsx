@@ -5,6 +5,7 @@ import { CreditCard, CheckCircle, Loader2, ArrowLeft, Zap, Shield, Crown, Info }
 import { creditsApi, type CreditPackage } from '../api/creditsApi'
 import { useCredits } from '../hooks/useCredits'
 import { Hex, parseAbi } from 'viem'
+import { arbitrumSepolia } from 'wagmi/chains'
 
 const BLIND_TOKEN_ADDRESS = (import.meta.env.VITE_BLIND_TOKEN_ADDRESS || '') as Hex
 const PAYMENT_WALLET_ADDRESS = (import.meta.env.VITE_PAYMENT_WALLET_ADDRESS || '') as Hex
@@ -89,14 +90,34 @@ export function BuyCreditsPage() {
     setError(null)
 
     try {
+      // Dynamic EIP-1559 gas estimation
+      const latestBlock = await publicClient.getBlock({ blockTag: 'latest' })
+      const fallbackPriorityFeePerGas = 2_000_000n
+      const maxPriorityFeePerGas = await publicClient
+        .estimateMaxPriorityFeePerGas()
+        .catch(() => fallbackPriorityFeePerGas)
+      const priorityFeePerGas = maxPriorityFeePerGas > 0n ? maxPriorityFeePerGas : fallbackPriorityFeePerGas
+      const baseFeePerGas = latestBlock.baseFeePerGas
+      const feeParams =
+        baseFeePerGas != null
+          ? {
+              maxPriorityFeePerGas: priorityFeePerGas,
+              maxFeePerGas: baseFeePerGas * 2n + priorityFeePerGas + 1_000_000n,
+            }
+          : {
+              gasPrice: await publicClient.getGasPrice(),
+            }
+
       const txHash = await walletClient.writeContract({
         account: address,
+        chain: arbitrumSepolia,
         address: BLIND_TOKEN_ADDRESS,
         abi: parseAbi([
           'function approve(address spender, uint256 amount) returns (bool)',
         ]),
         functionName: 'approve',
         args: [PAYMENT_WALLET_ADDRESS, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')],
+        ...feeParams,
       })
 
       const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
@@ -127,15 +148,35 @@ export function BuyCreditsPage() {
       setSuccess(null)
 
       try {
+        // Dynamic EIP-1559 gas estimation
+        const latestBlock = await publicClient.getBlock({ blockTag: 'latest' })
+        const fallbackPriorityFeePerGas = 2_000_000n
+        const maxPriorityFeePerGas = await publicClient
+          .estimateMaxPriorityFeePerGas()
+          .catch(() => fallbackPriorityFeePerGas)
+        const priorityFeePerGas = maxPriorityFeePerGas > 0n ? maxPriorityFeePerGas : fallbackPriorityFeePerGas
+        const baseFeePerGas = latestBlock.baseFeePerGas
+        const feeParams =
+          baseFeePerGas != null
+            ? {
+                maxPriorityFeePerGas: priorityFeePerGas,
+                maxFeePerGas: baseFeePerGas * 2n + priorityFeePerGas + 1_000_000n,
+              }
+            : {
+                gasPrice: await publicClient.getGasPrice(),
+              }
+
         // Send BLIND transfer
         const txHash = await walletClient.writeContract({
           account: address,
+          chain: arbitrumSepolia,
           address: BLIND_TOKEN_ADDRESS,
           abi: parseAbi([
             'function transfer(address to, uint256 amount) returns (bool)',
           ]),
           functionName: 'transfer',
           args: [PAYMENT_WALLET_ADDRESS, BigInt(pkg.price_blind_wei)],
+          ...feeParams,
         })
 
         // Wait for receipt
