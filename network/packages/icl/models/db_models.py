@@ -100,7 +100,7 @@ class ModelCatalogRecord(BaseModel):
     model_id: str
     name: str
     provider: str
-    min_tier: int = 1
+    min_tier: int = 0
     zdr_required: bool = False
     metadata: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=utcnow)

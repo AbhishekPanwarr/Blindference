@@ -27,7 +27,7 @@ from chain.reputation_registry import ReputationRegistryClient
 from chain.reward_accumulator import RewardAccumulatorClient
 from chain.web3_client import Web3Client
 from config import Settings
-from db.collections import OPERATORS
+from db.collections import NODE_RUNTIMES, OPERATORS
 from models.db_models import OperatorRecord
 
 PUBLIC_COUNTERPARTY = "0x0000000000000000000000000000000000000000"
@@ -71,17 +71,109 @@ class ChainService:
             return True
         return await asyncio.to_thread(self.reward_accumulator.is_deployed)
 
+    async def _get_unified_operator(self, operator_address: str) -> dict[str, Any] | None:
+        """Build a unified operator dict from NODE_RUNTIMES + OPERATORS join.
+
+        Works with nodes that exist in either or both collections:
+        - Self-registered nodes: present in NODE_RUNTIMES, may lack OPERATOR data
+        - Admin-bootstrapped nodes: present in OPERATORS, may lack NODE_RUNTIME data
+        Missing fields use sensible defaults so all nodes are eligible.
+        """
+        checksum = self.web3_client.checksum_address(operator_address)
+
+        # Read both collections independently
+        runtime = await self.database[NODE_RUNTIMES].find_one(
+            {"operator_address": checksum}
+        )
+        operator = await self.database[OPERATORS].find_one(
+            {"operator_address": checksum}
+        )
+
+        # Node must exist in at least one collection
+        if runtime is None and operator is None:
+            return None
+
+        now = datetime.now(timezone.utc)
+
+        # Build unified record with defaults
+        unified: dict[str, Any] = {
+            "operator_address": checksum,
+            "active": True,
+            "model_tiers": [0],
+            "zdr_compliant": False,
+            "location": "unknown",
+            "jurisdiction": "global",
+            "min_stake": 0,
+            "attestation_type": "mock",
+            "attestation_counterparty": "0x0000000000000000000000000000000000000000",
+            "last_heartbeat": now,
+            "registered_at": now,
+        }
+
+        # Overlay NODE_RUNTIME data (heartbeat recency)
+        if runtime is not None:
+            unified["last_heartbeat"] = runtime.get("updated_at", runtime.get("registered_at", now))
+            unified["registered_at"] = runtime.get("registered_at", now)
+
+        # Overlay OPERATOR data (extended metadata)
+        if operator is not None:
+            for key in (
+                "active", "model_tiers", "supported_model_ids", "zdr_compliant",
+                "location", "jurisdiction", "min_stake", "attestation_type",
+                "attestation_counterparty", "attestation_document_hash",
+                "attestation_effective_at", "attestation_expires_at",
+                "tasks_completed", "tasks_accepted", "tasks_rejected",
+            ):
+                if key in operator and operator[key] is not None:
+                    unified[key] = operator[key]
+            # Prefer the most recent heartbeat between collections
+            op_heartbeat = operator.get("last_heartbeat")
+            if op_heartbeat is not None:
+                unified["last_heartbeat"] = op_heartbeat
+            op_registered = operator.get("registered_at")
+            if op_registered is not None:
+                unified["registered_at"] = op_registered
+
+        return unified
+
     async def get_active_nodes(self, min_tier: int, zdr_required: bool) -> list[str]:
         now = datetime.now(timezone.utc)
         active_addresses: list[str] = []
 
-        cursor = self.database[OPERATORS].find({})
-        async for operator in cursor:
+        # Collect all unique addresses from both NODE_RUNTIMES (self-registered)
+        # and OPERATORS (admin-bootstrapped). This ensures backward compatibility
+        # with existing bootstrap paths while supporting self-registered nodes.
+        all_addresses: set[str] = set()
+
+        async for runtime in self.database[NODE_RUNTIMES].find({}):
+            all_addresses.add(self.web3_client.checksum_address(runtime["operator_address"]))
+
+        async for operator in self.database[OPERATORS].find({}):
+            all_addresses.add(self.web3_client.checksum_address(operator["operator_address"]))
+
+        logger.warning(
+            "[NodeTrace-0] get_active_nodes start: total_addresses=%d min_tier=%d zdr=%s",
+            len(all_addresses), min_tier, zdr_required,
+        )
+
+        idx = 0
+        for checksum_address in all_addresses:
+            idx += 1
+            operator = await self._get_unified_operator(checksum_address)
+            if operator is None:
+                logger.warning("[NodeTrace-%d] %s: unified_operator=None", idx, checksum_address)
+                continue
+
+            short_addr = checksum_address[:10] + "..."
+
             if not operator.get("active", False):
+                logger.warning("[NodeTrace-%d] %s: excluded (active=False)", idx, short_addr)
                 continue
             if max(operator.get("model_tiers", [-1])) < min_tier:
+                logger.warning("[NodeTrace-%d] %s: excluded (tier %s < %d)", idx, short_addr, operator.get("model_tiers"), min_tier)
                 continue
             if zdr_required and not operator.get("zdr_compliant", False):
+                logger.warning("[NodeTrace-%d] %s: excluded (zdr=False)", idx, short_addr)
                 continue
 
             heartbeat = operator.get("last_heartbeat", now)
@@ -89,7 +181,8 @@ class ChainService:
                 heartbeat = datetime.fromisoformat(heartbeat.replace("Z", "+00:00"))
             if isinstance(heartbeat, datetime) and heartbeat.tzinfo is None:
                 heartbeat = heartbeat.replace(tzinfo=timezone.utc)
-            heartbeat_stale = (now - heartbeat).total_seconds() > self.settings.HEARTBEAT_GRACE_SECONDS
+            heartbeat_age = (now - heartbeat).total_seconds()
+            heartbeat_stale = heartbeat_age > self.settings.HEARTBEAT_GRACE_SECONDS
 
             # Attestation expiry fallback — if attestation is still valid,
             # allow the node even if heartbeats were missed (e.g. ICL downtime).
@@ -107,19 +200,32 @@ class ChainService:
 
             # Node is excluded only if BOTH heartbeat is stale AND attestation expired.
             if heartbeat_stale and not attestation_still_valid:
+                logger.warning(
+                    "[NodeTrace-%d] %s: excluded (heartbeat stale %.0fs, attestation expired=%s)",
+                    idx, short_addr, heartbeat_age, not attestation_still_valid,
+                )
                 continue
 
             # Mock-attested nodes are always considered valid — the on-chain
             # NodeAttestationRegistry does not recognise mock quotes.
             if self.settings.MOCK_CHAIN or operator.get("attestation_type") == "mock":
                 is_valid = True
+                logger.warning("[NodeTrace-%d] %s: mock attestation, auto-valid", idx, short_addr)
             else:
-                is_valid = await asyncio.to_thread(
-                    self.node_attestation_registry.has_valid,
-                    operator["operator_address"],
-                    operator["attestation_type"],
-                    operator["attestation_counterparty"],
-                )
+                try:
+                    is_valid = await asyncio.to_thread(
+                        self.node_attestation_registry.has_valid,
+                        operator["operator_address"],
+                        operator["attestation_type"],
+                        operator["attestation_counterparty"],
+                    )
+                    logger.warning("[NodeTrace-%d] %s: has_valid=%s", idx, short_addr, is_valid)
+                except Exception as exc:
+                    logger.warning(
+                        "[NodeTrace-%d] %s: has_valid EXCEPTION %s — treating as invalid",
+                        idx, short_addr, type(exc).__name__,
+                    )
+                    is_valid = False
 
             # Phase 4 — BLIND staking soft slashing: exclude nodes with too many failures
             stake_info = None
@@ -133,21 +239,25 @@ class ChainService:
                     stake_info = None
             if stake_info and stake_info.get("consecutiveFailures", 0) >= 3:
                 logger.warning(
-                    "Excluding node %s from quorum (consecutiveFailures=%s)",
-                    operator["operator_address"],
-                    stake_info["consecutiveFailures"],
+                    "[NodeTrace-%d] %s: excluded (consecutiveFailures=%s)",
+                    idx, short_addr, stake_info["consecutiveFailures"],
                 )
                 continue
 
             if is_valid:
+                logger.warning("[NodeTrace-%d] %s: INCLUDED", idx, short_addr)
                 active_addresses.append(self.web3_client.checksum_address(operator["operator_address"]))
+            else:
+                logger.warning("[NodeTrace-%d] %s: excluded (has_valid=False)", idx, short_addr)
 
+        logger.warning("[NodeTrace-%d] get_active_nodes RESULT: %d nodes", idx, len(active_addresses))
         return active_addresses
 
     async def get_node_snapshot(self, node_address: str) -> dict[str, Any]:
-        operator = await self.database[OPERATORS].find_one(
-            {"operator_address": self.web3_client.checksum_address(node_address)}
-        )
+        checksum_address = self.web3_client.checksum_address(node_address)
+
+        # Hybrid: NODE_RUNTIMES is primary; OPERATORS provides extended metadata.
+        operator = await self._get_unified_operator(checksum_address)
         if operator is None:
             raise KeyError(f"node {node_address} not found")
 
@@ -184,16 +294,16 @@ class ChainService:
         now = datetime.now(timezone.utc)
         is_recent = (now - heartbeat).total_seconds() <= self.settings.HEARTBEAT_GRACE_SECONDS
 
-        return {
+        snapshot: dict[str, Any] = {
             "operator_address": operator["operator_address"],
-            "model_tiers": list(operator["model_tiers"]),
-            "location": operator["location"],
-            "zdr_compliant": bool(operator["zdr_compliant"]),
-            "jurisdiction": operator["jurisdiction"],
-            "min_stake": int(operator["min_stake"]),
+            "model_tiers": list(operator.get("model_tiers", [0])),
+            "location": operator.get("location", "unknown"),
+            "zdr_compliant": bool(operator.get("zdr_compliant", False)),
+            "jurisdiction": operator.get("jurisdiction", "global"),
+            "min_stake": int(operator.get("min_stake", 0)),
             "registered_at": int(registered_at.timestamp()),
             "last_heartbeat": int(heartbeat.timestamp()),
-            "active": bool(operator["active"]) and is_valid and is_recent,
+            "active": bool(operator.get("active", True)) and is_valid and is_recent,
             "metrics": {
                 "tasks_completed": int(operator.get("tasks_completed", 0)),
                 "tasks_accepted": int(operator.get("tasks_accepted", 0)),
@@ -203,6 +313,16 @@ class ChainService:
                 "last_heartbeat": int(heartbeat.timestamp()),
             },
         }
+
+        # Only include supported_model_ids when explicitly set.
+        # This preserves the NodeSelector default behaviour:
+        #   s.get("supported_model_ids", [model_id]) falls back to [model_id]
+        #   so nodes without explicit model support are eligible for any model.
+        supported_model_ids = operator.get("supported_model_ids")
+        if supported_model_ids:
+            snapshot["supported_model_ids"] = list(supported_model_ids)
+
+        return snapshot
 
     async def register_task(
         self,
@@ -215,6 +335,7 @@ class ChainService:
     ) -> dict[str, Any]:
         del developer_address
         invocation_id = self.web3_client.task_id_to_invocation_id(task_id)
+        logger.info("[TraceChain] register_task: task_id=%s invocation_id=%d model_id=%s", task_id, invocation_id, model_id)
         if self.settings.MOCK_CHAIN:
             self._mock_invocations[invocation_id] = {
                 "status": "dispatched",
@@ -230,23 +351,32 @@ class ChainService:
             self.execution_commitment_registry.status_of,
             invocation_id,
         )
+        logger.info("[TraceChain] status_of(%d) = %s", invocation_id, current_status)
         if current_status != "none":
+            logger.info("[TraceChain] Task already has status=%s, skipping dispatch", current_status)
             return {"invocation_id": invocation_id, "tx_hash": None, "status": current_status}
 
         commit_deadline = int(
             (datetime.now(timezone.utc) + timedelta(seconds=self.settings.EXECUTION_COMMIT_WINDOW_SECONDS)).timestamp()
         )
         reveal_deadline = commit_deadline + self.settings.EXECUTION_REVEAL_WINDOW_SECONDS
-        tx_result = await asyncio.to_thread(
-            self.execution_commitment_registry.dispatch,
-            invocation_id=invocation_id,
-            escrow_id=invocation_id,
-            agent_id=self._agent_id_for_model(model_id),
-            executor=leader_address,
-            cross_verifier=cross_verifier_address,
-            commit_deadline=commit_deadline,
-            reveal_deadline=reveal_deadline,
-        )
+        logger.info("[TraceChain] Dispatching: agent_id=%d executor=%s verifier=%s commit_deadline=%d reveal_deadline=%d",
+                    self._agent_id_for_model(model_id), leader_address, cross_verifier_address, commit_deadline, reveal_deadline)
+        try:
+            tx_result = await asyncio.to_thread(
+                self.execution_commitment_registry.dispatch,
+                invocation_id=invocation_id,
+                escrow_id=invocation_id,
+                agent_id=self._agent_id_for_model(model_id),
+                executor=leader_address,
+                cross_verifier=cross_verifier_address,
+                commit_deadline=commit_deadline,
+                reveal_deadline=reveal_deadline,
+            )
+            logger.info("[TraceChain] dispatch success: tx_hash=%s", tx_result.get("tx_hash"))
+        except Exception as exc:
+            logger.error("[TraceChain] dispatch FAILED: %s", exc, exc_info=True)
+            raise
         return {
             "invocation_id": invocation_id,
             "tx_hash": tx_result["tx_hash"],

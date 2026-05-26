@@ -55,12 +55,15 @@ async def verify_attestation(
     if not node_address:
         raise HTTPException(status_code=400, detail="nodeAddress is required")
 
-    if backend_type == "mock":
-        tier = 0
-    elif backend_type == "tpm":
-        tier = 1
-    else:
-        tier = 0
+    # Allow node to declare its own tier; fall back to backend heuristic
+    tier = body.get("tier")
+    if tier is None:
+        if backend_type == "mock":
+            tier = 0
+        elif backend_type == "tpm":
+            tier = 1
+        else:
+            tier = 0
 
     expiry = int(time.time()) + 86400  # 48 hours
     cert_hash = f"0x{uuid.uuid4().hex[:32]}"

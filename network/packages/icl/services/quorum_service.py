@@ -12,6 +12,7 @@ from db.collections import (
     DISPUTES,
     INFERENCE_REQUESTS,
     NODE_RUNTIMES,
+    OPERATORS,
     PERMITS,
     QUORUM_ASSIGNMENTS,
     QUORUM_CERTIFICATES,
@@ -223,31 +224,39 @@ class QuorumService:
         return await self.get_request(request_record.request_id)
 
     async def _create_text_request(self, payload: InferenceRequestCreate) -> InferenceRequestResponse:
+        logger.info("[Trace] _create_text_request start: task_id=%s model_id=%s", payload.task_id, payload.model_id)
         if payload.text_request is None:
+            logger.error("[Trace] text_request missing for text mode")
             raise ValueError("text_request is required when mode='text'")
 
         effective_model_id = payload.text_request.model_id or payload.model_id or "text-inference"
+        logger.info("[Trace] effective_model_id=%s", effective_model_id)
 
         # Look up the model's min_tier from the catalog and enforce it
         effective_min_tier = payload.min_tier
+        logger.info("[Trace] _create_text_request: payload.min_tier=%d", payload.min_tier)
         if self.model_registry_service is not None:
             model_info = await self.model_registry_service.get_model(effective_model_id)
             if model_info is not None:
                 catalog_min_tier = model_info.get("min_tier", 0)
+                logger.info("[Trace] _create_text_request: catalog_min_tier=%d current_effective=%d", catalog_min_tier, effective_min_tier)
                 if catalog_min_tier > effective_min_tier:
                     effective_min_tier = catalog_min_tier
+                    logger.info("[Trace] _create_text_request: elevated effective_min_tier to %d", effective_min_tier)
 
         selected_quorum = await self.preview_quorum(
             min_tier=effective_min_tier,
             zdr_required=payload.zdr_required,
             verifier_count=payload.verifier_count,
         )
+        logger.info("[Trace] preview_quorum: leader=%s verifiers=%s", selected_quorum.get("leader_address"), selected_quorum.get("verifier_addresses"))
         quorum = self._resolve_requested_quorum(payload, selected_quorum)
         required_nodes = [
             quorum["leader_address"],
             *list(quorum["verifier_addresses"]),
         ]
         normalized_permits = self._normalize_permit_entries(payload.permits)
+        logger.info("[Trace] permits count=%d", len(normalized_permits))
         if normalized_permits:
             missing_nodes = [
                 node_address
@@ -255,6 +264,7 @@ class QuorumService:
                 if node_address not in {permit.node_address for permit in normalized_permits}
             ]
             if missing_nodes:
+                logger.error("[Trace] missing permits for: %s", missing_nodes)
                 raise ValueError(
                     f"missing permits for quorum members: {', '.join(missing_nodes)}"
                 )
@@ -331,6 +341,7 @@ class QuorumService:
 
         await self.database[INFERENCE_REQUESTS].insert_one(request_record.model_dump())
         await self.database[QUORUM_ASSIGNMENTS].insert_one(assignment_record.model_dump())
+        logger.info("[Trace] DB records inserted: request_id=%s", request_record.request_id)
         if normalized_permits:
             await self.database[PERMITS].update_one(
                 {"task_id": request_record.task_id},
@@ -344,13 +355,19 @@ class QuorumService:
             )
             metadata["permits"] = [self._permit_record_to_metadata(entry) for entry in normalized_permits]
 
-        chain_registration = await self.chain_service.register_task(
-            task_id=request_record.task_id,
-            developer_address=request_record.developer_address,
-            leader_address=assignment_record.leader_address,
-            cross_verifier_address=assignment_record.verifier_addresses[0],
-            model_id=request_record.model_id,
-        )
+        logger.info("[Trace] Calling chain_service.register_task: task_id=%s model_id=%s", request_record.task_id, request_record.model_id)
+        try:
+            chain_registration = await self.chain_service.register_task(
+                task_id=request_record.task_id,
+                developer_address=request_record.developer_address,
+                leader_address=assignment_record.leader_address,
+                cross_verifier_address=assignment_record.verifier_addresses[0],
+                model_id=request_record.model_id,
+            )
+            logger.info("[Trace] register_task success: tx_hash=%s", chain_registration.get("tx_hash"))
+        except Exception as exc:
+            logger.error("[Trace] register_task FAILED: %s", exc, exc_info=True)
+            raise ValueError(f"On-chain task registration failed: {exc}") from exc
         registration_tx_hash = chain_registration.get("tx_hash")
         metadata["task_registered_tx"] = registration_tx_hash
 
@@ -536,6 +553,39 @@ class QuorumService:
             },
             upsert=True,
         )
+
+        # Ensure a minimal OPERATOR record exists so self-registered nodes
+        # are immediately eligible for quorum selection.
+        # Extended metadata (model tiers, attestation, staking) is populated
+        # later by admin bootstrap or on-chain attestation flow.
+        await self.database[OPERATORS].update_one(
+            {"operator_address": checksum_address},
+            {
+                "$setOnInsert": {
+                    "operator_address": checksum_address,
+                    "model_tiers": [0],
+                    "supported_model_ids": [],
+                    "location": "unknown",
+                    "zdr_compliant": False,
+                    "jurisdiction": "global",
+                    "min_stake": 0,
+                    "registered_at": datetime.now(timezone.utc),
+                    "last_heartbeat": datetime.now(timezone.utc),
+                    "attestation_type": "mock",
+                    "attestation_counterparty": "0x0000000000000000000000000000000000000000",
+                    "tasks_completed": 0,
+                    "tasks_accepted": 0,
+                    "tasks_rejected": 0,
+                    "active": True,
+                },
+                "$set": {
+                    "last_heartbeat": datetime.now(timezone.utc),
+                    "active": True,
+                },
+            },
+            upsert=True,
+        )
+
         await self._dispatch_pending_tasks_for_node(checksum_address)
         return {
             "status": "registered",

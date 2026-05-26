@@ -69,7 +69,7 @@ async def list_inference_requests(
 @router.get("/quorum-preview", response_model=QuorumPreviewResponse)
 async def get_quorum_preview(
     model_id: str,
-    min_tier: int = 1,
+    min_tier: int = 0,
     verifier_count: int = 2,
     zdr_required: bool = False,
     services: ServiceContainer = Depends(get_service_container),
@@ -120,6 +120,7 @@ async def create_internal_inference_request(
         )
         return await services.quorum_service.create_request_status(inference_request)
     except ValueError as error:
+        logger.warning("Internal inference request rejected: %s", error, exc_info=True)
         raise HTTPException(status_code=400, detail=str(error)) from error
     except Exception as error:
         logger.exception("Internal inference request failed")

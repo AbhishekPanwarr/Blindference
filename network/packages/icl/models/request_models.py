@@ -42,7 +42,7 @@ class InferenceRequestCreate(BaseModel):
     loan_id: str | None = None
     coverage_type: str | None = None
     max_fee_gnk: int = Field(default=0, ge=0)
-    min_tier: int = Field(default=1, ge=0, le=2)
+    min_tier: int = Field(default=0, ge=0, le=2)
     zdr_required: bool = False
     verifier_count: int = Field(default=2, ge=1, le=5)
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -109,7 +109,7 @@ class ModelRegistrationRequest(BaseModel):
     model_id: str
     name: str
     provider: str
-    min_tier: int = Field(default=1, ge=0, le=2)
+    min_tier: int = Field(default=0, ge=0, le=2)
     zdr_required: bool = False
     metadata: dict[str, Any] = Field(default_factory=dict)
     escrow_id: int = Field(default=0, ge=0)
