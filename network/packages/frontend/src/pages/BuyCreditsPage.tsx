@@ -53,7 +53,7 @@ export function BuyCreditsPage() {
   })
 
   const { drip: dripBlind, fetchLastDripTime, lastDripTime, loading: faucetLoading, error: faucetError, success: faucetSuccess } = useBlindFaucet()
-  const { wrap: wrapUsdc, steps: wrapSteps, loading: wrapLoading, error: wrapError, success: wrapSuccess, resetSteps: resetWrapSteps } = useWrapUSDC()
+  const { wrap: wrapUsdc, steps: wrapSteps, loading: wrapLoading, error: wrapError, success: wrapSuccess, resetSteps: resetWrapSteps, checkBalances, balances, balanceLoading } = useWrapUSDC()
   const [wrapAmount, setWrapAmount] = useState<string>('10')
 
   const [packages, setPackages] = useState<CreditPackage[]>([])
@@ -407,6 +407,41 @@ export function BuyCreditsPage() {
             <div className="mt-2 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-2 text-xs text-green-400 flex items-center gap-2">
               <CheckCircle className="w-3 h-3" />
               {wrapSuccess}
+            </div>
+          )}
+
+          {/* Check Balances */}
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              onClick={checkBalances}
+              disabled={balanceLoading || !address}
+              className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-700 disabled:opacity-50 flex items-center gap-2"
+            >
+              {balanceLoading ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <RefreshCw className="w-3 h-3" />
+              )}
+              Check Balances
+            </button>
+          </div>
+          {balances && (
+            <div className="mt-2 rounded-lg border border-zinc-700 bg-zinc-900/50 px-3 py-2 text-xs space-y-1">
+              <div className="flex justify-between">
+                <span className="text-zinc-400">USDC</span>
+                <span className="text-white font-mono">{balances.usdc}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-zinc-400">cUSDC</span>
+                <span className="text-emerald-400 font-mono">{balances.cusdc}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-zinc-400">ETH</span>
+                <span className="text-white font-mono">{balances.eth}</span>
+              </div>
+              <div className="text-zinc-500 text-[10px] pt-1 border-t border-zinc-800 mt-1">
+                cUSDC is FHE-encrypted. The handle proves your wallet is recognized by the token contract.
+              </div>
             </div>
           )}
         </div>
