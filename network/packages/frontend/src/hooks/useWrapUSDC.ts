@@ -98,6 +98,13 @@ export function useWrapUSDC() {
       try {
         const amountWei = BigInt(Math.floor(usdcAmount * 1_000_000))
 
+        // Verify contracts exist on-chain before spending gas
+        const escrowCode = await publicClient.getBytecode({ address: CONFIDENTIAL_ESCROW_ADDRESS })
+        if (!escrowCode || escrowCode === '0x') {
+          throw new Error(`No contract found at ConfidentialEscrow address ${CONFIDENTIAL_ESCROW_ADDRESS}`)
+        }
+        console.log('[WrapUSDC] Diag — escrow contract exists, size:', escrowCode.length)
+
         // ── Step 1: Encrypt owner & amount with CoFHE ──────────────────
         updateStep(0, 'in-progress')
         const encryptedItems = await (cofheClient as CofheClient)
@@ -120,6 +127,7 @@ export function useWrapUSDC() {
           abi: confidentialEscrowAbi,
           functionName: 'create',
           args: [encOwner, encAmount, '0x0000000000000000000000000000000000000000', '0x'],
+          gas: 500000n,
           ...feeParams,
         })
         const createReceipt = await publicClient.waitForTransactionReceipt({ hash: createTxHash })
@@ -162,6 +170,7 @@ export function useWrapUSDC() {
           abi: usdcAbi,
           functionName: 'approve',
           args: [CONFIDENTIAL_ESCROW_ADDRESS, amountWei],
+          gas: 100000n,
           ...feeParams,
         })
         const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveTxHash })
@@ -177,6 +186,7 @@ export function useWrapUSDC() {
           abi: confidentialEscrowAbi,
           functionName: 'fund',
           args: [escrowIdVal, amountWei],
+          gas: 300000n,
           ...feeParams,
         })
         const fundReceipt = await publicClient.waitForTransactionReceipt({ hash: fundTxHash })
@@ -196,6 +206,7 @@ export function useWrapUSDC() {
           abi: confidentialEscrowAbi,
           functionName: 'redeem',
           args: [escrowIdVal],
+          gas: 300000n,
           ...feeParams,
         })
         const redeemReceipt = await publicClient.waitForTransactionReceipt({ hash: redeemTxHash })
