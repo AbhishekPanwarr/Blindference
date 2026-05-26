@@ -19,6 +19,7 @@ import { PermitUtils } from '@cofhe/sdk/permits'
 import { cn } from '../utils/helpers'
 import { addHistoryEntry } from '../utils/historyStore'
 import { CreditBalance } from '../components/CreditBalance'
+import { useCreateEscrow } from '../hooks/useCreateEscrow'
 
 const TEXT_MODEL_OPTIONS = {
   groq_llama_70b: {
@@ -144,7 +145,7 @@ function stepStatus(key: string, stage: string, requestId: string | null, jobSta
   // Local stages (before ICL submission)
   if (!requestId) {
     if (key === 'encrypt') return stage === 'encrypting' ? 'active' : stage === 'uploading' || stage === 'submitting' ? 'done' : 'pending'
-    if (key === 'icl') return stage === 'uploading' ? 'active' : stage === 'submitting' ? 'done' : 'pending'
+    if (key === 'icl') return stage === 'uploading' ? 'active' : stage === 'escrow' || stage === 'submitting' ? 'done' : 'pending'
     return 'pending'
   }
 
@@ -215,13 +216,14 @@ export function InferenceNewPage() {
   const coveragePremium = store.coverageEnabled ? 2 : 0
   const totalDisplay = basePrice + coveragePremium
 
-  const [chatStage, setChatStage] = useState<'idle' | 'encrypting' | 'uploading' | 'submitting'>('idle')
+  const [chatStage, setChatStage] = useState<'idle' | 'encrypting' | 'uploading' | 'escrow' | 'submitting'>('idle')
   const isChatBusy = chatStage !== 'idle'
 
   // Payment mode state
   const [paymentMode, setPaymentMode] = useState<'escrow' | 'credits'>('credits')
   const [paymentCurrency, setPaymentCurrency] = useState<'cusdc' | 'blind'>('cusdc')
   const [insuranceOptIn, setInsuranceOptIn] = useState(false)
+  const { createEscrow, loading: escrowLoading, error: escrowError } = useCreateEscrow()
 
   const jobPriceCusdc = selectedModel.id === 'groq:llama-3.3-70b-versatile' ? 5_000
     : selectedModel.id === 'gemini:gemini-2.5-flash' ? 3_000
@@ -353,6 +355,51 @@ export function InferenceNewPage() {
       updateAssistantMetadata(assistantId, { promptCID })
       console.log('[Blindference] Prompt uploaded to IPFS: CID =', promptCID)
 
+      // ── Escrow mode: create and fund Reineira escrow before submitting ──
+      let escrowId: string | null = null
+      if (paymentMode === 'escrow') {
+        setChatStage('escrow')
+        updateAssistantStatus(assistantId, 'escrow')
+        console.log('[Blindference] Creating Reineira escrow for payment…')
+
+        const escrowResult = await createEscrow(BigInt(jobPriceCusdc), taskId)
+        if (!escrowResult) {
+          const msg = escrowError || 'Escrow creation failed. Please ensure you have enough USDC and try again.'
+          setError(msg)
+          failAssistantMessage(assistantId, msg)
+          setChatStage('idle')
+          return
+        }
+        escrowId = String(escrowResult.escrowId)
+        console.log(`[Blindference] Escrow created: id=${escrowId}`)
+
+        // After escrow creation (which takes time for MetaMask confirmations),
+        // re-verify nodes are still available before submitting to ICL.
+        try {
+          const postEscrowPreview = await inferenceApi.getQuorumPreview({
+            model_id: selectedModel.id,
+            min_tier: 0,
+            verifier_count: 2,
+            zdr_required: false,
+          })
+          console.log('[Blindference] Post-escrow quorum re-verified:', postEscrowPreview.data)
+        } catch (quorumErr) {
+          const msg = axios.isAxiosError(quorumErr)
+            ? quorumErr.response?.data?.detail
+            : quorumErr instanceof Error
+              ? quorumErr.message
+              : String(quorumErr)
+          console.error('[Blindference] Post-escrow quorum check failed:', msg)
+          const errorMsg =
+            'Inference nodes became unavailable while creating the escrow. ' +
+            'Please re-bootstrap nodes (curl /admin/bootstrap-demo-nodes) and try again.'
+          setError(errorMsg)
+          failAssistantMessage(assistantId, errorMsg)
+          setChatStage('idle')
+          return
+        }
+      }
+
       setChatStage('submitting')
       console.log('[Blindference] Submitting job to Payment Service…')
       const response = await jobApi.submit({
@@ -364,10 +411,12 @@ export function InferenceNewPage() {
         payment_mode: paymentMode,
         payment_currency: paymentCurrency,
         insurance_opt_in: insuranceOptIn,
+        escrow_id: escrowId,
         task_id: taskId,
         min_tier: 0,
         zdr_required: false,
         verifier_count: 2,
+        permits: [],
         metadata: {
           cofhe_prompt_key_inputs: encryptedPromptKey.metadata.cofhe_prompt_key_inputs,
           prompt_length: normalizedPrompt.length,
@@ -919,7 +968,7 @@ export function InferenceNewPage() {
                     <span className="text-[10px] text-zinc-500 font-mono">
                       {paymentMode === 'credits' 
                         ? `${(Number(jobPriceDisplay) * (1 + (insuranceOptIn ? 0.02 : 0))).toFixed(3)} ${paymentCurrency.toUpperCase()}` 
-                        : 'Free'}
+                        : `${(jobPriceCusdc / 1e6).toFixed(3)} USDC (escrow)`}
                     </span>
                     <AnimatePresence>
                       {isChatBusy && (
@@ -930,7 +979,7 @@ export function InferenceNewPage() {
                           className="flex items-center gap-1.5 text-[11px] text-zinc-500"
                         >
                           <Loader2 className="w-3 h-3 animate-spin" />
-                          {chatStage === 'encrypting' ? 'Sealing...' : chatStage === 'uploading' ? 'Uploading...' : 'Dispatching...'}
+                          {chatStage === 'encrypting' ? 'Sealing...' : chatStage === 'uploading' ? 'Uploading...' : chatStage === 'escrow' ? 'Escrow...' : 'Dispatching...'}
                         </motion.span>
                       )}
                     </AnimatePresence>

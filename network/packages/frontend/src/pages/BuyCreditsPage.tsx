@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAccount, useWalletClient, usePublicClient, useReadContract } from 'wagmi'
 import { useNavigate } from 'react-router-dom'
-import { CreditCard, CheckCircle, Loader2, ArrowLeft, Zap, Shield, Crown, Info } from 'lucide-react'
+import { CreditCard, CheckCircle, Loader2, ArrowLeft, Zap, Shield, Crown, Info, Droplets, RefreshCw, ExternalLink } from 'lucide-react'
 import { creditsApi, type CreditPackage } from '../api/creditsApi'
 import { useCredits } from '../hooks/useCredits'
+import { useBlindFaucet } from '../hooks/useBlindFaucet'
+import { useWrapUSDC } from '../hooks/useWrapUSDC'
 import { Hex, parseAbi } from 'viem'
 import { arbitrumSepolia } from 'wagmi/chains'
 
@@ -49,6 +51,10 @@ export function BuyCreditsPage() {
     args: address && PAYMENT_WALLET_ADDRESS ? [address, PAYMENT_WALLET_ADDRESS] : undefined,
     query: { enabled: !!address && !!BLIND_TOKEN_ADDRESS && !!PAYMENT_WALLET_ADDRESS },
   })
+
+  const { drip: dripBlind, fetchLastDripTime, lastDripTime, loading: faucetLoading, error: faucetError, success: faucetSuccess } = useBlindFaucet()
+  const { wrap: wrapUsdc, steps: wrapSteps, loading: wrapLoading, error: wrapError, success: wrapSuccess, resetSteps: resetWrapSteps } = useWrapUSDC()
+  const [wrapAmount, setWrapAmount] = useState<string>('10')
 
   const [packages, setPackages] = useState<CreditPackage[]>([])
   const [loading, setLoading] = useState(true)
@@ -246,6 +252,165 @@ export function BuyCreditsPage() {
           </div>
         </div>
       )}
+
+      {/* Faucets & Wrap USDC */}
+      <div className="mb-8 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 space-y-6">
+        <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-500">
+          Get Test Tokens
+        </div>
+
+        {/* BLIND Faucet */}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm font-medium text-white">BLIND Faucet</div>
+            <div className="text-xs text-zinc-500 mt-1">
+              {lastDripTime !== null && lastDripTime > 0n
+                ? 'You have already dripped BLIND tokens.'
+                : 'Get free BLIND tokens for testnet use.'}
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={fetchLastDripTime}
+              className="p-2 rounded-lg border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 transition-colors"
+              title="Check drip status"
+            >
+              <RefreshCw className="w-4 h-4 text-zinc-400" />
+            </button>
+            <button
+              onClick={dripBlind}
+              disabled={faucetLoading || !address || (lastDripTime !== null && lastDripTime > 0n)}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-500 disabled:opacity-50 flex items-center gap-2"
+            >
+              {faucetLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Dripping...
+                </>
+              ) : (
+                <>
+                  <Droplets className="w-4 h-4" />
+                  Drip BLIND
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+        {faucetError && (
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs text-red-400">
+            {faucetError}
+          </div>
+        )}
+        {faucetSuccess && (
+          <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-2 text-xs text-green-400 flex items-center gap-2">
+            <CheckCircle className="w-3 h-3" />
+            {faucetSuccess}
+          </div>
+        )}
+
+        {/* USDC Faucet */}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm font-medium text-white">USDC Faucet</div>
+            <div className="text-xs text-zinc-500 mt-1">
+              Get test USDC from the Circle faucet (Arbitrum Sepolia).
+            </div>
+          </div>
+          <a
+            href="https://faucet.circle.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 flex items-center gap-2"
+          >
+            <ExternalLink className="w-4 h-4" />
+            Circle Faucet
+          </a>
+        </div>
+
+        {/* Wrap USDC → cUSDC */}
+        <div className="border-t border-zinc-800 pt-4">
+          <div className="text-sm font-medium text-white mb-2">Wrap USDC → cUSDC</div>
+          <div className="text-xs text-zinc-500 mb-3">
+            Convert plain USDC to confidential cUSDC via a 3-step escrow workaround.
+          </div>
+          <div className="flex items-center gap-3">
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={wrapAmount}
+              onChange={(e) => setWrapAmount(e.target.value)}
+              className="w-32 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none focus:border-zinc-500"
+              placeholder="Amount"
+            />
+            <button
+              onClick={() => wrapUsdc(Number(wrapAmount))}
+              disabled={wrapLoading || !address}
+              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-500 disabled:opacity-50 flex items-center gap-2"
+            >
+              {wrapLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Wrapping...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4" />
+                  Wrap USDC
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Wrap progress steps */}
+          {wrapSteps.some((s) => s.status !== 'pending') && (
+            <div className="mt-3 space-y-2">
+              {wrapSteps.map((step, idx) => (
+                <div key={idx} className="flex items-center gap-2 text-xs">
+                  {step.status === 'done' && <CheckCircle className="w-3 h-3 text-green-400" />}
+                  {step.status === 'in-progress' && <Loader2 className="w-3 h-3 animate-spin text-yellow-400" />}
+                  {step.status === 'error' && <div className="w-3 h-3 rounded-full bg-red-400" />}
+                  {step.status === 'pending' && <div className="w-3 h-3 rounded-full border border-zinc-600" />}
+                  <span
+                    className={
+                      step.status === 'done'
+                        ? 'text-green-400'
+                        : step.status === 'in-progress'
+                        ? 'text-yellow-400'
+                        : step.status === 'error'
+                        ? 'text-red-400'
+                        : 'text-zinc-500'
+                    }
+                  >
+                    {step.label}
+                    {step.txHash && (
+                      <a
+                        href={`https://sepolia.arbiscan.io/tx/${step.txHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ml-1 text-zinc-400 hover:text-white underline"
+                      >
+                        (view)
+                      </a>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          {wrapError && (
+            <div className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs text-red-400">
+              {wrapError}
+            </div>
+          )}
+          {wrapSuccess && (
+            <div className="mt-2 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-2 text-xs text-green-400 flex items-center gap-2">
+              <CheckCircle className="w-3 h-3" />
+              {wrapSuccess}
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Approval button */}
       {address && needsApproval && (
