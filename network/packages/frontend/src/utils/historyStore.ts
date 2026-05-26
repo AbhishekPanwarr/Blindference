@@ -1,4 +1,4 @@
-export type HistoryStatus = 'pending' | 'encrypting' | 'processing' | 'ready' | 'done' | 'error'
+export type HistoryStatus = 'pending' | 'encrypting' | 'processing' | 'escrow' | 'ready' | 'done' | 'error'
 
 export type HistoryEntry = {
   id: string

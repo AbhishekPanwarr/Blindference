@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { jobApi, type JobStatusResponse } from '../api/inferenceApi'
 
@@ -52,6 +52,7 @@ function mapJobResponse(response: JobStatusResponse): JobStatus {
 
 export function useJobStatus(jobId: string) {
   const [status, setStatus] = useState<JobStatus | null>(null)
+  const lastLoggedRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!jobId) return
@@ -62,10 +63,14 @@ export function useJobStatus(jobId: string) {
         const response = await jobApi.getStatus(jobId)
         if (!mounted) return
         const mapped = mapJobResponse(response.data)
-        if (mapped.stage === 'COMPLETED') {
-          console.log(`[Blindference] Job ${jobId} COMPLETED. Result hash:`, mapped.resultHash)
-        } else {
-          console.log(`[Blindference] Job ${jobId} status:`, mapped.stage)
+        const key = `${mapped.stage}:${mapped.resultHash ?? ''}`
+        if (lastLoggedRef.current !== key) {
+          lastLoggedRef.current = key
+          if (mapped.stage === 'COMPLETED') {
+            console.log(`[Blindference] Job ${jobId} COMPLETED. Result hash:`, mapped.resultHash)
+          } else {
+            console.log(`[Blindference] Job ${jobId} status:`, mapped.stage)
+          }
         }
         setStatus(mapped)
       } catch (error) {

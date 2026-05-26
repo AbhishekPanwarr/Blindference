@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { usePublicClient, useWalletClient } from 'wagmi'
 
-import { chains, createCofheClient, createCofheConfig, type CofheClient } from '../lib/cofhe'
+import { chains, createCofheClient, createCofheClientNoWorker, createCofheConfig, type CofheClient } from '../lib/cofhe'
 import { createMockCofheClient } from '../utils/textPromptKey'
 
 const USE_MOCK_COFHE = import.meta.env.VITE_COFHE_MOCK === 'true'
@@ -43,7 +43,9 @@ export function useCofheClient() {
         useWorkers: false,
         fheKeyStorage: null,
       })
-      const cofheClient = createCofheClient(config)
+      // Use the no-worker variant so Vite dev mode never tries to load
+      // zkProve.worker.js (which fails with a "Worker error event").
+      const cofheClient = createCofheClientNoWorker(config)
       // @ts-ignore — viem version mismatch between project and @cofhe/sdk
       await cofheClient.connect(publicClient, walletClient)
 

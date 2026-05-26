@@ -16,7 +16,7 @@ export interface ChatEntry {
   id: string
   role: 'user' | 'assistant'
   content: string
-  status?: 'pending' | 'encrypting' | 'processing' | 'ready' | 'done' | 'error'
+  status?: 'pending' | 'encrypting' | 'processing' | 'escrow' | 'ready' | 'done' | 'error'
   requestId?: string
   outputCID?: string
   encryptedOutputKeyHigh?: string
@@ -210,7 +210,7 @@ export function ChatView({ entries, onSuggestionClick, onDecrypt }: ChatViewProp
                   : 'bg-zinc-900/60 border border-zinc-800 text-zinc-300'
               }`}
             >
-              {entry.role === 'assistant' && (entry.status === 'pending' || entry.status === 'encrypting' || entry.status === 'processing') ? (
+              {entry.role === 'assistant' && (entry.status === 'pending' || entry.status === 'encrypting' || entry.status === 'processing' || entry.status === 'escrow') ? (
                 <TypingDots />
               ) : entry.role === 'assistant' && entry.status === 'ready' ? (
                 <div className="flex items-center gap-3">

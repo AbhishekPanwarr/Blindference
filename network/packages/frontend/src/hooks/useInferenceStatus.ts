@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import {
   coverageApi,
@@ -289,6 +289,7 @@ function mapJobToDemoStatus(job: JobStatusResponse): DemoStatus {
 
 export function useInferenceStatus(requestId: string) {
   const [status, setStatus] = useState<DemoStatus | null>(null)
+  const lastLoggedRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!requestId) return
@@ -300,10 +301,14 @@ export function useInferenceStatus(requestId: string) {
         const jobResponse = await jobApi.getStatus(requestId).catch(() => null)
         if (jobResponse && mounted) {
           const mapped = mapJobToDemoStatus(jobResponse.data)
-          if (mapped.status === 'ACCEPTED') {
-            console.log(`[Blindference] Job ${requestId} COMPLETED. Result:`, mapped.text_result)
-          } else {
-            console.log(`[Blindference] Job ${requestId} status:`, mapped.status)
+          const key = `${mapped.status}:${mapped.text_result?.output_cid ?? mapped.text_result?.commitment_hash ?? ''}`
+          if (lastLoggedRef.current !== key) {
+            lastLoggedRef.current = key
+            if (mapped.status === 'ACCEPTED') {
+              console.log(`[Blindference] Job ${requestId} COMPLETED. Result:`, mapped.text_result)
+            } else {
+              console.log(`[Blindference] Job ${requestId} status:`, mapped.status)
+            }
           }
           setStatus(mapped)
           return

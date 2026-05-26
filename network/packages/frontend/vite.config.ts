@@ -28,6 +28,16 @@ export default defineConfig(({mode}) => {
           });
         },
       },
+      // Patch @reineira-os/sdk so it always uses dynamic import() instead
+      // of require() for @cofhe/sdk. Vite cannot dynamically require() ESM.
+      {
+        name: 'fix-reineira-require',
+        transform(code, id) {
+          if (id.includes('@reineira-os') && id.endsWith('.js')) {
+            return code.replace(/typeof\s+(__)?require\s*!==\s*["']undefined["']/g, 'false');
+          }
+        },
+      },
     ],
     worker: {
       format: 'es',
@@ -49,6 +59,8 @@ export default defineConfig(({mode}) => {
         tfhe: path.resolve(__dirname, 'src/lib/tfhe-wrapper.ts'),
         tweetnacl: path.resolve(__dirname, 'src/lib/tweetnacl-wrapper.ts'),
         'tweetnacl/nacl-fast.js': path.resolve(__dirname, 'src/lib/tweetnacl-wrapper.ts'),
+        // Redirect CoFHE node SDK to web bundle so @reineira-os/sdk works in browser
+        '@cofhe/sdk/node': path.resolve(__dirname, 'node_modules/@cofhe/sdk/dist/web.js'),
       },
     },
     server: {

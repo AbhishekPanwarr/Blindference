@@ -11,6 +11,7 @@ import {
   Globe,
   Server,
   CreditCard,
+  ShieldCheck,
 } from 'lucide-react'
 
 import { InferenceNewPage } from './pages/InferenceNewPage'
@@ -19,6 +20,7 @@ import { HistoryPage } from './pages/HistoryPage'
 import { NodeRegistrationPage } from './pages/NodeRegistrationPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { BuyCreditsPage } from './pages/BuyCreditsPage'
+import { CreateEscrowPage } from './pages/CreateEscrowPage'
 import { ProtocolUpdatePopup } from './components/ProtocolUpdatePopup'
 import { truncateAddress } from './utils/helpers'
 
@@ -121,6 +123,7 @@ function Sidebar() {
         <SideNavItem to="/" icon={Search} label="Inference" />
         <SideNavItem to="/history" icon={History} label="History" />
         <SideNavItem to="/buy-credits" icon={CreditCard} label="Buy Credits" badge="NEW" />
+        <SideNavItem to="/create-escrow" icon={ShieldCheck} label="Create Escrow" />
         <SideNavItem to="/node-registration" icon={Server} label="Node Registration" />
         <SideNavItem to="/settings" icon={Settings} label="Settings" />
       </nav>
@@ -216,6 +219,7 @@ export default function App() {
           <Route element={<InferenceStatusPage />} path="inference/:requestId" />
           <Route element={<HistoryPage />} path="history" />
           <Route element={<BuyCreditsPage />} path="buy-credits" />
+          <Route element={<CreateEscrowPage />} path="create-escrow" />
           <Route element={<NodeRegistrationPage />} path="node-registration" />
           <Route element={<SettingsPage />} path="settings" />
           <Route

@@ -45,6 +45,7 @@ export type JobSubmitPayload = {
   payment_mode?: 'credits' | 'escrow'
   payment_currency?: 'cusdc' | 'blind'
   insurance_opt_in?: boolean
+  escrow_id?: string | null
   task_id?: string
   permits?: Array<{
     node: string
