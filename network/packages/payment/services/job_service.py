@@ -82,6 +82,15 @@ class JobService:
                 amount_blind=str(amount_blind),
                 reason=f"job_submit:{job_id}",
             )
+        elif payload.payment_mode == "escrow":
+            if not payload.escrow_id:
+                raise ValueError("escrow_id is required for escrow payment mode")
+            # In escrow mode, the user pre-created the escrow on-chain.
+            # No credit check or deduction needed.
+            logger.info(
+                "Escrow payment mode for job=%s: using pre-created escrow_id=%s",
+                job_id, payload.escrow_id,
+            )
 
         # 3. Create escrow (synchronous, wait for tx)
         escrow_id = None
@@ -111,10 +120,13 @@ class JobService:
                         reason=f"escrow_failed:{job_id}",
                     )
                 raise RuntimeError(f"Escrow creation failed: {exc}") from exc
+        elif payload.payment_mode == "escrow":
+            escrow_id = payload.escrow_id
 
         # 4. Purchase insurance (if opted in)
+        # Insurance is disabled in escrow mode per user requirements.
         coverage_id = None
-        if payload.insurance_opt_in and escrow_id:
+        if payload.payment_mode == "credits" and payload.insurance_opt_in and escrow_id:
             try:
                 insurance_result = await self.chain_service.purchase_insurance(
                     escrow_id=escrow_id,
@@ -149,7 +161,7 @@ class JobService:
             updated_at=now,
         )
         await self.database[JOBS].insert_one(job_record.model_dump())
-        logger.info("Job record created: job_id=%s", job_id)
+        logger.info("Job record created: job_id=%s task_id=%s", job_id, payload.task_id)
 
         # 6. Forward to ICL with retry
         icl_payload = {
@@ -230,19 +242,37 @@ class JobService:
         record.pop("_id", None)
         return record
 
+    async def get_job_by_any_id(self, identifier: str) -> dict[str, Any] | None:
+        """Look up a job by job_id (UUID) or task_id (bytes32 hex)."""
+        # 1. Try primary key (UUID)
+        record = await self.database[JOBS].find_one({"job_id": identifier})
+        if record is not None:
+            record.pop("_id", None)
+            return record
+        # 2. Try task_id (frontend bytes32 hex) — any status
+        record = await self.database[JOBS].find_one({"task_id": identifier})
+        if record is not None:
+            record.pop("_id", None)
+            return record
+        return None
+
     async def complete_job(self, job_id: str, payload: JobCompletionRequest) -> dict[str, Any]:
         """Handle ICL completion callback.
 
         - Success: spend credits, distribute rewards, reset node failures.
         - Timeout/Rejected: refund credits, record failures, slash if needed.
         """
-        job = await self.get_job(job_id)
+        job = await self.get_job_by_any_id(job_id)
         if job is None:
-            # Fallback: ICL uses task_id as the job identifier in callbacks.
-            # Only match RUNNING jobs so we don't update a stale duplicate.
-            job = await self.database[JOBS].find_one({"task_id": job_id, "status": "RUNNING"})
-        if job is None:
+            logger.warning("complete_job: no job found for identifier=%s", job_id)
             raise ValueError(f"Job {job_id} not found")
+
+        # Use the actual DB job_id (UUID) for updates — the ICL callback may pass task_id
+        actual_job_id = job["job_id"]
+
+        if job.get("status") != "RUNNING":
+            logger.warning("Job %s already finalized (status=%s), skipping", actual_job_id, job.get("status"))
+            return {"job_id": actual_job_id, "status": job.get("status"), "note": "already_finalized"}
 
         # Use the actual DB job_id (UUID) for updates — the ICL callback passes task_id
         actual_job_id = job["job_id"]
@@ -271,6 +301,23 @@ class JobService:
                 [payload.leader_address] + payload.verifier_addresses
             )
 
+            # Escrow mode: call PayoutClaimer.claim() to release escrowed cUSDC
+            claim_result = None
+            job_escrow_id = job.get("escrow_id")
+            if amount_cusdc > 0 and job_escrow_id:
+                try:
+                    claim_result = await self.chain_service.claim_payout(
+                        escrow_id=str(job_escrow_id),
+                        job_id=job.get("task_id") or actual_job_id,
+                    )
+                    logger.info(
+                        "PayoutClaimer.claim() result for job=%s: %s",
+                        actual_job_id, claim_result.get("status"),
+                    )
+                except Exception as exc:
+                    logger.error("PayoutClaimer.claim() failed for job=%s: %s", actual_job_id, exc)
+                    claim_result = {"status": "failed", "error": str(exc)}
+
             # Build per-node reward map (human-readable BLIND)
             rewards_map: dict[str, float] = {}
             if reward_result.get("status") == "distributed":
@@ -297,6 +344,7 @@ class JobService:
                             if d.get("tx_hash")
                         ],
                         "rewards": rewards_map,
+                        "claim_result": claim_result,
                         "updated_at": now,
                     }
                 },
@@ -309,6 +357,7 @@ class JobService:
                 "job_id": actual_job_id,
                 "status": "COMPLETED",
                 "rewards": reward_result,
+                "claim_result": claim_result,
             }
 
         else:  # timeout or rejected

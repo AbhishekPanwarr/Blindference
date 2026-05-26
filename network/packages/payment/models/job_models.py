@@ -18,6 +18,8 @@ class JobSubmitRequest(BaseModel):
     # Optional: deterministic task_id for on-chain key storage (bytes32 hex).
     # If omitted, the ICL will generate one internally.
     task_id: str | None = None
+    # Optional: pre-created escrow ID for escrow payment mode
+    escrow_id: str | None = None
     # Optional fields forwarded to ICL
     permits: list[dict] = Field(default_factory=list)
     min_tier: int = 0

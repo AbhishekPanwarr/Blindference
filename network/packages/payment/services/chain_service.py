@@ -405,3 +405,67 @@ class ChainService:
             "total_amount_wei": total,
             "distributions": distributions,
         }
+
+    async def claim_payout(
+        self,
+        *,
+        escrow_id: str,
+        job_id: str,
+    ) -> dict[str, Any]:
+        """Call PayoutClaimer.claim(escrowId, jobId) to release escrowed cUSDC to quorum.
+
+        Uses the ICL wallet to send the transaction. The PayoutClaimer contract
+        distributes cUSDC to the leader and verifiers automatically.
+        """
+        payout_claimer = self.settings.PAYOUT_CLAIMER_ADDRESS
+        if not payout_claimer or payout_claimer == "0x" + "0" * 40:
+            logger.warning("PAYOUT_CLAIMER_ADDRESS not configured — skipping on-chain claim")
+            return {"status": "skipped", "reason": "PAYOUT_CLAIMER_ADDRESS not configured"}
+
+        if self.settings.MOCK_CHAIN:
+            logger.info("Mock chain: simulating claim for escrow=%s job=%s", escrow_id, job_id)
+            return {"status": "mock", "tx_hash": None}
+
+        claimer_abi = [
+            {
+                "constant": False,
+                "inputs": [
+                    {"name": "escrowId", "type": "uint256"},
+                    {"name": "jobId", "type": "bytes32"},
+                ],
+                "name": "claim",
+                "outputs": [],
+                "payable": False,
+                "stateMutability": "nonpayable",
+                "type": "function",
+            }
+        ]
+
+        claimer = self.web3_client.w3.eth.contract(
+            address=Web3.to_checksum_address(payout_claimer),
+            abi=claimer_abi,
+        )
+
+        try:
+            tx = claimer.functions.claim(int(escrow_id), self.web3_client.ensure_hex_prefix(job_id)).build_transaction({
+                "from": self.web3_client.account.address,
+                "nonce": self.web3_client.w3.eth.get_transaction_count(self.web3_client.account.address),
+                "gas": 300_000,
+                "gasPrice": int(self.web3_client.w3.eth.gas_price * 1.5),
+            })
+            signed = self.web3_client.account.sign_transaction(tx)
+            tx_hash = self.web3_client.w3.eth.send_raw_transaction(signed.raw_transaction)
+            receipt = self.web3_client.w3.eth.wait_for_transaction_receipt(tx_hash)
+
+            status = "success" if receipt.status == 1 else "reverted"
+            logger.info(
+                "PayoutClaimer.claim() %s for escrow=%s job=%s tx=%s",
+                status, escrow_id, job_id, receipt.transactionHash.hex(),
+            )
+            return {
+                "status": status,
+                "tx_hash": receipt.transactionHash.hex(),
+            }
+        except Exception as exc:
+            logger.error("PayoutClaimer.claim() failed for escrow=%s job=%s: %s", escrow_id, job_id, exc)
+            return {"status": "failed", "error": str(exc)}
