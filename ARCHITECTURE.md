@@ -1,350 +1,365 @@
 # Blindference Architecture
 
-## Overview
+This document explains how Blindference works under the hood. It is written for developers, researchers, and operators who want to understand the system design, security properties, and economic model.
 
-Blindference is a confidential AI execution system with three core properties:
+---
 
-1. **Encrypted user inputs** — sensitive data never leaves the user's device in plaintext
-2. **Quorum-based off-chain execution** — distributed inference with cryptographic verification
-3. **On-chain accountability** — verifiable evidence of who acted and how results were produced
+## Table of Contents
 
-The system supports two privacy-preserving execution flows:
+- [System Overview](#system-overview)
+- [Components](#components)
+  - [Frontend](#frontend)
+  - [Inference Coordination Layer (ICL)](#inference-coordination-layer-icl)
+  - [Payment Service](#payment-service)
+  - [Compute Nodes](#compute-nodes)
+  - [Smart Contracts](#smart-contracts)
+- [Execution Flows](#execution-flows)
+  - [Text Inference (ICL Mode)](#text-inference-icl-mode)
+  - [Risk Scoring (ICL Mode)](#risk-scoring-icl-mode)
+  - [On-Chain Mode](#on-chain-mode)
+- [Privacy Model](#privacy-model)
+- [Quorum Consensus](#quorum-consensus)
+- [Security Model](#security-model)
+- [Economic Model](#economic-model)
 
-- **Risk scoring**: Browser CoFHE ciphertexts with per-node permit sharing
-- **Text inference**: AES-encrypted prompt/output blobs with on-chain key storage via `PromptKeyStore`
+---
 
-## Top-Level System View
+## System Overview
 
-```mermaid
-flowchart TB
-    subgraph Browser
-        U[User Wallet]
-        FE[React Frontend]
-    end
+Blindference is a decentralised network for private AI inference. It sits between users who want to run models on sensitive data and compute providers who want to earn rewards for running them. The system guarantees three properties:
 
-    subgraph Coordination
-        ICL[Inference Coordination Layer<br/>FastAPI]
-    end
+1. **Input privacy** — The user's prompt or data is encrypted before it leaves their device.
+2. **Execution integrity** — A quorum of independent nodes runs the same inference and cross-validates the result.
+3. **Economic accountability** — Payment is held in escrow until the quorum agrees, and bad behaviour is financially penalised.
 
-    subgraph Compute
-        N1[Node A — Leader/Verifier]
-        N2[Node B — Leader/Verifier]
-        N3[Node C — Leader/Verifier]
-    end
+The network runs on **Arbitrum Sepolia** for on-chain settlement and uses **Fhenix CoFHE** for confidential access control. Off-chain inference is performed through hosted APIs (Groq, Google Gemini) or local models (vLLM).
 
-    subgraph Blockchain
-        ARB[Arbitrum Sepolia]
-        PKS[PromptKeyStore]
-        CORE[Core Registries]
-    end
+---
 
-    subgraph External
-        COFHE[CoFHE Network<br/>Threshold FHE]
-        PINATA[Pinata / IPFS]
-        LLM[Groq / Gemini]
-    end
+## Components
 
-    U --> FE
-    FE -->|1. Submit request| ICL
-    FE -->|2. CoFHE encrypt| COFHE
-    FE -->|3. Upload blob| PINATA
-    FE -->|4. Store key| PKS
+### Frontend
 
-    ICL -->|5. Dispatch| N1
-    ICL -->|6. Dispatch| N2
-    ICL -->|7. Dispatch| N3
-    ICL -->|8. Commit result| CORE
-
-    N1 -->|9. Decrypt key| COFHE
-    N2 -->|10. Decrypt key| COFHE
-    N3 -->|11. Decrypt key| COFHE
-    N1 -->|12. Download blob| PINATA
-    N2 -->|13. Download blob| PINATA
-    N3 -->|14. Download blob| PINATA
-    N1 -->|15. Run inference| LLM
-    N2 -->|16. Run inference| LLM
-    N3 -->|17. Run inference| LLM
-
-    N1 -->|18. Store output key| PKS
-```
-
-## Component Details
-
-### Frontend (`network/packages/frontend`)
+The frontend is a React application that runs entirely in the user's browser. It is the only component that ever sees plaintext prompts or answers.
 
 **Responsibilities:**
 
-- **Wallet connection**: MetaMask via wagmi/viem on Arbitrum Sepolia
-- **Browser encryption**: CoFHE for risk features, AES-256-GCM for text prompts
-- **Quorum preview**: Calls ICL to see selected leader + verifiers before submitting
-- **Key storage**: Stores prompt key halves in `PromptKeyStore` via MetaMask transaction
-- **Request submission**: Submits encrypted inputs + sharing permits to ICL
-- **Status polling**: Long-polls ICL for quorum progress and result status
-- **Output decryption**: Decrypts output key from `PromptKeyStore` via CoFHE, downloads result blob from IPFS, reveals final answer
+- **Wallet connection** — MetaMask via wagmi/viem on Arbitrum Sepolia.
+- **Local encryption** — AES-256-GCM for text prompts; CoFHE encryption for structured risk features.
+- **Quorum preview** — Calls the ICL to preview which nodes will be assigned before the user pays.
+- **Key storage** — For text inference, splits the AES key into two halves, CoFHE-encrypts each half, and stores them in the `PromptKeyStore` contract.
+- **Request submission** — Sends encrypted inputs, permits, and payment preferences to the ICL.
+- **Status polling** — Polls the ICL and Payment Service for quorum progress and result status.
+- **Output decryption** — Retrieves the output key from `PromptKeyStore`, decrypts the answer, and displays it.
 
-**Key files:**
-- `src/pages/InferenceNewPage.tsx` — Main text inference UI
-- `src/hooks/useCofheClient.ts` — CoFHE SDK initialization
-- `src/utils/textPromptKey.ts` — AES key generation and CoFHE encryption
-- `src/lib/tfhe-wrapper.ts` — TFHE WASM loading
+**Key directories:**
 
-### ICL — Inference Coordination Layer (`network/packages/icl`)
+- `network/packages/frontend/src/pages/` — Inference UI, credit purchase, status pages.
+- `network/packages/frontend/src/hooks/` — CoFHE client, encryption utilities, wallet hooks.
+- `network/packages/frontend/src/utils/` — AES key generation, IPFS upload, permit creation.
+
+### Inference Coordination Layer (ICL)
+
+The ICL is a FastAPI service that coordinates the lifecycle of an inference job. It does not perform inference itself and cannot decrypt any data.
 
 **Responsibilities:**
 
-- **Request acceptance**: Validates encrypted inputs, model ID, coverage preferences
-- **Quorum selection**: Selects 1 leader + N verifiers from active attested node pool
-- **State persistence**: Stores request state in MongoDB Atlas (or in-memory for local dev)
-- **Task dispatch**: Pushes tasks to node callback servers with role assignments
-- **Result aggregation**: Collects leader results and verifier verdicts
-- **Consensus logic**: 2/3 match = accepted, <2/3 = rejected, triggers on-chain commitment
-- **Status APIs**: Provides frontend and node status endpoints
-- **On-chain coordination**: Registers tasks, commits results, manages escrow
+- **Request validation** — Checks encrypted inputs, model ID, and coverage preferences.
+- **Quorum selection** — Picks 1 leader and 2 verifiers from the active, attested node pool based on reputation and tier.
+- **Task dispatch** — Pushes tasks to node callback servers with role assignments and permits.
+- **Result aggregation** — Collects leader results and verifier verdicts.
+- **Consensus enforcement** — 2/3 hash match = accepted; <2/3 = rejected.
+- **On-chain commitment** — Writes accepted results to `ResultRegistry`.
+- **Notification** — Notifies the Payment Service of job completion so rewards can be distributed.
 
 **Key files:**
-- `main.py` — FastAPI app initialization
-- `routers/inference.py` — REST endpoints for requests, uploads, commitments
-- `routers/internal.py` — Node-facing endpoints (assignments, claims, heartbeats)
-- `services/quorum_service.py` — Quorum selection, dispatch, aggregation
-- `services/chain_service.py` — Web3 contract interactions
-- `services/node_selector.py` — Active node ranking and selection
+
+- `network/packages/icl/routers/inference.py` — REST endpoints for job submission and status.
+- `network/packages/icl/routers/internal.py` — Node-facing endpoints (assignments, heartbeats).
+- `network/packages/icl/services/quorum_service.py` — Quorum selection, dispatch, and aggregation logic.
+- `network/packages/icl/services/chain_service.py` — Web3 contract interactions.
 
 **Database collections:**
-- `inference_requests` — Request state and metadata
-- `quorum_assignments` — Leader/verifier mappings
-- `operators` — Registered node operators with attestation data
-- `verifier_verdicts` — Individual verifier submissions
-- `permits` — CoFHE sharing permit records
 
-### Node Runtime (`Blindference-node/` — standalone package)
+- `inference_requests` — Job state and metadata.
+- `quorum_assignments` — Leader/verifier mappings.
+- `operators` — Registered nodes with attestation and reputation data.
+- `verifier_verdicts` — Individual verifier submissions.
+
+### Payment Service
+
+The Payment Service is a FastAPI service that handles all financial operations: credit balances, escrow creation, insurance, and reward distribution.
 
 **Responsibilities:**
 
-- **Attestation**: Auto-re-attests with ICL on startup and watchdog (mock TEE for tier 0)
-- **Heartbeat**: Sends liveness heartbeat to ICL every 60 seconds
-- **Assignment polling**: Polls ICL for pending tasks every 5 seconds
-- **Role execution**: Acts as leader or verifier depending on assignment
-- **CoFHE decryption**: Decrypts prompt key halves via ACL permits
-- **IPFS fetch**: Downloads encrypted prompt/output blobs
-- **Model inference**: Runs Groq Llama 3 or Google Gemini via API
-- **Result submission**: Submits leader results or verifier verdicts back to ICL
+- **Credit management** — Tracks user balances in cUSDC and BLIND tokens.
+- **Job pricing** — Calculates fees based on model, coverage, and quorum tier.
+- **Escrow creation** — Builds Reineira ConfidentialEscrows for direct-cUSDC jobs.
+- **Completion callback** — Listens for ICL job completion and triggers payment release.
+- **Reward distribution** — Sends BLIND rewards to nodes (60% leader, 20% each verifier).
+- **Insurance** — Collects 2% premiums, manages dispute windows, and processes claims.
 
-**Key files:**
-- `blindference_node/cli.py` — CLI entry points (init, start, attest)
-- `blindference_node/node_loop.py` — Daemon with heartbeat, watchdog, assignment poller
-- `blindference_node/job_handler.py` — Task execution logic
-- `blindference_node/crypto.py` — CoFHE client wrapper and AES blob handling
-- `blindference_node/icl_client.py` — ICL REST API client
+**Payment modes:**
+
+- **Credit mode** — Deducts from pre-purchased credit balance. Faster, no per-job MetaMask popups.
+- **Direct mode** — Creates a Reineira escrow for each job. More decentralised, requires per-job approval.
+
+### Compute Nodes
+
+Compute nodes are the workers that perform inference. Anyone with a GPU-capable machine and a wallet can run one. Nodes are event-driven: they register a callback URL with the ICL and receive tasks via HTTP push.
+
+**Responsibilities:**
+
+- **Attestation** — Submits a cryptographic attestation to the ICL on startup (mock TEE for testnet, TPM/TEE for production).
+- **Heartbeat** — Sends a liveness signal every 60 seconds.
+- **Task execution** — Receives assignments, decrypts inputs, runs inference, submits results.
+- **CoFHE decryption** — Uses the Fhenix CoFHE bridge to decrypt prompt keys or structured features.
+- **On-chain submission** — In on-chain mode, posts commitment hashes directly to the `BlindferenceInference` contract.
+
+**Supported inference backends:**
+
+- **Groq** — `llama-3.3-70b-versatile` and other frontier models via API.
+- **Google Gemini** — `gemini-2.5-flash` and other Gemini models via API.
+- **Local vLLM** — Self-hosted models for operators who want to run their own hardware.
+
+**Standalone package:** `pip install blindference-node`
 
 ### Smart Contracts
 
-#### Protocol Layer (`network/packages/contracts`)
+All contracts are deployed on **Arbitrum Sepolia**.
 
-Core Reineira-aligned registries deployed on Arbitrum Sepolia:
-
-| Contract | Purpose |
-|----------|---------|
-| `NodeAttestationRegistry` | Stores operator attestations with tier and expiry |
-| `ExecutionCommitmentRegistry` | Dispatches tasks, tracks commit/reveal deadlines |
-| `ResultRegistry` | Records accepted/rejected inference outcomes |
-| `ReputationRegistry` | Operator reputation scoring (tasks completed, slashed) |
-| `AgentConfigRegistry` | Model ID to agent configuration mapping |
-| `RewardAccumulator` | Reward distribution and claim management |
-| `PromptKeyStore` | Stores CoFHE-encrypted AES key halves for text inference |
-
-#### Demo Vertical (`network/packages/blindference-demo`)
-
-Application-specific contracts:
+#### Core Protocol
 
 | Contract | Purpose |
 |----------|---------|
-| `BlindferenceAgent` | Risk model agent configuration |
-| `BlindferenceInputVault` | On-chain FHE input validation and ACL grant |
-| `BlindferenceAttestor` | Custom attestation validation logic |
-| `BlindferenceUnderwriter` | Insurance underwriter for coverage payouts |
-| `MockPriceOracle` | Demo price feed for coverage calculations |
-| `PayoutClaimer` | Reineira condition resolver for automatic settlements |
+| `NodeRegistry` | Operator registration, attestation, tier, and heartbeat tracking. |
+| `PromptKeyStore` | Stores CoFHE-encrypted AES key halves. Enforces ACL: only assigned nodes can decrypt. |
+| `ResultRegistry` | Records accepted inference outcomes with commitment hashes for audit. |
+| `BlindferenceStaking` | BLIND token staking. Minimum 1000 BLIND. 96-hour unbond. Auto-slash at 3 consecutive failures. |
+| `RewardAccumulator` | Tracks earned rewards per operator. Nodes claim when ready. |
 
-## Privacy Models
+#### Settlement & Insurance
 
-### 1. Risk Scoring Flow
+| Contract | Purpose |
+|----------|---------|
+| `PayoutClaimer` | Reineira escrow resolver. Automatically distributes cUSDC to leader and verifiers on quorum consensus. |
+| `BlindferencePolicyAdapter` | Insurance policy adapter. Calculates premiums and manages coverage pools. |
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant FE as Frontend
-    participant ICL
-    participant Leader
-    participant Verifier
+#### On-Chain Inference
 
-    User->>FE: Enter risk features
-    FE->>FE: CoFHE encrypt features
-    FE->>ICL: Quorum preview
-    FE->>FE: Create one shared permit per node
-    FE->>ICL: Submit ciphertexts + permits
-    ICL->>Leader: Task + leader permit
-    ICL->>Verifier: Task + verifier permit
-    Leader->>Leader: Decrypt via imported permit
-    Verifier->>Verifier: Decrypt via imported permit
-    Leader->>ICL: Leader result hash
-    Verifier->>ICL: Verifier verdict (match/no-match)
-    ICL->>ICL: Aggregate consensus
-    ICL->>CORE: Commit accepted result
+| Contract | Purpose |
+|----------|---------|
+| `BlindferenceInference` (proxy) | On-chain quorum consensus. Accepts job submissions, emits `NodesAssigned`, enforces commit/reveal deadlines, auto-payouts. |
+| `InferenceGate` | Access control for on-chain jobs. Validates model permissions and node eligibility. |
+| `BlindferenceInputVault` | On-chain FHE input validation. Grants ACL access so nodes can decrypt browser-generated ciphertexts. |
+
+#### Tokens
+
+| Contract | Purpose |
+|----------|---------|
+| `BLIND Token` | ERC-20 utility token for staking, payments, and rewards. |
+
+---
+
+## Execution Flows
+
+### Text Inference (ICL Mode)
+
+This is the default flow for natural language prompts.
+
+```
+1. User types a confidential prompt in the browser.
+2. Browser generates an AES-256 key and encrypts the prompt locally.
+3. Encrypted blob is uploaded to Pinata IPFS. The IPFS CID is recorded.
+4. AES key is split into two uint128 halves.
+5. Each half is CoFHE-encrypted in the browser.
+6. User signs a MetaMask transaction to store both halves in PromptKeyStore,
+   gated to the future quorum nodes.
+7. User submits the job to the ICL, referencing the CID and the key store handles.
+8. ICL validates the request, selects 1 leader + 2 verifiers, and dispatches tasks.
+9. Each node receives its role, permit, and task metadata.
+10. Nodes call PromptKeyStore to decrypt their assigned key half via CoFHE ACL.
+11. Nodes download the encrypted blob from IPFS.
+12. Nodes combine key halves, decrypt the blob, and run inference via Groq/Gemini.
+13. Leader submits a result hash + an output key (for the user) to the ICL.
+14. Verifiers submit verdicts: match or no-match against the leader hash.
+15. ICL waits for all verdicts.
+    - If 2/3 match → status = ACCEPTED. ICL commits result to ResultRegistry.
+      Payment Service distributes rewards.
+    - If <2/3 match → status = REJECTED. Payment Service refunds or triggers dispute.
+16. Frontend polls status, sees ACCEPTED.
+17. Frontend requests the output key from PromptKeyStore (user-only ACL).
+18. Frontend downloads the encrypted output blob from IPFS.
+19. Frontend decrypts and displays the answer. Only the user ever sees it.
 ```
 
-**Properties:**
-- Browser creates CoFHE ciphertexts directly via `@cofhe/sdk`
-- User explicitly creates and shares permits to assigned quorum nodes
-- No AES encryption layer — features remain as FHE ciphertexts throughout
-- Result is a hash commitment, not a decrypted value
+### Risk Scoring (ICL Mode)
 
-### 2. Text Inference Flow
+This flow is for structured financial data (credit scores, loan amounts, etc.).
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant FE as Frontend
-    participant ICL
-    participant PKS as PromptKeyStore
-    participant Leader
-    participant Verifier
-    participant IPFS as Pinata/IPFS
-
-    User->>FE: Enter confidential prompt
-    FE->>FE: AES-256 encrypt prompt locally
-    FE->>IPFS: Upload encrypted prompt blob
-    FE->>FE: Split AES key into two uint128 halves
-    FE->>PKS: Store prompt key halves (MetaMask tx)
-    FE->>ICL: Submit text request
-    ICL->>Leader: Dispatch task
-    ICL->>Verifier: Dispatch task
-    Leader->>PKS: Decrypt prompt key via CoFHE ACL
-    Verifier->>PKS: Decrypt prompt key via CoFHE ACL
-    Leader->>IPFS: Download prompt blob
-    Verifier->>IPFS: Download prompt blob
-    Leader->>Leader: Run model inference
-    Verifier->>Verifier: Run model inference
-    Leader->>PKS: Store output key for user
-    Leader->>ICL: Submit leader result
-    Verifier->>ICL: Submit verdict
-    ICL-->>FE: Accepted + output CID + key handles
-    User->>FE: Approve output-key decrypt
-    FE->>PKS: Decrypt output key via CoFHE
-    FE->>IPFS: Download encrypted output blob
-    FE->>User: Reveal generated text
+```
+1. User enters structured features in the browser (credit score, loan amount, etc.).
+2. Browser CoFHE-encrypts each feature directly via @cofhe/sdk.
+3. User creates one sharing permit per quorum node.
+4. User submits encrypted features + permits to the ICL.
+5. ICL selects quorum and dispatches.
+6. Nodes import their sharing permit and decrypt features via CoFHE.
+7. Nodes run the risk model (a deterministic classification or regression).
+8. Leader submits result hash; verifiers cross-validate.
+9. Consensus and settlement proceed exactly like text inference.
 ```
 
-**Properties:**
-- Prompt content is AES-encrypted in browser before upload
-- Prompt/output keys are protected with CoFHE threshold FHE
-- Quorum access enforced through `PromptKeyStore` ACL (only assigned nodes can decrypt)
-- Final output remains user-only — even the leader cannot read it without the user's wallet
-- IPFS blobs are public but unreadable without the AES key
+### On-Chain Mode
 
-## Why PromptKeyStore Exists
+In on-chain mode, the ICL is bypassed for dispatch and consensus. The smart contract enforces deadlines and payouts directly.
 
-`PromptKeyStore` is the critical bridge between:
-
-- Browser/node-generated encrypted key halves
-- Assigned-reader ACL enforcement
-- `decryptForView(...)` threshold network calls
-
-It solves two specific problems:
-
-1. **Node access control**: Nodes need a safe, assigned-only way to decrypt prompt keys
-2. **User exclusivity**: The user needs a user-only way to decrypt output keys
-
-**Ownership rules:**
-- User wallet stores prompt key (proves they created the encryption)
-- Leader node wallet stores output key (proves they ran the inference)
-- ICL reads stored handles back and distributes those handles, not original ciphertext handles
-
-## Handle Lifecycle
-
-This detail matters — using wrong handles causes real CoFHE permission errors.
-
-```text
-1. Browser calls encryptInputs() → original ctHash values
-2. Browser calls storeKey() in PromptKeyStore
-3. Contract returns/preserves stored handles
-4. ACL is attached to stored handles (not original)
-5. ICL persists stored handles in request metadata
-6. Nodes/frontend decrypt stored handles via decryptForView
+```
+1. User submits a job directly to the BlindferenceInference contract via MetaMask.
+2. Contract emits a NodesAssigned event with the task ID and assigned nodes.
+3. Nodes listen for the event via WebSocket or polling.
+4. Nodes decrypt inputs and run inference.
+5. Nodes post commitment hashes directly to the contract within the commit window (600s).
+6. After the reveal window (600s), the contract checks for 2/3 consensus.
+7. If consensus is reached, the contract auto-distributes rewards from the escrow.
+8. User polls the contract for status and decrypts the result locally.
 ```
 
-**Critical**: If the system uses the original ciphertext handle instead of the stored on-chain handle, CoFHE `sealOutput` will return HTTP 403 because the threshold network checks ACL on stored handles.
+On-chain mode is slower but fully decentralised. No single coordinator can censor or reorder jobs.
+
+---
+
+## Privacy Model
+
+Blindference uses two layers of encryption depending on the data type.
+
+### Text Prompts: AES-256 + CoFHE ACL
+
+- **Why AES?** CoFHE encrypts numbers, not free-form text. AES handles arbitrary-length strings efficiently.
+- **Why split the key?** The AES key is split into two uint128 halves so each half can be CoFHE-encrypted and stored in the `PromptKeyStore` contract. The contract enforces that only the assigned leader and verifiers can request decryption of each half.
+- **Why IPFS?** The encrypted blob is public (anyone can fetch it), but unreadable without the AES key. Only the quorum can reconstruct the key.
+- **Output protection** — The leader encrypts the answer with a fresh AES key and stores it in `PromptKeyStore` with user-only ACL. Even the leader cannot read the final output.
+
+### Structured Features: Pure CoFHE
+
+- Numeric features are CoFHE-encrypted directly in the browser as `euint32`, `euint64`, etc.
+- The `BlindferenceInputVault` contract validates and stores them, granting ACL access to the user's wallet.
+- Nodes receive sharing permits and decrypt via `decryptForView().withPermit()`.
+- No AES layer is needed because the data is already numeric.
+
+### Threat: ICL Compromise
+
+The ICL never receives encryption keys. It only coordinates. Even a fully compromised ICL cannot decrypt user data because the CoFHE threshold network enforces ACL checks independently.
+
+### Threat: Node Collusion
+
+If two nodes collude, they still cannot reconstruct the full AES key unless they also compromise the third node or the CoFHE threshold network. The 2/3 quorum requires agreement, so a single honest verifier can detect and reject a bad result.
+
+---
 
 ## Quorum Consensus
 
-**Default topology:** 1 leader + 2 verifiers
+**Default topology:** 1 leader + 2 verifiers.
 
-**Behavior:**
-- Leader produces the canonical result hash
-- Verifiers independently reproduce inference and compare
-- ICL waits for all verifier submissions
-- 2/3 match (leader + 1 verifier) = **accepted**
-- <2/3 match = **rejected**
-- Accepted results committed on-chain via `ResultRegistry`
-- Rejected results trigger dispute resolution (evidence submission, re-verification)
+**Selection criteria:**
+- Nodes must be attested and within heartbeat grace period.
+- Nodes are ranked by reputation score (tasks completed, slashes avoided).
+- Higher-tier nodes (TEE-attested) are preferred for sensitive jobs.
+- Randomisation prevents predictable assignment patterns.
+
+**Consensus rules:**
+
+| Verdicts | Outcome | Action |
+|----------|---------|--------|
+| Leader + 1 verifier match | **ACCEPTED** | Commit to ResultRegistry, distribute rewards |
+| Leader + 0 verifiers match | **REJECTED** | Refund or dispute |
+| Leader disagrees with both | **REJECTED** | Leader may be slashed, dispute opened |
 
 **Timeouts:**
-- Execution commit window: 600 seconds
-- Execution reveal window: 600 seconds
-- Dispute deadline: 72 hours from request creation
+- Execution commit window: 600 seconds.
+- Execution reveal window: 600 seconds.
+- Dispute deadline: 72 hours from job creation.
 
-## Storage Model
-
-### Active Storage
-
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| Encrypted blobs | Pinata IPFS | Prompt/output ciphertext storage |
-| Contract state | Arbitrum Sepolia | On-chain evidence and commitments |
-| ICL persistence | MongoDB Atlas | Operator records, request state |
-| Local dev fallback | In-memory dict | ICL state when Mongo unavailable |
-
-### Deprecated Paths
-
-- Direct browser-to-Lighthouse upload (replaced by Pinata)
-- OpenAI-specific inference path (replaced by Groq/Gemini)
-- `uint256` key halves (replaced by `uint128` halves for gas efficiency)
+---
 
 ## Security Model
 
 ### Threat: Malicious Leader
 
-**Mitigation**: Verifiers independently run the same inference. If leader result doesn't match, verifiers reject. <2/3 consensus = rejection, leader may be slashed.
+A leader could return a fake result hash. Verifiers independently run the same inference with the same inputs. If the leader's hash does not match, verifiers reject. With <2/3 consensus, the job is rejected and the leader may be slashed.
 
 ### Threat: Compromised Node
 
-**Mitigation**: Tiered attestation (mock/TPM/TEE). Nodes must re-attest periodically. Compromised nodes lose reputation and are excluded from quorum selection.
+Nodes must re-attest periodically. A compromised node will fail attestation (mock TEE checks for testnet, real TPM/TEE for production) and be excluded from quorum selection. Consecutive failures trigger automatic slashing.
 
-### Threat: ICL Compromise
+### Threat: Front-End XSS
 
-**Mitigation**: ICL cannot decrypt anything — it only coordinates. Encryption keys are never sent to ICL. ACL enforcement happens in CoFHE threshold network, not ICL.
+All encryption happens in the browser before any DOM rendering. Encryption keys are ephemeral (one per request) and never stored in `localStorage` or cookies.
 
-### Threat: Front-end XSS
+### Threat: Sybil Attack
 
-**Mitigation**: All encryption happens in browser before DOM rendering. Keys are ephemeral (per-request). No long-lived secrets in localStorage.
+Running many cheap nodes is economically discouraged by the staking requirement (1000 BLIND minimum) and the reputation system. New nodes start at the lowest tier and must complete successful jobs to improve their score.
+
+---
+
+## Economic Model
+
+### Fees
+
+Users pay per inference job. The fee depends on:
+- **Model** — Frontier models (Groq, Gemini) cost more than local models.
+- **Coverage** — Optional insurance adds a 2% premium.
+- **Quorum tier** — Higher-tier nodes (TEE-attested) command a premium.
+
+### Payment Methods
+
+- **cUSDC** — Confidential USDC via Reineira escrow. Direct, per-job.
+- **BLIND tokens** — Bulk credit packages at a 20% discount vs. cUSDC.
+- **Credits** — Pre-purchased balance. Fastest, no per-job MetaMask popups.
+
+### Reward Distribution (per accepted job)
+
+| Recipient | Share | Purpose |
+|-----------|-------|---------|
+| Leader | 60% | Primary compute + output key storage |
+| Verifier 1 | 20% | Cross-validation |
+| Verifier 2 | 20% | Cross-validation |
+
+### Staking & Slashing
+
+- **Minimum stake:** 1000 BLIND tokens.
+- **Unbond period:** 96 hours. Funds are locked after unstaking.
+- **Slashing conditions:**
+  - 3 consecutive failed jobs → 10% of stake burned.
+  - Verdict manipulation detected on-chain → 25% of stake burned.
+  - Failure to heartbeat within grace period → Temporary exclusion from quorum.
+
+### Insurance
+
+- **Premium:** 2% of job fee.
+- **Coverage:** Full job fee refund if quorum rejects the result.
+- **Dispute window:** 72 hours.
+- **Claim process:** User submits evidence to the PayoutClaimer contract. If the quorum record shows rejection, the contract auto-releases the payout.
+
+---
 
 ## Deployment Boundaries
 
-```mermaid
-flowchart LR
-    FE[Frontend<br/>Browser] -->|HTTPS| ICL
-    ICL -->|HTTPS| NR[Node Runtime<br/>Compute Provider]
-    ICL -->|JSON-RPC| REG[Core Registries<br/>Arbitrum Sepolia]
-    FE -->|MetaMask| PKS[PromptKeyStore<br/>Arbitrum Sepolia]
-    NR -->|MetaMask| PKS
-    FE -->|HTTPS| P[Pinata<br/>IPFS Gateway]
-    NR -->|HTTPS| P
-    NR -->|HTTPS| M[Groq / Gemini<br/>Model APIs]
+```
+Frontend (Browser)
+  ├── HTTPS ──> ICL (FastAPI)
+  ├── MetaMask ──> Core Registries (Arbitrum Sepolia)
+  └── HTTPS ──> Pinata IPFS
+
+ICL (FastAPI)
+  ├── HTTPS ──> Node Runtimes (Compute Providers)
+  ├── JSON-RPC ──> Core Registries (Arbitrum Sepolia)
+  └── HTTPS ──> Payment Service (FastAPI)
+
+Node Runtime
+  ├── HTTPS ──> ICL (assignments, heartbeats)
+  ├── MetaMask/CoFHE ──> PromptKeyStore / InputVault
+  ├── HTTPS ──> Pinata IPFS (blob download)
+  └── HTTPS ──> Groq / Gemini (model APIs)
 ```
 
-## Future Work
-
-- Deeper Reineira escrow integration for automatic payouts
-- Production insurance policy underwriting
-- GPU-backed node tier (TPM/TEE attestation)
-- Cross-chain result verification
-- Decentralized ICL (multiple coordinator instances)
+All on-chain interactions use Arbitrum Sepolia. CoFHE threshold network calls use Fhenix testnet endpoints. IPFS storage uses Pinata.

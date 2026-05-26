@@ -1,289 +1,217 @@
-# Blindference
+# Blindference — Confidential, Quorum-Verified AI Inference
 
-Blindference is a confidential AI execution layer for Web3. It coordinates encrypted requests across a `1 leader + 2 verifier` quorum, uses CoFHE for key access control, runs off-chain inference through hosted frontier models, and exposes the result lifecycle in a demoable on-chain flow on Arbitrum Sepolia.
+> A decentralised private inference network where prompts are encrypted, outputs are verified by a three-node quorum, and every job is economically settled on-chain.
 
-## What It Does
+[![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](./)
+[![License](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](./)
+[![Node](https://img.shields.io/badge/node-20%2B-blue)](./)
 
-Blindference enables users to submit sensitive prompts and data to AI models without revealing them to any single party. The system guarantees:
+---
 
-- **Input privacy**: User prompts are AES-256 encrypted in the browser before leaving the device
-- **Access control**: Encryption keys are split into FHE-encrypted halves and stored on-chain via CoFHE, only decryptable by assigned quorum nodes
-- **Execution integrity**: A `1 leader + 2 verifier` quorum runs identical inference and cross-validates results
-- **Economic accountability**: Disputed results trigger on-chain verification with automatic USDC payouts via Reineira
-   - **Staking & slashing**: Nodes stake BLIND tokens to participate; bad behavior is slashed
-   - **Reward distribution**: Nodes earn BLIND rewards per verified job (60% leader, 20% each verifier)
-   - **Output privacy**: Only the user can decrypt the final result using their wallet
+## Table of Contents
 
-## Supported Modes
+- [What is Blindference?](#what-is-blindference)
+- [How It Works](#how-it-works)
+- [Key Features](#key-features)
+- [Quick Start](#quick-start)
+- [Deployed Contracts](#deployed-contracts)
+- [Repository Structure](#repository-structure)
+- [Documentation](#documentation)
+- [License](#license)
 
-- **Confidential text inference**: Submit natural language prompts to Groq Llama 3 or Google Gemini through encrypted channels
-- **Confidential risk scoring**: Submit structured financial features for privacy-preserving credit/risk evaluation
+---
 
-## System Architecture
+## What is Blindference?
 
-```mermaid
-flowchart LR
-    U[User Wallet] --> FE[Frontend]
-    FE -->|AES encrypt prompt| ENC[(Encrypted Prompt Blob)]
-    FE -->|Store prompt key| PKS[PromptKeyStore]
-    FE -->|Submit job| PS[Payment Service]
+AI inference today exposes your prompts to model providers, offers no proof that the output came from the claimed model, and provides no recourse if a node returns garbage. Blindference fixes all three.
 
-    PS -->|Forward request| ICL[ICL]
-    PS -->|Create escrow| CHAIN[Arbitrum Sepolia]
+**The problem:**
+- **No input privacy** — Your prompts, financial data, and personal information are visible to whoever runs the model.
+- **No output verifiability** — You have to trust that the provider ran the exact model they claim to have run.
+- **No financial accountability** — If a node fails or cheats, you bear the cost.
 
-    ICL --> L[Leader Node]
-    ICL --> V1[Verifier 1]
-    ICL --> V2[Verifier 2]
+**Blindference solves this with:**
+- **AES-256-GCM encryption** in the browser before your prompt ever leaves your device.
+- **Fhenix CoFHE** access control so only the assigned quorum nodes can decrypt your key.
+- **A 2/3 quorum** of independent nodes that run the same inference and cross-validate results.
+- **Reineira escrows** that hold payment until the quorum agrees, then distribute rewards automatically.
 
-    PKS --> L
-    PKS --> V1
-    PKS --> V2
+In short: **No party — not the node operators, not the coordinator, not the blockchain — ever sees your prompt or answer in plaintext.** Only your wallet can decrypt the final result.
 
-    L --> LLM1[Groq / Gemini]
-    V1 --> LLM2[Groq / Gemini]
-    V2 --> LLM3[Groq / Gemini]
+---
 
-    L -->|Store output key for user| PKS
-    L -->|Leader result| ICL
-    V1 -->|Verdict| ICL
-    V2 -->|Verdict| ICL
-
-    ICL -->|Callback| PS
-    PS -->|Distribute rewards| CHAIN
-    PS -->|Job status| FE
-    PKS --> FE
-```
-
-## Core Principles
-
-- The coordinator (ICL) never sees plaintext
-- Assigned quorum nodes only receive encrypted inputs with cryptographically enforced access control
-- The user remains the only party who can reveal the final answer
-- Execution is verifiable through quorum consensus and economically meaningful through on-chain settlement
-
-## Monorepo Layout
+## How It Works
 
 ```text
-blindference/
-├── README.md                 # This file
-├── ARCHITECTURE.md           # Detailed component architecture
-├── DEPLOYMENT.md            # Contract addresses and deployment guide
-├── updates.md               # Changelog and release notes
-├── CONTEXT.md               # LLM/engineer handoff context
-├── network/                 # Main monorepo
-│   ├── packages/
-│   │   ├── contracts/       # Reineira protocol contracts
-│   │   ├── blindference-demo/  # Demo vault/settlement contracts
-│   │   ├── icl/             # FastAPI inference coordinator
-│   │   ├── frontend/        # React/Vite browser client
-│   │   ├── node-reineira/   # Node runtime (legacy, see Blindference-node)
-│   │   ├── shared/          # Shared TypeScript utilities
-│   │   └── shared-py/       # Shared Python utilities
-│   └── scripts/demo/        # Demo stack orchestration scripts
-└── Blindference-node/       # Standalone node runtime package
+User Wallet          Frontend              ICL              Quorum Nodes           Blockchain
+    |                  |                    |                    |                    |
+    |-- type prompt -->|                    |                    |                    |
+    |                  |-- AES encrypt -----|                    |                    |
+    |                  |-- upload blob ---->|                    |                    |
+    |                  |-- store key ------>|                    |                    |
+    |                  |-- submit job ----->|                    |                    |
+    |                  |                    |-- dispatch ------>|                    |
+    |                  |                    |                    |-- decrypt key ---->|
+    |                  |                    |                    |-- run inference    |
+    |                  |                    |<-- result hash ----|                    |
+    |                  |                    |<-- verdicts ---------------------------|
+    |                  |                    |-- 2/3 match?                               |
+    |                  |                    |-- commit result ------------------------>|
+    |                  |<-- accepted -------|                    |                    |
+    |<-- decrypt output |                    |                    |                    |
+    |                  |                    |                    |                    |
 ```
 
-## Execution Flows
+1. **Encrypt locally** — The browser AES-256 encrypts your prompt before upload.
+2. **Store key on-chain** — The encryption key is split into halves, CoFHE-encrypted, and stored in a smart contract gated to the quorum.
+3. **Select quorum** — The Inference Coordination Layer (ICL) picks 1 leader and 2 verifiers from the active node pool.
+4. **Run and verify** — Each node decrypts the prompt, runs the identical model, and submits a commitment hash. The leader also stores an output key for you.
+5. **Reach consensus** — If at least 2 of 3 hashes match, the result is accepted. If not, the job is rejected.
+6. **Settle payment** — Accepted results trigger automatic payment distribution from the escrow. Rejected results trigger a refund or dispute process.
+7. **Decrypt answer** — Only your wallet can request the output key from the contract and decrypt the final answer.
 
-### Text Inference Flow
+---
 
-```text
-1. User types prompt in browser
-2. Browser AES-256 encrypts prompt locally
-3. Encrypted blob uploaded to Pinata IPFS
-4. AES key split into two uint128 halves
-5. Each half CoFHE-encrypted and stored in PromptKeyStore contract
-6. User submits job to Payment Service (credit validation, escrow, insurance)
-7. Payment Service forwards prepared request to ICL
-8. ICL selects 1 leader + 2 verifiers from active node pool
-9. ICL dispatches tasks to nodes with CoFHE sharing permits
-10. Nodes decrypt prompt key halves via CoFHE ACL
-11. Nodes download encrypted blob from IPFS
-12. Nodes run identical inference via Groq/Gemini
-13. Leader submits result hash + output key to ICL
-14. Verifiers submit verdicts (match/no-match)
-15. ICL aggregates: 2/3 match = accepted, <2/3 = rejected
-16. ICL commits accepted result on-chain via ResultRegistry
-17. ICL notifies Payment Service of completion
-18. Payment Service distributes BLIND rewards (success) or refunds credits (failure)
-19. Frontend polls Payment Service status, decrypts output key, reveals answer
-```
+## Key Features
 
-### Risk Scoring Flow
+- **End-to-end encryption** — Prompts are encrypted in the browser with AES-256-GCM. Keys are protected by Fhenix CoFHE threshold FHE.
+- **Quorum-verified outputs** — Three independent nodes run the same inference. A 2/3 hash match guarantees execution integrity.
+- **Economic accountability** — Every job is backed by an escrow. Nodes stake BLIND tokens to participate. Bad behaviour is slashed.
+- **Optional insurance** — Purchase coverage for an additional 2% premium. If the quorum rejects a result, you can claim a payout.
+- **Flexible payment** — Pay per call with cUSDC or BLIND tokens, or buy bulk credit packages at a discount.
+- **Agent SDK** — A TypeScript SDK lets autonomous agents submit jobs, poll status, and decrypt results programmatically.
+- **Two execution modes** —
+  - **ICL mode**: Fast, coordinated through the Inference Coordination Layer.
+  - **On-Chain mode**: Fully decentralised. Jobs are posted directly to a smart contract, nodes listen for events, and consensus is enforced on-chain.
 
-```text
-1. User enters financial features in browser
-2. Browser CoFHE-encrypts features
-3. User creates sharing permits for each quorum node
-4. Request submitted to ICL with encrypted features + permits
-5. ICL dispatches to leader + verifiers
-6. Nodes decrypt features via imported sharing permits
-7. Nodes run risk model inference
-8. Leader submits result hash, verifiers cross-validate
-9. ICL commits accepted result on-chain
-```
-
-## CoFHE Prompt Key Storage Architecture
-
-Fhenix CoFHE enforces that **only the address that created an encrypted input can call `FHE.asEuint128()`** with it. This means the ICL coordinator wallet cannot store prompt keys on behalf of the frontend user — the call will revert with `InvalidSigner(expectedSigner, actualSigner)`.
-
-Three architectural options exist for handling this constraint. **Option A** is the current implementation.
-
-### Option A: Frontend Calls `storeKey` (Two-Phase Flow) — IMPLEMENTED
-
-**How it works:**
-1. Frontend encrypts prompt key and calls `PromptKeyStore.storeKey(taskId, encHigh, encLow, allowedNodes)` directly via wagmi/viem
-2. Frontend submits request to ICL, including `prompt_key_store_tx` hash in metadata
-3. ICL verifies the tx (optional), calls `grantDecryptAccess(taskId, node)` for each quorum node, then dispatches
-
-**Pros:**
-- Proper on-chain storage with correct signer
-- ACL access granted through contract
-- Audit trail of who stored each key
-
-**Cons:**
-- Requires two-phase API (create → store → confirm)
-- Frontend must wait for tx confirmation before dispatch
-- Additional MetaMask popup for `storeKey`
-
-**Implementation details:**
-- ICL endpoint: `POST /v1/inference/{request_id}/confirm-store-key` with `{ prompt_key_store_tx: "0x..." }`
-- ICL verifies key exists on-chain via `getEncryptedKey(taskId)` before dispatching
-- If verification fails, ICL returns error and request stays in `pending_store_key` status
-
-### Option B: Sharing Permits (No On-Chain Storage)
-
-**How it works:**
-1. Frontend creates CoFHE sharing permit for each quorum node (`client.permits.createSharing(issuer, recipient)`)
-2. Frontend sends permits to ICL
-3. ICL passes permits to nodes via assignment API
-4. Nodes import permit (`client.permits.importShared(permit)`) and decrypt via `decryptForView().withPermit()`
-
-**Pros:**
-- No on-chain storage overhead
-- No additional MetaMask popups
-- Nodes decrypt directly with imported permits
-
-**Cons:**
-- No on-chain audit trail of prompt keys
-- Permits must be created per-request, per-node
-- If permit expires before node claims, decryption fails
-
-**When to use:**
-- Suitable for systems where on-chain key storage is not a hard requirement
-- Lower latency, simpler flow
-- Used by the legacy `blindference-old` implementation
-
-### Option C: Hybrid — Frontend Store + ICL Grant
-
-**How it works:**
-1. Frontend calls `storeKey` with empty/miminal `allowedNodes`
-2. ICL calls `grantDecryptAccess` for each assigned node
-3. ICL dispatches after all nodes have access
-
-**Pros:**
-- Frontend pays storage gas once
-- ICL dynamically grants access as nodes are assigned
-- Flexible for changing quorum assignments
-
-**Cons:**
-- Still requires frontend `storeKey` call
-- Slightly more complex contract interaction
-- `grantDecryptAccess` must succeed for each node
-
-**When to use:**
-- When quorum assignments are dynamic or may change post-storage
-- When you want the ICL to control node access after assignment
-
-## Deployed Contracts (Arbitrum Sepolia)
-
-| Contract | Address | Purpose |
-|----------|---------|---------|
-| PromptKeyStore | `0x1E22dD12f448B15f1Ca8560fB6B4463834FaAf73` | Stores CoFHE-encrypted AES key halves |
-| NodeAttestationRegistry | `0xB54e019e9717a8Ed4746bA9d7F1A3F83cf0a35E0` | Operator attestation and tier verification |
-| ExecutionCommitmentRegistry | `0xcd45aefE9a16772528fa30B7d47958a95e83440C` | Task dispatch and commitment tracking |
-| ResultRegistry | `0xCebd831eCd00915E299b8Ef2666cAbf942dc7150` | On-chain result storage for settlement |
-| ReputationRegistry | `0xdaDb4D46D231d3fe6D3754E0861c8bCD36aF0604` | Operator reputation scoring |
-| AgentConfigRegistry | `0x85aE035d6a94c006B5d0808cAdF47F5c22536996` | Model and agent configuration |
-| RewardAccumulator | `0xFa25Fb53eF8dAc88E4f43bB7558Cf3930Bf3e817` | Reward distribution |
-| BlindferenceAttestor | `0x957CEb3F3E77bF91A001ef9FB2cEeB40A860FD79` | Custom attestation validation |
-| BlindferenceUnderwriter | `0xC7D3706Ca2a42d739429Aec1b452051dA5Eb68f0` | Insurance underwriter |
-| BlindferenceAgent | `0x43132afC4F163C244f7b66Adafee32F6B904994c` | Agent configuration |
-| BLIND Token | `0x232D5470DaaC7AD552a42d876aDEF1f778033cE0` | ERC-20 utility token for staking, payments, and rewards |
-| BlindferenceStaking | `0x222Ac74201Ed58915e42Ee5be626d939fd234D0b` | BLIND staking: stake/unbond/slash. Min 1000 BLIND, 96h unbond, auto-slash at 3 failures |
-| BlindferencePolicyAdapter | `0xc8Ae5892bf5b91726FCb9B2a7EceDee596B795cF` | Mock insurance policy adapter (Tier 1 testnet) |
-| BlindferenceUnderwriter | `0xC7D3706Ca2a42d739429Aec1b452051dA5Eb68f0` | Insurance underwriter |
-
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for full deployment details.
+---
 
 ## Quick Start
 
 ### Prerequisites
 
-- Node.js 18+ with npm/pnpm
-- Python 3.11+ with uv/pip
-- Foundry (for contract compilation)
-- Git
+- Node.js 20+ and npm
+- Python 3.11+ with pip or uv
+- MongoDB (or use in-memory fallback for local dev)
+- MetaMask with Arbitrum Sepolia configured
+- Sepolia ETH for gas (get from [the faucet](https://faucet.quicknode.com/arbitrum/sepolia))
 
-### Running the Full Stack Locally
+### 1. Clone the repository
 
 ```bash
-# 1. Start the ICL coordinator (inference + quorum)
+git clone https://github.com/baync180705/blindference.git
+cd blindference
+```
+
+### 2. Start the Inference Coordination Layer
+
+```bash
 cd network/packages/icl
-./.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .
+uvicorn main:app --host 127.0.0.1 --port 8000
+```
 
-# 2. In another terminal, bootstrap demo operators
-curl -s -X POST http://127.0.0.1:8000/admin/bootstrap-demo-nodes \
-  -H 'Content-Type: application/json' \
-  -d '{"count":3}'
+### 3. Start the Payment Service
 
-# 3. Start 3 nodes (in separate terminals)
-# See Blindference-node/ README for node setup
-
-# 4. Start the Payment Service (gateway: credits, escrow, rewards)
+```bash
 cd network/packages/payment
-./.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8001
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .
+uvicorn main:app --host 127.0.0.1 --port 8001
+```
 
-# 5. Start the frontend
+### 4. Install and run a compute node
+
+```bash
+pip install blindference-node
+blindference-node init
+blindference-node start
+```
+
+For a full quorum, run three nodes on separate ports. See the [node documentation](https://pypi.org/project/blindference-node/) for details.
+
+### 5. Start the frontend
+
+```bash
 cd network/packages/frontend
 npm install
 npm run dev
 ```
 
-Or use the demo scripts:
+Open [http://localhost:3000](http://localhost:3000), connect MetaMask to Arbitrum Sepolia, and submit your first confidential inference job.
 
-```bash
-bash network/scripts/demo/run-stack.sh   # Start everything
-bash network/scripts/demo/status.sh        # Check status
-bash network/scripts/demo/stop.sh        # Stop everything
+---
+
+## Deployed Contracts (Arbitrum Sepolia)
+
+| Contract | Address | Purpose |
+|----------|---------|---------|
+| **BLIND Token** | `0x232D5470DaaC7AD552a42d876aDEF1f778033cE0` | ERC-20 utility token for staking, payments, and rewards |
+| **BlindFaucet** | `0xA74e70f2b3e9B68C2D537EE52E881F9A3F4Bf2E9` | Free BLIND token distribution for testnet users |
+| **BlindferenceStaking** | `0x222Ac74201Ed58915e42Ee5be626d939fd234D0b` | Node staking: stake, unbond, slash. Min 1000 BLIND, 96h unbond |
+| **BlindferencePolicyAdapter** | `0xc8Ae5892bf5b91726FCb9B2a7EceDee596B795cF` | Insurance policy adapter for coverage premiums |
+| **PromptKeyStore** | `0x1E22dD12f448B15f1Ca8560fB6B4463834FaAf73` | Stores CoFHE-encrypted AES key halves for text inference |
+| **ResultRegistry** | `0xCebd831eCd00915E299b8Ef2666cAbf942dc7150` | On-chain commitment of accepted inference results |
+| **InferenceGate** | `0x6a3fA63542d0b69937949372c11348A9EE3f6459` | Access control for on-chain inference jobs |
+| **PayoutClaimer** | `0xEfB565c7989dd1dEDD0C5B8c95dA24Ef2d94FBbd` | Reineira escrow resolver for automatic reward distribution |
+| **NodeRegistry** | `0xB54e019e9717a8Ed4746bA9d7F1A3F83cf0a35E0` | Operator attestation, tier, and heartbeat tracking |
+| **BlindferenceInputVault** | `0x8dD7B2A9B69C76A69d33B2DF46426Cbe657a902b` | On-chain FHE input validation and ACL grant |
+| **BlindferenceInference** (proxy) | `0x98b08590D1CB28E6687eFea59A32BE8B16571C86` | On-chain quorum consensus and auto-payout |
+
+All contracts are verified on [Arbiscan Sepolia](https://sepolia.arbiscan.io/).
+
+---
+
+## Repository Structure
+
+```text
+blindference/
+├── network/
+│   ├── packages/
+│   │   ├── frontend/          # React/Vite browser client
+│   │   │   ├── src/pages/     # Inference UI, credit purchase, status polling
+│   │   │   └── src/hooks/     # CoFHE client, encryption, wallet connection
+│   │   ├── icl/               # FastAPI inference coordination layer
+│   │   │   ├── routers/       # REST endpoints for requests and nodes
+│   │   │   └── services/      # Quorum selection, dispatch, aggregation
+│   │   ├── payment/           # Credit, escrow, insurance, rewards service
+│   │   │   ├── routers/       # Job creation, completion, balance APIs
+│   │   │   └── services/      # BLIND/cUSDC accounting, Reineira integration
+│   │   ├── contracts/         # Protocol and demo smart contracts (Solidity)
+│   │   ├── blindference-demo/ # Demo vertical contracts (risk scoring, text)
+│   │   ├── agent-sdk/         # TypeScript SDK for agent builders
+│   │   └── node-reineira/     # Standalone compute node (see PyPI package)
+│   └── README.md
+├── docs/                      # Mintlify documentation site
+├── README.md                  # This file
+├── ARCHITECTURE.md            # Deep dive into system design
+├── SETTLEMENT.md              # Reineira escrow and insurance mechanics
+├── DEPLOYMENT.md              # Contract deployment and configuration
+└── LICENSE                    # MIT License
 ```
 
-Open http://localhost:3000 and connect MetaMask to Arbitrum Sepolia.
+---
 
 ## Documentation
 
-- [ARCHITECTURE.md](./ARCHITECTURE.md) — Component-level architecture and data flows
-- [DEPLOYMENT.md](./DEPLOYMENT.md) — Contract deployment guide and addresses
-- [updates.md](./updates.md) — Changelog and release history
-- [CONTEXT.md](./CONTEXT.md) — Engineer/LLM handoff context
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** — Component-level architecture, data flows, and security model.
+- **[SETTLEMENT.md](./SETTLEMENT.md)** — How escrows, insurance, rewards, and slashing work.
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)** — Full deployment guide, environment variables, and troubleshooting.
+- **[docs/](./docs/)** — Mintlify documentation site (compute node guides, agent builder guides, API reference).
 
-## Repositories
+### External Resources
 
-This project consists of two main repositories:
+- **Compute node package:** [blindference-node on PyPI](https://pypi.org/project/blindference-node/)
+- **Reineira protocol:** [reineira.xyz](https://reineira.xyz)
+- **Fhenix CoFHE:** [fhenix.io](https://www.fhenix.io/)
+- **Demo frontend:** [blindference.vercel.app](https://blindference.vercel.app)
 
-1. **blindference** (this repo) — Frontend, ICL coordinator, contracts, and demo infrastructure
-2. **Blindference-node** — Standalone node runtime for compute providers
+---
 
 ## License
 
 MIT License — see [LICENSE](./LICENSE) for details.
-
-## Contributing
-
-We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
-
-## Contact
-
-- Website: https://blindference.xyz
-- Demo: https://blindference.vercel.app
-- Twitter: @blindference
