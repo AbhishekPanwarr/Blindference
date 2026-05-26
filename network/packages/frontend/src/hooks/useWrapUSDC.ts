@@ -119,6 +119,16 @@ export function useWrapUSDC() {
 
         const feeParams = await getFeeParams(publicClient)
 
+        // Log exact args for debugging
+        console.log('[WrapUSDC] Diag — create args:', {
+          encOwner: encOwner.toString(),
+          encAmount: encAmount.toString(),
+          resolver: '0x0000000000000000000000000000000000000000',
+          resolverData: '0x',
+          gas: 500000,
+          feeParams,
+        })
+
         // Call ConfidentialEscrow.create(encOwner, encAmount, address(0), "0x")
         const createTxHash = await walletClient.writeContract({
           account: walletClient.account,
@@ -130,9 +140,17 @@ export function useWrapUSDC() {
           gas: 500000n,
           ...feeParams,
         })
+        console.log('[WrapUSDC] Diag — create tx submitted:', createTxHash)
+
         const createReceipt = await publicClient.waitForTransactionReceipt({ hash: createTxHash })
+        console.log('[WrapUSDC] Diag — create receipt:', {
+          status: createReceipt.status,
+          gasUsed: createReceipt.gasUsed?.toString?.(),
+          logs: createReceipt.logs?.length,
+          txHash: createReceipt.transactionHash,
+        })
         if (createReceipt.status !== 'success') {
-          throw new Error('Escrow creation transaction failed')
+          throw new Error(`Escrow creation transaction failed (status=${createReceipt.status}, gasUsed=${createReceipt.gasUsed})`)
         }
 
         // Parse EscrowCreated event to get escrowId
