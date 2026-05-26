@@ -65,19 +65,19 @@ export function useWrapUSDC() {
         const amount = sdk.usdc(usdcAmount)
         const owner = await sdk.signer.getAddress()
 
-        // Step 1: Create plain (unconditional) escrow
+        // Step 1: Create unconditional escrow (confidential escrow builder API)
         updateStep(0, 'in-progress')
-        const escrow = await sdk.escrowPlain.create({ amount, owner })
+        const escrow = await sdk.escrow.build().amount(amount).owner(owner).create()
         updateStep(0, 'done', escrow.createTx?.hash)
-        console.log(`[WrapUSDC] Plain escrow created: id=${escrow.id}`)
+        console.log(`[WrapUSDC] Escrow created: id=${escrow.id}`)
 
-        // Step 2: Fund escrow with plain USDC
+        // Step 2: Fund escrow — SDK auto-approves USDC and wraps into cUSDC
         updateStep(1, 'in-progress')
         const fundResult = await escrow.fund(amount, { autoApprove: true })
-        updateStep(1, 'done', fundResult.hash)
-        console.log(`[WrapUSDC] Escrow funded: tx=${fundResult.hash}`)
+        updateStep(1, 'done', fundResult.tx.hash)
+        console.log(`[WrapUSDC] Escrow funded: tx=${fundResult.tx.hash}`)
 
-        // Step 3: Redeem escrow (receive cUSDC)
+        // Step 3: Redeem escrow — cUSDC is released back to wallet
         updateStep(2, 'in-progress')
         const redeemResult = await escrow.redeem()
         updateStep(2, 'done', redeemResult.hash)
