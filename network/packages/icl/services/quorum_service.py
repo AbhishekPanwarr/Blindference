@@ -597,7 +597,7 @@ class QuorumService:
         cursor = self.database[NODE_RUNTIMES].find({})
         runtimes: list[dict[str, str]] = []
         async for document in cursor:
-            document.pop("_id", None)
+            document.pop("id", None)
             runtimes.append(
                 {
                     "operator_address": document["operator_address"],
@@ -1219,7 +1219,7 @@ class QuorumService:
         verifier_cursor = self.database[VERIFIER_VERDICTS].find({"request_id": request_id})
         verifier_documents: list[dict] = []
         async for verifier_document in verifier_cursor:
-            verifier_document.pop("_id", None)
+            verifier_document.pop("id", None)
             verifier_documents.append(verifier_document)
 
         if len(verifier_documents) < len(assignment["verifier_addresses"]):
@@ -1284,7 +1284,7 @@ class QuorumService:
         verifier_cursor = self.database[VERIFIER_VERDICTS].find({"request_id": request_id})
         verifier_documents: list[dict] = []
         async for verifier_document in verifier_cursor:
-            verifier_document.pop("_id", None)
+            verifier_document.pop("id", None)
             verifier_documents.append(verifier_document)
 
         total_nodes = 1 + len(assignment["verifier_addresses"])
@@ -1423,19 +1423,19 @@ class QuorumService:
         document = await self.database[DISPUTES].find_one({"request_id": request_id})
         if document is None:
             return None
-        document.pop("_id", None)
+        document.pop("id", None)
         return document
 
     async def _to_response(self, request_document: dict) -> InferenceRequestResponse:
         request_document = dict(request_document)
-        request_document.pop("_id", None)
+        request_document.pop("id", None)
 
         assignment_document = await self.database[QUORUM_ASSIGNMENTS].find_one(
             {"request_id": request_document["request_id"]}
         )
         if assignment_document is None:
             raise ValueError("missing quorum assignment")
-        assignment_document.pop("_id", None)
+        assignment_document.pop("id", None)
 
         metadata = dict(request_document.get("metadata", {}))
         raw_text_request = metadata.get("text_request")
@@ -1460,7 +1460,7 @@ class QuorumService:
         verifier_cursor = self.database[VERIFIER_VERDICTS].find({"request_id": request_document["request_id"]})
         verifier_documents: list[dict] = []
         async for verifier_document in verifier_cursor:
-            verifier_document.pop("_id", None)
+            verifier_document.pop("id", None)
             verifier_documents.append(verifier_document)
         verdicts_by_address = {
             str(verdict_document["verifier_address"]).lower(): verdict_document
@@ -1547,14 +1547,14 @@ class QuorumService:
 
     async def _to_text_result(self, request_document: dict) -> TextInferenceResult:
         request_document = dict(request_document)
-        request_document.pop("_id", None)
+        request_document.pop("id", None)
 
         assignment_document = await self.database[QUORUM_ASSIGNMENTS].find_one(
             {"request_id": request_document["request_id"]}
         )
         if assignment_document is None:
             raise ValueError("missing quorum assignment")
-        assignment_document.pop("_id", None)
+        assignment_document.pop("id", None)
 
         status_map = {
             "queued": "QUEUED",
@@ -1666,11 +1666,15 @@ class QuorumService:
         """Record that *node_address* has claimed *job_id* to prevent re-dispatch."""
         checksum = self.chain_service.web3_client.checksum_address(node_address)
         now_iso = datetime.now(timezone.utc).isoformat()
+        doc = await self.database[INFERENCE_REQUESTS].find_one({"task_id": job_id})
+        claimed_nodes = doc.get("claimed_nodes", []) if doc else []
+        if checksum not in claimed_nodes:
+            claimed_nodes.append(checksum)
         await self.database[INFERENCE_REQUESTS].update_one(
             {"task_id": job_id},
             {
-                "$addToSet": {"claimed_nodes": checksum},
                 "$set": {
+                    "claimed_nodes": claimed_nodes,
                     f"node_assignments.{checksum}.status": "claimed",
                     f"node_assignments.{checksum}.claimed_at": now_iso,
                     "updated_at": datetime.now(timezone.utc),
@@ -1684,15 +1688,20 @@ class QuorumService:
         assigned_ids: list[str] = []
         now = datetime.now(timezone.utc)
 
-        cursor = self.database[INFERENCE_REQUESTS].find({
-            "$or": [
-                {"leader_address": checksum},
-                {"verifier_addresses": checksum},
-            ],
-            "status": {"$in": ["queued", "dispatched", "running"]},
-        })
-        async for document in cursor:
-            task_id = document["task_id"]
+        # Scan each pending status separately to avoid $or/$in operators
+        for status in ["queued", "dispatched", "running"]:
+            cursor = self.database[INFERENCE_REQUESTS].find({"status": status})
+            async for document in cursor:
+                if document.get("leader_address") == checksum or checksum in document.get("verifier_addresses", []):
+                    assigned_ids.append(document["task_id"])
+
+        # Deduplicate and filter by assignment state / timeout
+        unique_ids = list(dict.fromkeys(assigned_ids))
+        result_ids: list[str] = []
+        for task_id in unique_ids:
+            document = await self.database[INFERENCE_REQUESTS].find_one({"task_id": task_id})
+            if not document:
+                continue
             node_assignments = document.get("node_assignments", {})
             node_status = node_assignments.get(checksum, {})
 
@@ -1715,9 +1724,9 @@ class QuorumService:
             if node_status.get("status") in ("completed", "failed"):
                 continue
 
-            assigned_ids.append(task_id)
+            result_ids.append(task_id)
 
-        return assigned_ids
+        return result_ids
 
     async def _mark_node_assignment_failed(
         self, task_id: str, node_address: str, reason: str
@@ -1777,11 +1786,12 @@ class QuorumService:
 
     async def _dispatch_pending_tasks_for_node(self, operator_address: str) -> None:
         checksum_address = self.chain_service.web3_client.checksum_address(operator_address)
-        cursor = self.database[INFERENCE_REQUESTS].find({
-            "status": "queued",
-            "claimed_nodes": {"$nin": [checksum_address]},
-        })
+        # Fetch all queued tasks and filter claimed nodes in Python (avoids $nin operator)
+        cursor = self.database[INFERENCE_REQUESTS].find({"status": "queued"})
         async for document in cursor:
+            claimed_nodes = document.get("claimed_nodes", [])
+            if checksum_address in claimed_nodes:
+                continue
             if (
                 document.get("leader_address") == checksum_address
                 and document.get("output_cid") is None

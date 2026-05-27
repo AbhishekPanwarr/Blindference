@@ -3,31 +3,13 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timezone
-from decimal import Decimal
 from typing import Any
 
-from bson.decimal128 import Decimal128
-
 from db.collections import CREDITS
+from db.supabase_client import get_supabase_client
 from models.db_models import CreditAccountRecord
 
 logger = logging.getLogger("blindference.payment.credits")
-
-
-def _to_decimal128(value: int | str | Decimal128) -> Decimal128:
-    """Convert a Python int or string to MongoDB Decimal128."""
-    if isinstance(value, Decimal128):
-        return value
-    return Decimal128(Decimal(str(value)))
-
-
-def _to_str(value: int | str | Decimal128 | None) -> str:
-    """Convert a MongoDB value back to string for API responses."""
-    if value is None:
-        return "0"
-    if isinstance(value, Decimal128):
-        return str(value.to_decimal())
-    return str(value)
 
 
 class InsufficientCredits(Exception):
@@ -51,12 +33,12 @@ class CreditService:
                 "total_spent_blind": "0",
             }
         return {
-            "balance_cusdc": _to_str(record.get("balance_cusdc")),
-            "balance_blind": _to_str(record.get("balance_blind")),
-            "total_deposited_cusdc": _to_str(record.get("total_deposited_cusdc")),
-            "total_deposited_blind": _to_str(record.get("total_deposited_blind")),
-            "total_spent_cusdc": _to_str(record.get("total_spent_cusdc")),
-            "total_spent_blind": _to_str(record.get("total_spent_blind")),
+            "balance_cusdc": str(record.get("balance_cusdc", 0)),
+            "balance_blind": str(record.get("balance_blind", 0)),
+            "total_deposited_cusdc": str(record.get("total_deposited_cusdc", 0)),
+            "total_deposited_blind": str(record.get("total_deposited_blind", 0)),
+            "total_spent_cusdc": str(record.get("total_spent_cusdc", 0)),
+            "total_spent_blind": str(record.get("total_spent_blind", 0)),
         }
 
     async def process_deposit(self, tx_hash: str, chain_service) -> dict[str, Any]:
@@ -119,31 +101,28 @@ class CreditService:
             raise ValueError("No deposit to ICL wallet found in transaction")
 
         user_address = deposited["from"].lower()
-        updates: dict[str, Any] = {}
-        if deposited["cusdc"] != "0":
-            amount_dec = _to_decimal128(deposited["cusdc"])
-            updates["$inc"] = {
-                "balance_cusdc": amount_dec,
-                "total_deposited_cusdc": amount_dec,
-            }
-        elif deposited["blind"] != "0":
-            amount_dec = _to_decimal128(deposited["blind"])
-            updates["$inc"] = {
-                "balance_blind": amount_dec,
-                "total_deposited_blind": amount_dec,
-            }
-        else:
+        
+        amount_cusdc = int(deposited["cusdc"]) if deposited["cusdc"] != "0" else 0
+        amount_blind = int(deposited["blind"]) if deposited["blind"] != "0" else 0
+        
+        if amount_cusdc == 0 and amount_blind == 0:
             raise ValueError("No cUSDC or BLIND deposit detected")
 
-        updates["$set"] = {"user_address": user_address, "last_updated": datetime.now(timezone.utc)}
-        updates["$setOnInsert"] = {"created_at": datetime.now(timezone.utc)}
-
         logger.info("Crediting %s: cusdc=%s blind=%s", user_address, deposited["cusdc"], deposited["blind"])
-        await self.database[CREDITS].update_one(
-            {"user_address": user_address},
-            updates,
-            upsert=True,
-        )
+        
+        # Use atomic RPC for deposit
+        client = get_supabase_client()
+        result = await client.rpc(
+            "atomic_credit_deposit",
+            {
+                "p_user_address": user_address,
+                "p_amount_cusdc": amount_cusdc,
+                "p_amount_blind": amount_blind,
+            }
+        ).execute()
+        
+        if not result.data:
+            raise RuntimeError("atomic_credit_deposit RPC returned no data")
 
         return await self.get_balance(user_address)
 
@@ -176,33 +155,62 @@ class CreditService:
         amount_cusdc_int = int(amount_cusdc)
         amount_blind_int = int(amount_blind)
 
-        updates: dict[str, Any] = {"$set": {"last_updated": datetime.now(timezone.utc)}}
-        if amount_cusdc_int > 0:
-            amount_dec = _to_decimal128(amount_cusdc_int)
-            neg_amount_dec = _to_decimal128(-amount_cusdc_int)
-            updates["$inc"] = {
-                "balance_cusdc": amount_dec,
-                "total_spent_cusdc": neg_amount_dec,
+        # Use atomic RPC for refund
+        client = get_supabase_client()
+        result = await client.rpc(
+            "atomic_credit_refund",
+            {
+                "p_user_address": user_address,
+                "p_amount_cusdc": amount_cusdc_int,
+                "p_amount_blind": amount_blind_int,
             }
-        if amount_blind_int > 0:
-            amount_dec = _to_decimal128(amount_blind_int)
-            neg_amount_dec = _to_decimal128(-amount_blind_int)
-            inc = updates.get("$inc", {})
-            inc["balance_blind"] = amount_dec
-            inc["total_spent_blind"] = neg_amount_dec
-            updates["$inc"] = inc
-
-        result = await self.database[CREDITS].update_one(
-            {"user_address": user_address},
-            updates,
-        )
-
-        if result.matched_count == 0:
-            logger.warning("Refund failed: credit account not found for %s", user_address)
+        ).execute()
+        
+        if not result.data:
             raise InsufficientCredits("Credit account not found")
 
         logger.info(
             "Refunded credits to %s: cUSDC=%s BLIND=%s reason=%s",
+            user_address,
+            amount_cusdc,
+            amount_blind,
+            reason,
+        )
+
+        return await self.get_balance(user_address)
+
+    async def add_credits(
+        self,
+        user_address: str,
+        amount_cusdc: str = "0",
+        amount_blind: str = "0",
+        reason: str = "",
+    ) -> dict[str, Any]:
+        """Add credits to a user's account (e.g. package purchase or refund).
+
+        Uses atomic_credit_deposit RPC so total_deposited counters are incremented.
+        """
+        user_address = user_address.lower()
+
+        amount_cusdc_int = int(amount_cusdc)
+        amount_blind_int = int(amount_blind)
+
+        # Use atomic RPC for deposit
+        client = get_supabase_client()
+        result = await client.rpc(
+            "atomic_credit_deposit",
+            {
+                "p_user_address": user_address,
+                "p_amount_cusdc": amount_cusdc_int,
+                "p_amount_blind": amount_blind_int,
+            }
+        ).execute()
+        
+        if not result.data:
+            raise RuntimeError("atomic_credit_deposit RPC returned no data")
+
+        logger.info(
+            "Added credits to %s: cUSDC=%s BLIND=%s reason=%s",
             user_address,
             amount_cusdc,
             amount_blind,
@@ -236,28 +244,18 @@ class CreditService:
                 f"Insufficient BLIND credits: have {balance['balance_blind']}, need {amount_blind}"
             )
 
-        updates: dict[str, Any] = {"$set": {"last_updated": datetime.now(timezone.utc)}}
-        if amount_cusdc_int > 0:
-            amount_dec = _to_decimal128(amount_cusdc_int)
-            neg_amount_dec = _to_decimal128(-amount_cusdc_int)
-            updates["$inc"] = {
-                "balance_cusdc": neg_amount_dec,
-                "total_spent_cusdc": amount_dec,
+        # Use atomic RPC for deduction
+        client = get_supabase_client()
+        result = await client.rpc(
+            "atomic_credit_deduct",
+            {
+                "p_user_address": user_address,
+                "p_amount_cusdc": amount_cusdc_int,
+                "p_amount_blind": amount_blind_int,
             }
-        if amount_blind_int > 0:
-            amount_dec = _to_decimal128(amount_blind_int)
-            neg_amount_dec = _to_decimal128(-amount_blind_int)
-            inc = updates.get("$inc", {})
-            inc["balance_blind"] = neg_amount_dec
-            inc["total_spent_blind"] = amount_dec
-            updates["$inc"] = inc
-
-        result = await self.database[CREDITS].update_one(
-            {"user_address": user_address},
-            updates,
-        )
-
-        if result.matched_count == 0:
+        ).execute()
+        
+        if not result.data:
             raise InsufficientCredits("Credit account not found")
 
         logger.info(

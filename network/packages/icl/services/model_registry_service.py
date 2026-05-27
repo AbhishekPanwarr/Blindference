@@ -41,7 +41,7 @@ class ModelRegistryService:
         cursor = self.collection.find({})
         models: list[dict] = []
         async for document in cursor:
-            document.pop("_id", None)
+            document.pop("id", None)
             models.append(document)
         models.sort(key=lambda model: model["model_id"])
         return models
@@ -50,7 +50,7 @@ class ModelRegistryService:
         document = await self.collection.find_one({"model_id": model_id})
         if document is None:
             return None
-        document.pop("_id", None)
+        document.pop("id", None)
         return document
 
     async def register_model(self, payload: ModelRegistrationRequest) -> dict:

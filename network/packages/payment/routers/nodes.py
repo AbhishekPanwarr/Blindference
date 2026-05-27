@@ -27,18 +27,19 @@ async def list_node_jobs(
     database = services.database
     checksum = address.lower()
 
-    cursor = database[JOBS].find(
-        {
-            "$or": [
-                {"leader_address": checksum},
-                {"verifier_addresses": checksum},
-            ]
-        }
-    ).sort("updated_at", -1).limit(max(1, min(limit, 100)))
+    # Fetch all jobs and filter in Python (avoids $or and array-containment operators)
+    all_jobs: list[dict[str, Any]] = []
+    async for doc in database[JOBS].find({}):
+        if doc.get("leader_address") == checksum or checksum in doc.get("verifier_addresses", []):
+            all_jobs.append(doc)
+
+    # Sort by updated_at descending and apply limit in Python
+    all_jobs.sort(key=lambda d: d.get("updated_at", ""), reverse=True)
+    all_jobs = all_jobs[:max(1, min(limit, 100))]
 
     jobs: list[dict[str, Any]] = []
-    async for doc in cursor:
-        doc.pop("_id", None)
+    for doc in all_jobs:
+        doc.pop("id", None)
         job_id = doc.get("job_id", "")
         leader = (doc.get("leader_address") or "").lower()
         verifiers = [v.lower() for v in doc.get("verifier_addresses", [])]
@@ -79,23 +80,20 @@ async def get_node_earnings(
     database = services.database
     checksum = address.lower()
 
-    cursor = database[JOBS].find(
-        {
-            "status": "COMPLETED",
-            "$or": [
-                {"leader_address": checksum},
-                {"verifier_addresses": checksum},
-            ],
-        }
-    )
-
+    # Fetch all completed jobs and filter in Python
     total_blind = 0.0
     jobs_count = 0
-    async for doc in cursor:
-        rewards_map = doc.get("rewards") or {}
-        amount = rewards_map.get(checksum)
-        if amount is not None:
-            total_blind += float(amount)
-            jobs_count += 1
+    seen: set[str] = set()
+    async for doc in database[JOBS].find({"status": "COMPLETED"}):
+        if doc.get("leader_address") == checksum or checksum in doc.get("verifier_addresses", []):
+            job_id = doc.get("job_id", "")
+            if job_id in seen:
+                continue
+            seen.add(job_id)
+            rewards_map = doc.get("rewards") or {}
+            amount = rewards_map.get(checksum)
+            if amount is not None:
+                total_blind += float(amount)
+                jobs_count += 1
 
     return {"total_blind_earned": total_blind, "jobs_count": jobs_count}

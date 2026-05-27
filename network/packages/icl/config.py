@@ -21,6 +21,10 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    USE_SUPABASE: bool = True
+    SUPABASE_URL: str = ""
+    SUPABASE_SERVICE_ROLE_KEY: str = ""
+    # Legacy MongoDB settings (fallback if USE_SUPABASE=false)
     USE_MONGO: bool = False
     MONGO_URI: str = "mongodb://localhost:27017"
     MONGO_DB_NAME: str = "blindference"

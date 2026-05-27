@@ -9,7 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import PaymentServiceSettings, get_settings
-from db.mongo import close_database, ensure_indexes, get_database, ping_database
+from db.database import close_database, ensure_indexes, get_database, ping_database
 from routers.credits import router as credits_router
 from routers.jobs import router as jobs_router
 from routers.nodes import router as nodes_router
@@ -27,13 +27,13 @@ logger = logging.getLogger("blindference.payment")
 
 
 async def _resolve_database(settings: PaymentServiceSettings):
-    database = await get_database(settings)
+    database = get_database()
     connected = await ping_database(database)
     if connected:
         await ensure_indexes(database)
-        logger.info("MongoDB connected: %s", settings.MONGO_DB_NAME)
+        logger.info("Supabase connected")
         return database, True
-    raise RuntimeError("MongoDB connection failed — Payment Service requires persistent storage")
+    raise RuntimeError("Supabase connection failed — Payment Service requires persistent storage")
 
 
 def create_app(settings: PaymentServiceSettings | None = None) -> FastAPI:

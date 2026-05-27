@@ -8,7 +8,6 @@ from typing import Any
 
 import httpx
 
-from bson.decimal128 import Decimal128
 from db.collections import JOBS
 from models.job_models import JobCompletionRequest, JobRecord, JobSubmitRequest
 from services.credit_service import InsufficientCredits
@@ -239,7 +238,7 @@ class JobService:
         record = await self.database[JOBS].find_one({"job_id": job_id})
         if record is None:
             return None
-        record.pop("_id", None)
+        record.pop("id", None)
         return record
 
     async def get_job_by_any_id(self, identifier: str) -> dict[str, Any] | None:
@@ -247,12 +246,12 @@ class JobService:
         # 1. Try primary key (UUID)
         record = await self.database[JOBS].find_one({"job_id": identifier})
         if record is not None:
-            record.pop("_id", None)
+            record.pop("id", None)
             return record
         # 2. Try task_id (frontend bytes32 hex) — any status
         record = await self.database[JOBS].find_one({"task_id": identifier})
         if record is not None:
-            record.pop("_id", None)
+            record.pop("id", None)
             return record
         return None
 

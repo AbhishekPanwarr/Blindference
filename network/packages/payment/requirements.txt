@@ -2,9 +2,8 @@
 fastapi>=0.115.0
 uvicorn[standard]>=0.32.0
 
-# MongoDB async driver
-motor>=3.6.0
-pymongo>=4.10.0
+# Supabase async client
+supabase>=2.0
 
 # Configuration & validation
 pydantic>=2.9.0

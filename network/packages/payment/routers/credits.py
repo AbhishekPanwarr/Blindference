@@ -3,20 +3,13 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timezone
-from decimal import Decimal
 from typing import Any
 
-from bson.decimal128 import Decimal128
 from fastapi import APIRouter, Depends, HTTPException
 from web3 import Web3
 
-from db.collections import CREDITS
 from services import ServiceContainer, get_service_container
 
-
-def _to_decimal128(value: int | str) -> Decimal128:
-    """Convert a Python int or string to MongoDB Decimal128."""
-    return Decimal128(Decimal(str(value)))
 
 router = APIRouter(prefix="/v1", tags=["credits"])
 logger = logging.getLogger("blindference.payment.router")
@@ -158,25 +151,13 @@ async def purchase_credit_package(
 
     user_address = deposited["from"].lower()
 
-    # Credit the user's account
-    credits_dec = _to_decimal128(credits_cusdc)
-    await services.database[CREDITS].update_one(
-        {"user_address": user_address},
-        {
-            "$inc": {
-                "balance_cusdc": credits_dec,
-                "total_deposited_cusdc": credits_dec,
-            },
-            "$set": {
-                "user_address": user_address,
-                "last_updated": datetime.now(timezone.utc),
-            },
-            "$setOnInsert": {"created_at": datetime.now(timezone.utc)},
-        },
-        upsert=True,
+    # Credit the user's account via atomic deposit RPC
+    balance = await services.credit_service.add_credits(
+        user_address=user_address,
+        amount_cusdc=str(credits_cusdc),
+        amount_blind="0",
+        reason=f"package_purchase:{package_id}",
     )
-
-    balance = await services.credit_service.get_balance(user_address)
 
     logger.info(
         "Package purchased: user=%s package=%s credits_cusdc=%d tx=%s",
@@ -236,25 +217,13 @@ async def refund_credits(
         )
 
     try:
-        # Credit the user's account
-        amount_dec = _to_decimal128(amount_cusdc_int)
-        await services.database[CREDITS].update_one(
-            {"user_address": user_address.lower()},
-            {
-                "$inc": {
-                    "balance_cusdc": amount_dec,
-                    "total_deposited_cusdc": amount_dec,
-                },
-                "$set": {
-                    "user_address": user_address.lower(),
-                    "last_updated": datetime.now(timezone.utc),
-                },
-                "$setOnInsert": {"created_at": datetime.now(timezone.utc)},
-            },
-            upsert=True,
+        # Credit the user's account via atomic deposit RPC
+        balance = await services.credit_service.add_credits(
+            user_address=user_address,
+            amount_cusdc=str(amount_cusdc_int),
+            amount_blind="0",
+            reason=reason,
         )
-
-        balance = await services.credit_service.get_balance(user_address)
 
         logger.info(
             "Credits refunded: user=%s amount_cusdc=%s reason=%s",
@@ -284,5 +253,5 @@ async def debug_credits(
     record = await services.database[CREDITS].find_one({"user_address": address.lower()})
     if record is None:
         return {"found": False, "address": address.lower()}
-    record.pop("_id", None)
+    record.pop("id", None)
     return {"found": True, "address": address.lower(), "record": record}

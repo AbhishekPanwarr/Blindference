@@ -12,7 +12,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import Settings, get_settings
-from db.mongo import close_database, ensure_indexes, get_database, get_in_memory_database, ping_database
+from db.database import close_database, ensure_indexes, get_database, ping_database
 from models.response_models import HealthResponse
 from routers.admin import router as admin_router
 from routers.coverage import router as coverage_router
@@ -38,20 +38,20 @@ logger = logging.getLogger("blindference.icl")
 
 
 async def _resolve_database(settings: Settings):
-    if not settings.USE_MONGO:
-        logger.info("USE_MONGO=false; using in-memory persistence")
-        database = get_in_memory_database()
+    if not settings.USE_SUPABASE:
+        logger.info("USE_SUPABASE=false; using in-memory persistence")
+        database = get_database(use_supabase=False)
         await ensure_indexes(database)
         return database, False
 
-    database = await get_database(settings)
-    mongo_connected = await ping_database(database)
-    if mongo_connected:
+    database = get_database(use_supabase=True)
+    db_connected = await ping_database(database)
+    if db_connected:
         await ensure_indexes(database)
         return database, True
 
-    logger.warning("MongoDB unavailable, falling back to in-memory persistence for local development")
-    database = get_in_memory_database()
+    logger.warning("Supabase unavailable, falling back to in-memory persistence for local development")
+    database = get_database(use_supabase=False)
     await ensure_indexes(database)
     return database, False
 
@@ -78,7 +78,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
 
         app.state.settings = resolved_settings
-        app.state.mongo_connected = mongo_connected
+        app.state.mongo_connected = mongo_connected  # kept for API compatibility
+        app.state.db_connected = mongo_connected
         app.state.services = ServiceContainer(
             settings=resolved_settings,
             database=database,
