@@ -137,6 +137,27 @@ The daemon logs to stdout with structured log lines:
 [2026-05-18T10:35:00] [INFO   ] [0xdDef3Cf5] Job 0xabc123: claimed
 ```
 
+### CLI Monitoring Commands
+
+In a separate terminal (while the daemon runs), you can query your node's status:
+
+```bash
+# Check node configuration and attestation
+blindference-node status
+
+# List recent completed jobs with earnings
+blindference-node jobs list --limit 10
+
+# Total BLIND earned across all jobs
+blindference-node jobs earnings
+
+# Check on-chain stake, consecutive failures, slash risk
+blindference-node staking status
+
+# BLIND token balance in your wallet
+blindference-node balance
+```
+
 ### Log Levels
 
 | Level | Use |

@@ -129,10 +129,32 @@ uvicorn main:app --host 127.0.0.1 --port 8001
 ```bash
 pip install blindference-node
 blindference-node init
-blindference-node start
+blindference-node attest --mock
+blindference-node run
 ```
 
 For a full quorum, run three nodes on separate ports. See the [node documentation](https://pypi.org/project/blindference-node/) for details.
+
+### 5. Monitor your node
+
+```bash
+# Check node status and configuration
+blindference-node status
+
+# View recent jobs and earnings
+blindference-node jobs list --limit 10
+
+# Check total BLIND earned
+blindference-node jobs earnings
+
+# Check on-chain stake and slash status
+blindference-node staking status
+
+# View BLIND token balance
+blindference-node balance
+```
+
+You can also open the **Node Dashboard** in the web frontend (connect your wallet → sidebar → "Node Dashboard") to see a live visualization of your stake, earnings, job history, and slash warnings.
 
 ### 5. Start the frontend
 

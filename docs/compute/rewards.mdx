@@ -30,6 +30,20 @@ Total Task Fee
 
 Note: Exact percentages are configurable by the ICL and may vary by task type.
 
+## Checking Your Earnings
+
+Use the CLI to see your earnings at any time:
+
+```bash
+# List recent jobs with BLIND earned per job
+blindference-node jobs list --limit 10
+
+# Total BLIND earned across all completed jobs
+blindference-node jobs earnings
+```
+
+Or open the **Node Dashboard** in the web frontend for a visual breakdown.
+
 ## Reputation System
 
 Reputation scores range from 0 to 10000.
@@ -114,6 +128,64 @@ blindference-node test-determinism --model qwen2.5-7b --prompt "Hello, test"
 
 **Recovery**: Ensure job handler doesn't crash between claim and submit.
 
+## Staking
+
+Nodes must stake BLIND tokens to participate in the network. Minimum stake is **1000 BLIND**.
+
+### Check Your Stake
+
+```bash
+blindference-node staking status
+```
+
+Output:
+```
+============================================================
+  BLIND Stake Status
+============================================================
+  Staked          : 1000.00 BLIND
+  Unbonding       : 0.00 BLIND
+  Unbond ready in : 0s
+  Failures        : 0
+  Active          : Yes
+============================================================
+```
+
+### Stake BLIND Tokens
+
+```bash
+blindference-node staking stake 1000
+```
+
+This will:
+1. Approve the BlindferenceStaking contract to spend your BLIND
+2. Call `stake()` to lock your tokens
+3. Show your updated total stake
+
+### Unstake (Start Unbonding)
+
+```bash
+blindference-node staking unstake
+```
+
+This initiates a **96-hour unbonding period**. Your stake is locked during this time. You cannot be assigned to jobs while unbonding.
+
+### Withdraw After Unbond
+
+```bash
+blindference-node staking withdraw
+```
+
+This completes the unstake and returns your BLIND to your wallet. Only callable after the 96-hour unbond period ends.
+
+### Slash Mechanics
+
+- **3 consecutive failed jobs** → 10% of stake burned
+- **Verdict manipulation detected on-chain** → 25% of stake burned
+- **Failure to heartbeat within grace period** → Temporary exclusion from quorum (no stake burn)
+
+You can monitor your slash risk in the web **Node Dashboard** — a warning banner appears when consecutive failures reach 2/3.
+
 ## Insurance & Coverage
 
 The Reineira protocol provides insurance for inference tasks:
@@ -128,18 +200,29 @@ Nodes benefit from coverage because:
 - Higher-value tasks are available
 - Dispute resolution is automated
 
-## Reward Claiming
+## Reward Distribution
 
-Rewards accumulate in the `RewardAccumulator` contract on Arbitrum Sepolia.
+Rewards are **auto-distributed** on job completion via the Payment Service. No manual claiming is required.
 
-### Claiming Process (Future)
+The `blindference-node jobs claim` command is a no-op:
 
-The `blindference-node withdraw` command will:
-1. Query accumulated rewards from contract
-2. Submit claim transaction
-3. Transfer rewards to node wallet
+```bash
+blindference-node jobs claim
+# Output: Rewards are automatically distributed on job completion.
+```
 
-**Current status**: Withdrawal is a stub in v0.3.0. Rewards are tracked on-chain but claiming is not yet implemented.
+### Distribution Timing
+
+- **ICL Mode**: Rewards are sent immediately after the ICL confirms consensus
+- **On-Chain Mode**: Rewards are distributed by the smart contract after the reveal window closes
+
+### Where Rewards Go
+
+BLIND rewards are sent directly to your node wallet address. Track them with:
+
+```bash
+blindference-node balance
+```
 
 ## Best Practices
 
@@ -149,3 +232,4 @@ The `blindference-node withdraw` command will:
 4. **Use stable network**: Avoid mobile or unstable connections
 5. **Keep logs**: Log retention helps debug disputes
 6. **Update regularly**: New versions may have performance improvements and bug fixes
+7. **Check slash warnings**: Use `staking status` or the web dashboard weekly

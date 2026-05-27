@@ -5,51 +5,146 @@ description: 'Track node health, job performance, and earnings'
 
 # Monitoring
 
-## Health Checks
+You have two ways to monitor your node: the **web-based Node Dashboard** (in the frontend) and the **CLI monitoring commands** (in the terminal).
 
-### ICL Health
+## Node Dashboard (Web)
+
+The fastest way to see your node's status is through the web dashboard.
+
+### Access
+
+1. Open the Blindference frontend (http://localhost:3000)
+2. Connect your MetaMask wallet
+3. Click **"Node Dashboard"** in the sidebar (appears only when your wallet is connected)
+
+### What You See
+
+The dashboard shows a real-time summary of your node's performance:
+
+| Card | Shows |
+|------|-------|
+| **Current Stake** | On-chain BLIND stake (live from BlindferenceStaking contract) |
+| **Total Earned** | Cumulative BLIND rewards across all completed jobs |
+| **Jobs Completed** | Total jobs, with success vs. failed breakdown |
+| **Success Rate** | Percentage of jobs completed successfully |
+
+Below the stats cards, you'll find:
+
+- **Job History table** — Every job you've participated in (leader or verifier), with:
+  - Job ID
+  - Role (leader/verifier)
+  - Status (COMPLETED, FAILED, RUNNING, REFUNDED)
+  - Model used
+  - BLIND earned
+  - Completion time
+- **Node Status panel** — Active/Inactive, consecutive failures count, slashed status
+- **Reward Split legend** — Leader gets 60%, each verifier gets 20%
+
+### Slash Warnings
+
+If your node approaches the slash threshold (3 consecutive failures), a red warning banner appears:
+
+> ⚠️ Warning: Slash Risk — Consecutive failures: 2/3. One more failure and your stake will be hard-slashed on-chain.
+
+### Non-Operator View
+
+If your connected wallet is **not** a registered operator, the dashboard shows a **Become a Node** banner with setup instructions and a link to the PyPI package.
+
+---
+
+## CLI Monitoring Commands
+
+For terminal-based monitoring, use these commands while your daemon runs:
+
+### Quick Status Check
 
 ```bash
-curl -s $BLF_ICL_ENDPOINT/health | python3 -m json.tool
+blindference-node status
 ```
 
-Expected response:
-
-```json
-{
-  "status": "ok",
-  "chain_connected": true,
-  "mongo_connected": true
-}
+Output:
+```
+============================================================
+  Node Status
+============================================================
+  Address        : 0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5
+  Tier           : 0
+  Models         : qwen2.5-7b, groq:llama-3.3-70b-versatile
+  Attestation    : mock
+  Cert expiry    : 1779869389 (604663s remaining)
+  ICL endpoint   : https://icl.blindference.xyz
+  RPC URL        : https://arb-sepolia.g.alchemy.com/...
+  IPFS gateway   : https://node.lighthouse.storage
+  CoFHE mode     : bridge
+============================================================
+  Run `blindference-node staking status` to view on-chain stake.
 ```
 
-### Node Status via ICL
+### Job History
 
 ```bash
-# Check if your node is in the active pool
-curl -s "$BLF_ICL_ENDPOINT/v1/nodes/active" | python3 -m json.tool | grep -A5 "your_address"
-
-# Check node metrics
-curl -s "$BLF_ICL_ENDPOINT/v1/nodes/{your_address}" | python3 -m json.tool
+blindference-node jobs list --limit 10
 ```
 
-Expected metrics:
-
-```json
-{
-  "operator_address": "0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5",
-  "model_tiers": [0],
-  "active": true,
-  "metrics": {
-    "tasks_completed": 42,
-    "tasks_accepted": 40,
-    "tasks_rejected": 2,
-    "reputation_score": 9520,
-    "total_slash_amount": 0,
-    "last_heartbeat": 1779078687
-  }
-}
+Output:
 ```
+================================================================================
+  Job History for 0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5
+================================================================================
+  Job ID                                             Role       Status       BLIND Earned
+--------------------------------------------------------------------------------
+  76975b5f-aff0-4f0c-994b-11d5aa8ba8de               verifier   COMPLETED    0.200
+  dcf86703-fe29-44c7-b0b5-d4747a1fd4a3               verifier   COMPLETED    0.200
+  49fc2bee-b0d0-4494-9ef2-5be129fe889f               verifier   COMPLETED    0.200
+--------------------------------------------------------------------------------
+  Total BLIND earned: 0.600
+================================================================================
+```
+
+### Total Earnings
+
+```bash
+blindference-node jobs earnings
+```
+
+Output:
+```
+Total BLIND earned: 0.6 BLIND (from 3 completed jobs)
+```
+
+### Staking Status
+
+```bash
+blindference-node staking status
+```
+
+Output:
+```
+============================================================
+  BLIND Stake Status
+============================================================
+  Staked          : 1000.00 BLIND
+  Unbonding       : 0.00 BLIND
+  Unbond ready in : 0s
+  Failures        : 0
+  Active          : Yes
+============================================================
+```
+
+### BLIND Balance
+
+```bash
+blindference-node balance
+```
+
+Output:
+```
+BLIND balance: 42.50 BLIND
+```
+
+---
+
+## Log-Based Monitoring
 
 ### Local Node Logs
 
@@ -61,21 +156,7 @@ tail -f ~/.blindference/node.log
 grep -E "ERROR|WARNING" ~/.blindference/node.log
 ```
 
-## Key Metrics
-
-### 1. Heartbeat Success Rate
-
-```bash
-# Count heartbeats in last hour
-grep "Heartbeat sent" node.log | wc -l
-# Expected: ~60 (1 per minute)
-
-# Count heartbeat failures
-grep "Heartbeat failed" node.log | wc -l
-# Expected: 0
-```
-
-### 2. Job Assignment Rate
+### Key Metrics from Logs
 
 ```bash
 # Total jobs received
@@ -89,31 +170,26 @@ grep "starting as verifier" node.log | wc -l
 grep "Leader result accepted" node.log | wc -l
 grep "Verdict: match" node.log | wc -l
 grep "Verdict: no-match" node.log | wc -l
-```
 
-### 3. Inference Performance
-
-```bash
-# Average inference time (if logged at DEBUG level)
+# Inference performance (DEBUG level)
 grep "Inference complete" node.log | awk '{print $NF}' | sort -n | awk '
   {sum+=$1; count++}
   END {print "Avg:", sum/count, "ms"}'
-
-# Model usage distribution
-grep "Running inference" node.log | sed 's/.*via //' | sort | uniq -c
 ```
 
-### 4. CoFHE Operations
+### Heartbeat Health
 
 ```bash
-# Decrypt successes/failures
-grep "Decrypted prompt key" node.log | wc -l
-grep "CoFHE decrypt failed" node.log | wc -l
+# Count heartbeats in last hour
+grep "Heartbeat sent" node.log | wc -l
+# Expected: ~60 (1 per minute)
 
-# IPFS operations
-grep "Downloaded prompt blob" node.log | wc -l
-grep "uploaded encrypted output" node.log | wc -l
+# Count heartbeat failures
+grep "Heartbeat failed" node.log | wc -l
+# Expected: 0
 ```
+
+---
 
 ## Alerting
 
@@ -159,40 +235,44 @@ start_http_server(9090)
 
 Then scrape with Prometheus and visualize in Grafana.
 
-## Log Analysis
+---
 
-### Structured Log Format
-
-Blindference node logs use this format:
-
-```
-[YYYY-MM-DDTHH:MM:SS] [LEVEL   ] [address] Message
-```
-
-Example:
-
-```
-[2026-05-18T10:25:00] [INFO   ] [0xdDef3Cf5] Daemon starting ...
-```
-
-### Parsing with jq
+## ICL Health Check
 
 ```bash
-# Extract all ERROR lines
-grep "ERROR" node.log | jq -R 'split("]") | {time: .[0], level: .[1], address: .[2], message: .[3]}'
-
-# Count errors by type
-grep "ERROR" node.log | sed 's/.*ERROR.*]//' | sort | uniq -c | sort -rn
+curl -s $BLF_ICL_ENDPOINT/health | python3 -m json.tool
 ```
 
-## Dashboard (Future)
+Expected response:
 
-A web-based node dashboard is planned for future releases. It will show:
+```json
+{
+  "status": "ok",
+  "chain_connected": true,
+  "database_connected": true
+}
+```
 
-- Real-time job queue
-- Inference performance charts
-- Earnings history
-- Attestation status
-- Reputation score trends
+### Node Status via ICL
 
-For now, use the CLI and log-based monitoring described above.
+```bash
+# Check if your node is in the active pool
+curl -s "$BLF_ICL_ENDPOINT/v1/nodes/active" | python3 -m json.tool | grep -A5 "your_address"
+
+# Check node metrics
+curl -s "$BLF_ICL_ENDPOINT/v1/nodes/{your_address}" | python3 -m json.tool
+```
+
+Expected metrics:
+
+```json
+{
+  "operator_address": "0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5",
+  "model_tiers": [0],
+  "active": true,
+  "tasks_completed": 42,
+  "tasks_accepted": 40,
+  "tasks_rejected": 2,
+  "last_heartbeat": 1779078687
+}
+```

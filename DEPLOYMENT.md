@@ -177,6 +177,9 @@ BLF_FHENIX_RPC=https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY
 BLF_COFHE_ENDPOINT=https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY
 BLF_COFHE_CHAIN_ID=421614
 
+# Payment Service (for earnings/staking queries)
+BLF_PAYMENT_SERVICE_URL=http://127.0.0.1:8001
+
 # Storage
 BLF_IPFS_GATEWAY=https://node.lighthouse.storage
 
@@ -205,28 +208,60 @@ bash network/scripts/demo/stop.sh
 ls network/scripts/demo/logs/
 ```
 
+### Docker Deployment
+
+**ICL Service:**
+
+```bash
+cd network/packages/icl
+docker build -t blindference-icl .
+docker run -p 8000:8000 --env-file .env blindference-icl
+```
+
+**Payment Service:**
+
+```bash
+cd network/packages/payment
+docker build -t blindference-payment .
+docker run -p 8001:8001 --env-file .env blindference-payment
+```
+
 ### Manual Bring-Up
 
 **1. Start ICL:**
 
 ```bash
 cd network/packages/icl
-./.venv/bin/uvicorn main:app --host 127.0.0.1 --port 9000
+./.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
-**2. Bootstrap operators:**
+**2. Start Payment Service:**
 
 ```bash
-curl -s -X POST http://127.0.0.1:9000/admin/bootstrap-demo-nodes \
+cd network/packages/payment
+./.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8001
+```
+
+**3. Bootstrap operators:**
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/admin/bootstrap-demo-nodes \
   -H 'Content-Type: application/json' \
   -d '{"count":3}'
 ```
 
-**3. Start nodes:**
+**4. Start nodes:**
 
-See [Blindference-node README](../Blindference-node/README.md) for node initialization and startup.
+```bash
+pip install blindference-node
+blindference-node init        # creates wallet + config
+blindference-node attest --mock
+blindference-node run
+```
 
-**4. Start frontend:**
+For a full quorum, run three nodes with unique ports. See [Node Quickstart](docs/compute/quickstart.mdx) for details.
+
+**5. Start frontend:**
 
 ```bash
 cd network/packages/frontend
@@ -250,6 +285,44 @@ A successful text inference run should produce:
 8. ✅ ICL aggregates and shows status "ACCEPTED" or "REJECTED"
 9. ✅ Frontend polls and shows "Decrypting output..." → reveals answer
 10. ✅ Arbiscan shows ResultRegistry transaction for accepted results
+
+## Node CLI Reference
+
+The `blindference-node` CLI provides everything needed to manage a node from the terminal.
+
+### Lifecycle Commands
+
+| Command | Purpose | Example |
+|---------|---------|---------|
+| `init` | Create wallet, detect GPU, save config | `blindference-node init` |
+| `attest --mock` | Attest with the ICL (mock TEE) | `blindference-node attest --mock` |
+| `run` | Start the daemon | `blindference-node run` |
+| `status` | Show node configuration and attestation | `blindference-node status` |
+
+### Monitoring Commands
+
+| Command | Purpose | Example |
+|---------|---------|---------|
+| `jobs list` | List recent jobs with role, status, earnings | `blindference-node jobs list --limit 10` |
+| `jobs earnings` | Total BLIND earned across all jobs | `blindference-node jobs earnings` |
+| `balance` | Current BLIND token balance | `blindference-node balance` |
+| `staking status` | On-chain stake, failures, slash risk | `blindference-node staking status` |
+
+### Staking Commands
+
+| Command | Purpose | Example |
+|---------|---------|---------|
+| `staking stake <amount>` | Stake BLIND tokens (min 1000) | `blindference-node staking stake 1000` |
+| `staking unstake` | Start 96h unbonding period | `blindference-node staking unstake` |
+| `staking withdraw` | Complete unstake after unbond | `blindference-node staking withdraw` |
+
+### Testing Commands
+
+| Command | Purpose | Example |
+|---------|---------|---------|
+| `test-determinism` | Verify inference outputs are consistent | `blindference-node test-determinism` |
+| `models list` | Show available inference backends | `blindference-node models list` |
+| `models test` | Quick inference test against a backend | `blindference-node models test --backend groq` |
 
 ## Troubleshooting
 

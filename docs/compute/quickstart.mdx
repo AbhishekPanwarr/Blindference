@@ -188,15 +188,45 @@ Enter your keystore password when prompted. The daemon starts three concurrent l
 [INFO] Leader result accepted
 ```
 
-## Step 4: Verify
+## Step 5: Verify
 
 Check that your node is registered:
 
 ```bash
-curl -s http://127.0.0.1:9000/v1/nodes/active | python3 -m json.tool
+blindference-node status
 ```
 
-You should see your node address in the active nodes list.
+You should see your node address, tier, models, attestation status, and cert expiry.
+
+To check active nodes on the ICL:
+
+```bash
+curl -s http://127.0.0.1:8000/v1/nodes/active | python3 -m json.tool
+```
+
+## Step 6: Monitor Earnings
+
+Once jobs start completing, check your progress:
+
+```bash
+# List recent jobs with earnings
+blindference-node jobs list --limit 10
+
+# Total BLIND earned
+blindference-node jobs earnings
+
+# Check on-chain stake and slash risk
+blindference-node staking status
+
+# BLIND token balance
+blindference-node balance
+```
+
+You can also view a live **Node Dashboard** in the web frontend:
+1. Open the frontend (http://localhost:3000)
+2. Connect your MetaMask wallet
+3. Click "Node Dashboard" in the sidebar
+4. See real-time stats: stake, earnings, job history, slash warnings
 
 ## Next Steps
 
@@ -206,5 +236,11 @@ You should see your node address in the active nodes list.
   </Card>
   <Card title="Attestation" icon="shield" href="attestation">
     Learn about attestation tiers and hardware requirements
+  </Card>
+  <Card title="Monitoring" icon="chart" href="monitoring">
+    Track jobs, earnings, and node health
+  </Card>
+  <Card title="Rewards & Slashing" icon="coins" href="rewards">
+    Understand how you earn and what gets you slashed
   </Card>
 </CardGroup>
