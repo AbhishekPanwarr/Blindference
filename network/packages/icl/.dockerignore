@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+node_modules/
+*.log
+.git/
+.gitignore
+.env
+.env.*
+Dockerfile
+.dockerignore
+vercel.json
+node_modules/

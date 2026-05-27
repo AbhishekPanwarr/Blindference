@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import json
 import logging
+import os
+import signal
 import time
 from contextlib import asynccontextmanager
+from typing import Any
 
 from dotenv import load_dotenv
 
@@ -10,6 +14,7 @@ load_dotenv()
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from config import Settings, get_settings
 from db.database import close_database, ensure_indexes, get_database, ping_database
@@ -30,11 +35,58 @@ from services.node_selector import NodeSelector
 from services.quorum_service import QuorumService
 from services.verdict_aggregator import VerdictAggregator
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-)
+
+class JSONFormatter(logging.Formatter):
+    """Emit log records as single-line JSON for production observability."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        obj = {
+            "timestamp": self.formatTime(record),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+        if hasattr(record, "request_id"):
+            obj["request_id"] = record.request_id
+        return json.dumps(obj)
+
+
+def _configure_logging() -> None:
+    if os.environ.get("JSON_LOGGING", "").lower() in ("true", "1", "yes"):
+        handler = logging.StreamHandler()
+        handler.setFormatter(JSONFormatter())
+        logging.getLogger().handlers = [handler]
+        logging.getLogger().setLevel(logging.INFO)
+    else:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+        )
+
+
+_configure_logging()
 logger = logging.getLogger("blindference.icl")
+
+
+def _validate_settings(settings: Settings) -> None:
+    """Fail fast if required environment variables are missing."""
+    # Only validate Supabase vars when USE_SUPABASE is true (default)
+    if settings.USE_SUPABASE:
+        required = [
+            ("SUPABASE_URL", settings.SUPABASE_URL),
+            ("SUPABASE_SERVICE_ROLE_KEY", settings.SUPABASE_SERVICE_ROLE_KEY),
+        ]
+    else:
+        required = []
+
+    required.extend([
+        ("ICL_PRIVATE_KEY", settings.ICL_SERVICE_PRIVATE_KEY),
+        ("ARBITRUM_SEPOLIA_RPC", settings.ARBITRUM_SEPOLIA_RPC),
+    ])
+    missing = [name for name, val in required if not val]
+    if missing:
+        logger.error("Missing required env vars: %s", ", ".join(missing))
+        raise RuntimeError(f"Missing required configuration: {', '.join(missing)}")
 
 
 async def _resolve_database(settings: Settings):
@@ -58,6 +110,7 @@ async def _resolve_database(settings: Settings):
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     resolved_settings = settings or get_settings()
+    _validate_settings(resolved_settings)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -104,9 +157,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
 
+    # CORS: configurable via ALLOWED_ORIGINS env var (comma-separated) or defaults to * for dev
+    allowed_origins = os.environ.get("ALLOWED_ORIGINS", "*").split(",")
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=allowed_origins,
         allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -126,11 +181,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         return response
 
+    # TODO: Add rate limiting middleware for production.
+    # Consider slowapi (Redis-backed) or a reverse proxy (nginx/traefik).
+
     # Custom exception handler ensures CORS headers are present on unhandled
     # exceptions so the browser can read the error instead of masking it as
     # a CORS failure.
-    from fastapi.responses import JSONResponse
-
     @app.exception_handler(Exception)
     async def cors_aware_exception_handler(request: Request, exc: Exception):
         logger.error("Unhandled exception on %s %s: %s", request.method, request.url.path, exc, exc_info=True)
@@ -161,14 +217,36 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/health", response_model=HealthResponse)
     async def health() -> HealthResponse:
-        services: ServiceContainer = app.state.services
+        services: ServiceContainer | None = getattr(app.state, "services", None)
+        if services is None:
+            return HealthResponse(
+                status="starting",
+                chain_connected=False,
+                mongo_connected=False,
+            )
+
+        db_healthy = False
+        try:
+            db_healthy = await ping_database(services.database)
+        except Exception:
+            pass
+
+        chain_healthy = await services.chain_service.is_connected()
+
         return HealthResponse(
-            status="ok",
-            chain_connected=await services.chain_service.is_connected(),
-            mongo_connected=bool(app.state.mongo_connected),
+            status="ok" if db_healthy and chain_healthy else "degraded",
+            chain_connected=chain_healthy,
+            mongo_connected=db_healthy,
         )
 
     return app
 
+
+def _handle_signal(signum: int, _frame: Any) -> None:
+    logger.info("Received signal %d, shutting down gracefully...", signum)
+
+
+signal.signal(signal.SIGTERM, _handle_signal)
+signal.signal(signal.SIGINT, _handle_signal)
 
 app = create_app()

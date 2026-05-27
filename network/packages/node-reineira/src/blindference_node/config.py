@@ -35,6 +35,8 @@ class NodeSettings(BaseSettings):
     cofhe_bridge_script: str = str(Path(__file__).resolve().parents[2] / "scripts" / "cofhe_bridge.mjs")
     callback_host: str = "127.0.0.1"
     callback_port: int = Field(default=9101, ge=1, le=65535)
+    payment_service_url: str = "http://127.0.0.1:8001"
+    operator_address: str | None = None
     callback_public_url: str | None = None
     text_stub_prompt_key_hex: str | None = Field(
         default=None,

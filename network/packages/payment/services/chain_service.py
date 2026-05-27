@@ -38,6 +38,46 @@ class ChainService:
         self.settings = settings
         self.web3_client = Web3Client(settings)
 
+    def get_stake_info(self, node_address: str) -> dict[str, Any] | None:
+        """Fetch on-chain stake info from BlindferenceStaking contract."""
+        staking_addr = getattr(self.settings, "BLINDFERENCE_STAKING_ADDRESS", "")
+        if not staking_addr or staking_addr == "0x" + "0" * 40:
+            return None
+        if self.settings.MOCK_CHAIN:
+            return None
+        try:
+            contract = self.web3_client.w3.eth.contract(
+                address=Web3.to_checksum_address(staking_addr),
+                abi=[
+                    {
+                        "inputs": [{"name": "node", "type": "address"}],
+                        "name": "getStakeInfo",
+                        "outputs": [
+                            {"name": "staked", "type": "uint256"},
+                            {"name": "unbonding", "type": "uint256"},
+                            {"name": "unbondingAvailableAt", "type": "uint256"},
+                            {"name": "consecutiveFailures", "type": "uint256"},
+                            {"name": "active", "type": "bool"},
+                        ],
+                        "stateMutability": "view",
+                        "type": "function",
+                    }
+                ],
+            )
+            info = contract.functions.getStakeInfo(
+                Web3.to_checksum_address(node_address)
+            ).call()
+            return {
+                "staked": int(info[0]),
+                "unbonding": int(info[1]),
+                "unbondingAvailableAt": int(info[2]),
+                "consecutiveFailures": int(info[3]),
+                "active": bool(info[4]),
+            }
+        except Exception as exc:
+            logger.warning("getStakeInfo failed for %s: %s", node_address, exc)
+            return None
+
     async def create_and_fund_escrow(
         self,
         *,

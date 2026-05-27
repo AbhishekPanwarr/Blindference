@@ -12,6 +12,7 @@ import {
   Server,
   CreditCard,
   ShieldCheck,
+  BarChart3,
 } from 'lucide-react'
 
 import { InferenceNewPage } from './pages/InferenceNewPage'
@@ -21,6 +22,7 @@ import { NodeRegistrationPage } from './pages/NodeRegistrationPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { BuyCreditsPage } from './pages/BuyCreditsPage'
 import { CreateEscrowPage } from './pages/CreateEscrowPage'
+import { NodeDashboardPage } from './pages/NodeDashboardPage'
 import { ProtocolUpdatePopup } from './components/ProtocolUpdatePopup'
 import { truncateAddress } from './utils/helpers'
 
@@ -106,6 +108,8 @@ function SideNavItem({
 }
 
 function Sidebar() {
+  const { isConnected } = useAccount()
+
   return (
     <aside className="hidden lg:flex w-56 shrink-0 flex-col border-r border-zinc-800 bg-[#0d0d0d] h-screen sticky top-0">
       {/* Logo */}
@@ -124,6 +128,9 @@ function Sidebar() {
         <SideNavItem to="/history" icon={History} label="History" />
         <SideNavItem to="/buy-credits" icon={CreditCard} label="Buy Credits" badge="NEW" />
         <SideNavItem to="/create-escrow" icon={ShieldCheck} label="Create Escrow" />
+        {isConnected && (
+          <SideNavItem to="/node-dashboard" icon={BarChart3} label="Node Dashboard" />
+        )}
         <SideNavItem to="/node-registration" icon={Server} label="Node Registration" />
         <SideNavItem to="/settings" icon={Settings} label="Settings" />
       </nav>
@@ -221,6 +228,7 @@ export default function App() {
           <Route element={<BuyCreditsPage />} path="buy-credits" />
           <Route element={<CreateEscrowPage />} path="create-escrow" />
           <Route element={<NodeRegistrationPage />} path="node-registration" />
+          <Route element={<NodeDashboardPage />} path="node-dashboard" />
           <Route element={<SettingsPage />} path="settings" />
           <Route
             element={

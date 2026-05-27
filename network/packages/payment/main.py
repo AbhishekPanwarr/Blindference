@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
 import logging
+import os
+import signal
 import time
 from contextlib import asynccontextmanager
 from typing import Any
@@ -19,11 +22,52 @@ from services.credit_service import CreditService
 from services.job_service import JobService
 from services.pricing_service import PricingService
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-)
+
+class JSONFormatter(logging.Formatter):
+    """Emit log records as single-line JSON for production observability."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        obj = {
+            "timestamp": self.formatTime(record),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+        if hasattr(record, "request_id"):
+            obj["request_id"] = record.request_id
+        return json.dumps(obj)
+
+
+def _configure_logging() -> None:
+    if os.environ.get("JSON_LOGGING", "").lower() in ("true", "1", "yes"):
+        handler = logging.StreamHandler()
+        handler.setFormatter(JSONFormatter())
+        logging.getLogger().handlers = [handler]
+        logging.getLogger().setLevel(logging.INFO)
+    else:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+        )
+
+
+_configure_logging()
 logger = logging.getLogger("blindference.payment")
+
+
+def _validate_settings(settings: PaymentServiceSettings) -> None:
+    """Fail fast if required environment variables are missing."""
+    required = [
+        ("SUPABASE_URL", settings.SUPABASE_URL),
+        ("SUPABASE_SERVICE_ROLE_KEY", settings.SUPABASE_SERVICE_ROLE_KEY),
+        ("ICL_PRIVATE_KEY", settings.ICL_WALLET_PRIVATE_KEY),
+        ("ARBITRUM_SEPOLIA_RPC", settings.ARBITRUM_SEPOLIA_RPC),
+        ("PAYMENT_WALLET_ADDRESS", settings.PAYMENT_WALLET_ADDRESS),
+    ]
+    missing = [name for name, val in required if not val]
+    if missing:
+        logger.error("Missing required env vars: %s", ", ".join(missing))
+        raise RuntimeError(f"Missing required configuration: {', '.join(missing)}")
 
 
 async def _resolve_database(settings: PaymentServiceSettings):
@@ -38,6 +82,7 @@ async def _resolve_database(settings: PaymentServiceSettings):
 
 def create_app(settings: PaymentServiceSettings | None = None) -> FastAPI:
     resolved_settings = settings or get_settings()
+    _validate_settings(resolved_settings)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -71,9 +116,11 @@ def create_app(settings: PaymentServiceSettings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
 
+    # CORS: configurable via ALLOWED_ORIGINS env var (comma-separated) or defaults to * for dev
+    allowed_origins = os.environ.get("ALLOWED_ORIGINS", "*").split(",")
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=allowed_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -93,6 +140,9 @@ def create_app(settings: PaymentServiceSettings | None = None) -> FastAPI:
         )
         return response
 
+    # TODO: Add rate limiting middleware for production.
+    # Consider slowapi (Redis-backed) or a reverse proxy (nginx/traefik).
+
     app.include_router(credits_router)
     app.include_router(jobs_router)
     app.include_router(nodes_router)
@@ -103,14 +153,45 @@ def create_app(settings: PaymentServiceSettings | None = None) -> FastAPI:
 
     @app.get("/health")
     async def health() -> dict[str, Any]:
-        services: ServiceContainer = app.state.services
+        services: ServiceContainer | None = getattr(app.state, "services", None)
+        if services is None:
+            return {
+                "status": "starting",
+                "database_connected": False,
+                "chain_connected": False,
+                "staking_reachable": False,
+            }
+
+        db_healthy = False
+        try:
+            db_healthy = await ping_database(services.database)
+        except Exception:
+            pass
+
+        chain_healthy = services.chain_service.web3_client.is_connected()
+
+        staking_healthy = False
+        try:
+            info = services.chain_service.get_stake_info(services.settings.PAYMENT_WALLET_ADDRESS)
+            staking_healthy = info is not None
+        except Exception:
+            pass
+
         return {
-            "status": "ok",
-            "mongo_connected": True,
-            "chain_connected": services.chain_service.web3_client.is_connected(),
+            "status": "ok" if db_healthy and chain_healthy else "degraded",
+            "database_connected": db_healthy,
+            "chain_connected": chain_healthy,
+            "staking_reachable": staking_healthy,
         }
 
     return app
 
+
+def _handle_signal(signum: int, _frame: Any) -> None:
+    logger.info("Received signal %d, shutting down gracefully...", signum)
+
+
+signal.signal(signal.SIGTERM, _handle_signal)
+signal.signal(signal.SIGINT, _handle_signal)
 
 app = create_app()
