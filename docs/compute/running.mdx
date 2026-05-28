@@ -1,6 +1,7 @@
 ---
 title: Running a Node
 description: 'Start the daemon and manage your node lifecycle'
+icon: 'play'
 ---
 
 # Running a Node
@@ -9,26 +10,41 @@ description: 'Start the daemon and manage your node lifecycle'
 
 Before starting the daemon, you must have:
 
-1. **Initialized your node** — `blindference-node init` completed
-2. **Attested with the ICL** — `blindference-node attest --mock` (or interactive flow)
+<Steps>
+  <Step title="Initialize your node" icon="settings">
+    `blindference-node init` completed successfully
+  </Step>
+  <Step title="Attest with the ICL" icon="shield">
+    `blindference-node attest --mock` (or interactive flow) completed
+  </Step>
+</Steps>
 
-Without attestation, the daemon will exit with:
-```
-Error: No attestation found. Run `blindference-node attest` first.
-```
+<Warning>
+  Without attestation, the daemon will exit with:
+  ```
+  Error: No attestation found. Run `blindference-node attest` first.
+  ```
+</Warning>
 
 ## Start the Daemon
 
-```bash
-# Interactive — prompts for keystore password
-blindference-node run
+<Tabs>
+  <Tab title="Interactive (Default)">
+    ```bash title="Start daemon interactively"
+    blindference-node run
+    ```
+    Enter your keystore password when prompted.
+  </Tab>
+  <Tab title="Non-Interactive">
+    ```bash title="Start daemon non-interactively"
+    export BLF_KEY_PASSWORD=secure_password
+    blindference-node run
+    ```
+    Uses environment variable for password — useful for background services.
+  </Tab>
+</Tabs>
 
-# Non-interactive — uses environment variable
-export BLF_KEY_PASSWORD=secure_password
-blindference-node run
-```
-
-The daemon starts three concurrent loops:
+The daemon starts four concurrent loops:
 
 | Loop | Frequency | Purpose |
 |------|-----------|---------|
@@ -123,8 +139,8 @@ sequenceDiagram
 
 The daemon logs to stdout with structured log lines:
 
-```
-[2026-05-18T10:25:00] [INFO   ] [0xdDef3Cf5] Daemon starting ...
+```bash title="Example daemon output"
+[2026-05-18T10:25:00] [INFO   ] [0xdDef3Cf5] Daemon starting …
 [2026-05-18T10:25:00] [INFO   ] [0xdDef3Cf5]   Address : 0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5
 [2026-05-18T10:25:00] [INFO   ] [0xdDef3Cf5]   Tier    : 0
 [2026-05-18T10:25:00] [INFO   ] [0xdDef3Cf5]   Models  : qwen2.5-7b
@@ -132,7 +148,7 @@ The daemon logs to stdout with structured log lines:
 [2026-05-18T10:25:00] [INFO   ] [0xdDef3Cf5] Heartbeat sent to ICL
 [2026-05-18T10:25:00] [INFO   ] [0xdDef3Cf5] No assignments for last 60s
 [2026-05-18T10:35:00] [INFO   ] [0xdDef3Cf5] Received 1 assignment(s)
-[2026-05-18T10:35:00] [INFO   ] [0xdDef3Cf5] Spawning leader job 0xabc123...
+[2026-05-18T10:35:00] [INFO   ] [0xdDef3Cf5] Spawning leader job 0xabc123…
 [2026-05-18T10:35:00] [INFO   ] [0xdDef3Cf5] Job 0xabc123: starting as leader
 [2026-05-18T10:35:00] [INFO   ] [0xdDef3Cf5] Job 0xabc123: claimed
 ```
@@ -141,20 +157,23 @@ The daemon logs to stdout with structured log lines:
 
 In a separate terminal (while the daemon runs), you can query your node's status:
 
-```bash
-# Check node configuration and attestation
+```bash title="Check node configuration and attestation"
 blindference-node status
+```
 
-# List recent completed jobs with earnings
+```bash title="List recent completed jobs with earnings"
 blindference-node jobs list --limit 10
+```
 
-# Total BLIND earned across all jobs
+```bash title="Total BLIND earned across all completed jobs"
 blindference-node jobs earnings
+```
 
-# Check on-chain stake, consecutive failures, slash risk
+```bash title="Check on-chain stake, consecutive failures, slash risk"
 blindference-node staking status
+```
 
-# BLIND token balance in your wallet
+```bash title="BLIND token balance in your wallet"
 blindference-node balance
 ```
 
@@ -169,7 +188,7 @@ blindference-node balance
 
 Set log level via environment:
 
-```bash
+```bash title="Run with debug logging"
 BLF_LOG_LEVEL=DEBUG blindference-node run
 ```
 
@@ -177,27 +196,38 @@ BLF_LOG_LEVEL=DEBUG blindference-node run
 
 Press `Ctrl+C` (SIGINT) or send SIGTERM:
 
-```bash
+```bash title="Graceful shutdown"
 kill -SIGTERM <pid>
 ```
 
 The daemon handles shutdown gracefully:
-1. Stops accepting new assignments
-2. Waits for running jobs to complete (or timeout)
-3. Sends final heartbeat
-4. Exits
+
+<Steps>
+  <Step title="Stop accepting" icon="hand">
+    Stops accepting new assignments
+  </Step>
+  <Step title="Wait for jobs" icon="clock">
+    Waits for running jobs to complete (or timeout)
+  </Step>
+  <Step title="Final heartbeat" icon="heart">
+    Sends final heartbeat
+  </Step>
+  <Step title="Exit" icon="log-out">
+    Exits cleanly
+  </Step>
+</Steps>
 
 ## Running Multiple Nodes
 
 You can run multiple nodes on the same machine (for testing) by using different config directories:
 
-```bash
-# Node 1
+```bash title="Node 1"
 export BLF_CONFIG_PATH=/tmp/node1/config.json
 blindference-node init
 blindference-node run
+```
 
-# Node 2 (in another terminal)
+```bash title="Node 2 (another terminal)"
 export BLF_CONFIG_PATH=/tmp/node2/config.json
 blindference-node init
 blindference-node run
@@ -207,55 +237,55 @@ Each node needs a unique wallet and should use a unique ICL operator key.
 
 ## Background Operation
 
-### Using systemd (Linux)
+<Tabs>
+  <Tab title="systemd (Linux)">
+    Create `/etc/systemd/system/blindference-node.service`:
 
-Create `/etc/systemd/system/blindference-node.service`:
+    ```ini title="systemd service file"
+    [Unit]
+    Description=Blindference Node Daemon
+    After=network.target
 
-```ini
-[Unit]
-Description=Blindference Node Daemon
-After=network.target
+    [Service]
+    Type=simple
+    User=blindference
+    Environment=BLF_KEY_PASSWORD=secure_password
+    Environment=BLF_LOG_LEVEL=INFO
+    WorkingDirectory=/home/blindference
+    ExecStart=/usr/local/bin/blindference-node run
+    Restart=on-failure
+    RestartSec=10
 
-[Service]
-Type=simple
-User=blindference
-Environment=BLF_KEY_PASSWORD=secure_password
-Environment=BLF_LOG_LEVEL=INFO
-WorkingDirectory=/home/blindference
-ExecStart=/usr/local/bin/blindference-node run
-Restart=on-failure
-RestartSec=10
+    [Install]
+    WantedBy=multi-user.target
+    ```
 
-[Install]
-WantedBy=multi-user.target
-```
+    ```bash title="Enable and start service"
+    sudo systemctl enable blindference-node
+    sudo systemctl start blindference-node
+    sudo systemctl status blindference-node
+    ```
+  </Tab>
+  <Tab title="Docker">
+    ```bash title="Run daemon in Docker"
+    docker run -d \
+      --name blindference-node \
+      -e BLF_KEY_PASSWORD=secure_password \
+      -e BLF_ICL_ENDPOINT=https://icl.blindference.xyz \
+      -v /host/config:/root/.blindference \
+      blindference-node
+    ```
+  </Tab>
+  <Tab title="nohup / screen / tmux">
+    ```bash title="Simple background"
+    nohup blindference-node run > node.log 2>&1 &
+    ```
 
-```bash
-sudo systemctl enable blindference-node
-sudo systemctl start blindference-node
-sudo systemctl status blindference-node
-```
-
-### Using Docker
-
-```bash
-docker run -d \
-  --name blindference-node \
-  -e BLF_KEY_PASSWORD=secure_password \
-  -e BLF_ICL_ENDPOINT=https://icl.blindference.xyz \
-  -v /host/config:/root/.blindference \
-  blindference-node
-```
-
-### Using nohup / screen / tmux
-
-```bash
-# Simple background
-nohup blindference-node run > node.log 2>&1 &
-
-# Or with screen
-screen -S blindference
-blindference-node run
-# Detach: Ctrl+A, D
-# Reattach: screen -r blindference
-```
+    ```bash title="Using screen"
+    screen -S blindference
+    blindference-node run
+    # Detach: Ctrl+A, D
+    # Reattach: screen -r blindference
+    ```
+  </Tab>
+</Tabs>

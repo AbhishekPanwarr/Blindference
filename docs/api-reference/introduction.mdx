@@ -1,0 +1,44 @@
+---
+title: API Reference Introduction
+description: 'Overview of the Blindference REST API'
+---
+
+# API Reference
+
+Blindference exposes a REST API through the **Inference Coordination Layer (ICL)**. This API handles inference request submission, status tracking, node assignment, and result aggregation.
+
+## Base URLs
+
+| Environment | URL |
+|-------------|-----|
+| Production | `https://icl.blindference.xyz` |
+| Local Development | `http://127.0.0.1:9000` |
+
+## Authentication
+
+Most endpoints are public and read-only. Write endpoints (submitting requests) use the `developer_address` field for authorization — the user's wallet signs on-chain transactions (e.g., `storeKey`) which implicitly authenticate the request.
+
+<Warning>
+  Never share your private key or keystore password. The ICL never asks for private keys.
+</Warning>
+
+## Rate Limits
+
+| Endpoint | Limit |
+|----------|-------|
+| Quorum preview | 10 requests/minute per IP |
+| Submit request | 5 requests/minute per address |
+| Status polling | No explicit limit (use ~5s intervals) |
+
+## SDK Clients
+
+We provide reference implementations in Python and TypeScript. See the [ICL API](/api-reference/icl-api) page for full endpoint documentation.
+
+<CardGroup cols={2}>
+  <Card title="ICL API Endpoints" icon="code" href="/api-reference/icl-api">
+    Complete REST API reference with request/response examples
+  </Card>
+  <Card title="Build Quickstart" icon="rocket" href="/build/quickstart">
+    Learn how to integrate the API into your application
+  </Card>
+</CardGroup>

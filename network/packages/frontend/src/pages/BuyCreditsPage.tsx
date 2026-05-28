@@ -8,6 +8,7 @@ import { useBlindFaucet } from '../hooks/useBlindFaucet'
 import { useWrapUSDC } from '../hooks/useWrapUSDC'
 import { Hex, parseAbi } from 'viem'
 import { arbitrumSepolia } from 'wagmi/chains'
+import { GlassCard } from '../components/ui/GlassCard'
 
 const BLIND_TOKEN_ADDRESS = (import.meta.env.VITE_BLIND_TOKEN_ADDRESS || '') as Hex
 const PAYMENT_WALLET_ADDRESS = (import.meta.env.VITE_PAYMENT_WALLET_ADDRESS || '') as Hex
@@ -15,7 +16,7 @@ const PAYMENT_WALLET_ADDRESS = (import.meta.env.VITE_PAYMENT_WALLET_ADDRESS || '
 const PACKAGE_ICONS: Record<string, React.ReactNode> = {
   starter: <Zap className="w-6 h-6 text-yellow-500" />,
   pro: <Shield className="w-6 h-6 text-blue-500" />,
-  enterprise: <Crown className="w-6 h-6 text-purple-500" />,
+  enterprise: <Crown className="w-6 h-6 text-orange-500" />,
 }
 
 function formatWei(wei: string | number): string {
@@ -62,6 +63,9 @@ export function BuyCreditsPage() {
   const [purchasing, setPurchasing] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [approving, setApproving] = useState(false)
+
+  // Tab state for NullPay-inspired interface
+  const [activeTab, setActiveTab] = useState<'buy' | 'faucet' | 'wrap'>('buy')
 
   // Fetch packages on mount
   useEffect(() => {
@@ -209,7 +213,7 @@ export function BuyCreditsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
+        <Loader2 className="w-6 h-6 animate-spin text-white/50" />
       </div>
     )
   }
@@ -217,345 +221,507 @@ export function BuyCreditsPage() {
   const needsApproval = allowance !== undefined && allowance < BigInt(packages[0]?.price_blind_wei || '100000000000000000000')
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
+    <div className="max-w-5xl mx-auto px-6 py-10 space-y-10">
+      {/* ── Header ── */}
+      <GlassCard className="p-8 text-center" hoverEffect={false}>
         <button
           onClick={() => navigate(-1)}
-          className="p-2 rounded-lg border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 transition-colors"
+          className="absolute top-4 left-4 p-2 rounded-full border border-white/10 glass-card hover:bg-orange-500/10 transition-colors"
         >
-          <ArrowLeft className="w-4 h-4 text-zinc-400" />
+          <ArrowLeft className="w-4 h-4 text-white/50" />
         </button>
-        <div>
-          <h1 className="text-2xl font-semibold text-white">Buy Credits</h1>
-          <p className="text-sm text-zinc-500 mt-1">
-            Purchase credit packages with BLIND tokens. Credits are denominated in cUSDC wei.
-          </p>
-        </div>
+        <h1 className="text-3xl font-bold text-white mb-2">
+          Manage Your <span className="gradient-text">Credits</span>
+        </h1>
+        <p className="text-sm text-white/50 max-w-xl mx-auto">
+          Purchase inference credit packages, wrap USDC to cUSDC, or drip free BLIND tokens for testnet use.
+        </p>
+      </GlassCard>
+
+      {/* ── Token Overview Cards ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* cUSDC Card */}
+        <GlassCard className="p-6" hoverEffect>
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h2 className="text-2xl font-bold text-white">cUSDC</h2>
+              <p className="text-xs text-white/50 mt-1 leading-relaxed">
+                Confidential USDC for private inference payments. Wrapped via Reineira escrow on Arbitrum Sepolia.
+              </p>
+            </div>
+            <div className="p-2 rounded-xl bg-[rgba(10,10,10,0.6)] border border-white/10">
+              <Droplets className="w-5 h-5 text-orange-400" />
+            </div>
+          </div>
+          <div className="mb-5">
+            <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/40 mb-1">Current Balance</div>
+            <div className="text-2xl font-mono text-white/90">{formatWei(balanceCusdc)}</div>
+            <div className="text-xs text-white/50">cUSDC wei</div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setActiveTab('wrap')}
+              className="btn-primary px-4 py-2 text-sm font-semibold flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Wrap USDC
+            </button>
+            <button className="btn-outline px-4 py-2 text-sm font-semibold flex items-center gap-2 opacity-50 cursor-not-allowed" disabled>
+              Deposit
+            </button>
+          </div>
+        </GlassCard>
+
+        {/* BLIND Card */}
+        <GlassCard className="p-6" hoverEffect>
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h2 className="text-2xl font-bold text-white">BLIND</h2>
+              <p className="text-xs text-white/50 mt-1 leading-relaxed">
+                Native protocol token. Stake to run nodes, earn rewards per job, and vote on protocol upgrades.
+              </p>
+            </div>
+            <div className="p-2 rounded-xl bg-[rgba(10,10,10,0.6)] border border-white/10">
+              <Zap className="w-5 h-5 text-orange-400" />
+            </div>
+          </div>
+          <div className="mb-5">
+            <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/40 mb-1">Current Balance</div>
+            <div className="text-2xl font-mono text-white/90">{weiToEth(balanceBlind)}</div>
+            <div className="text-xs text-white/50">BLIND</div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setActiveTab('faucet')}
+              className="btn-primary px-4 py-2 text-sm font-semibold flex items-center gap-2"
+            >
+              <Droplets className="w-4 h-4" />
+              Drip Tokens
+            </button>
+            <button className="btn-outline px-4 py-2 text-sm font-semibold flex items-center gap-2 opacity-50 cursor-not-allowed" disabled>
+              Stake
+            </button>
+          </div>
+        </GlassCard>
       </div>
 
-      {/* Current balance */}
-      {(balanceCusdc || balanceBlind) && (
-        <div className="mb-8 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
-          <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-500 mb-2">
-            Credit Balance
-          </div>
-          <div className="flex gap-6">
-            <div>
-              <div className="text-2xl font-mono text-white">{formatWei(balanceCusdc)}</div>
-              <div className="text-xs text-zinc-500">cUSDC credits (wei)</div>
-            </div>
-            <div>
-              <div className="text-2xl font-mono text-white">{weiToEth(balanceBlind)}</div>
-              <div className="text-xs text-zinc-500">BLIND credits</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Faucets & Wrap USDC */}
-      <div className="mb-8 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 space-y-6">
-        <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-500">
-          Get Test Tokens
-        </div>
-
-        {/* BLIND Faucet */}
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm font-medium text-white">BLIND Faucet</div>
-            <div className="text-xs text-zinc-500 mt-1">
-              {lastDripTime !== null && lastDripTime > 0n
-                ? 'You have already dripped BLIND tokens.'
-                : 'Get free BLIND tokens for testnet use.'}
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
+      {/* ── Tabbed Interface ── */}
+      <div>
+        {/* Tab Selector */}
+        <div className="flex items-center justify-center gap-2 mb-8">
+          {([
+            { key: 'buy' as const, label: 'Buy Packages' },
+            { key: 'faucet' as const, label: 'BLIND Faucet' },
+            { key: 'wrap' as const, label: 'Wrap USDC' },
+          ]).map((tab) => (
             <button
-              onClick={fetchLastDripTime}
-              className="p-2 rounded-lg border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 transition-colors"
-              title="Check drip status"
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={
+                'px-5 py-2 rounded-full text-sm font-semibold transition-all duration-300 border ' +
+                (activeTab === tab.key
+                  ? 'bg-orange-500 text-black border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.35)]'
+                  : 'bg-[rgba(10,10,10,0.6)] text-white/60 border-white/10 hover:border-white/20 hover:text-white')
+              }
             >
-              <RefreshCw className="w-4 h-4 text-zinc-400" />
+              {tab.label}
             </button>
-            <button
-              onClick={dripBlind}
-              disabled={faucetLoading || !address || (lastDripTime !== null && lastDripTime > 0n)}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-500 disabled:opacity-50 flex items-center gap-2"
-            >
-              {faucetLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Dripping...
-                </>
-              ) : (
-                <>
-                  <Droplets className="w-4 h-4" />
-                  Drip BLIND
-                </>
-              )}
-            </button>
-          </div>
+          ))}
         </div>
-        {faucetError && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs text-red-400">
-            {faucetError}
-          </div>
-        )}
-        {faucetSuccess && (
-          <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-2 text-xs text-green-400 flex items-center gap-2">
-            <CheckCircle className="w-3 h-3" />
-            {faucetSuccess}
-          </div>
-        )}
 
-        {/* USDC Faucet */}
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm font-medium text-white">USDC Faucet</div>
-            <div className="text-xs text-zinc-500 mt-1">
-              Get test USDC from the Circle faucet (Arbitrum Sepolia).
+        {/* ── Tab 1: Buy Packages ── */}
+        {activeTab === 'buy' && (
+          <div className="space-y-6">
+            <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/40">
+              Credit Packages
             </div>
-          </div>
-          <a
-            href="https://faucet.circle.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 flex items-center gap-2"
-          >
-            <ExternalLink className="w-4 h-4" />
-            Circle Faucet
-          </a>
-        </div>
 
-        {/* Wrap USDC → cUSDC */}
-        <div className="border-t border-zinc-800 pt-4">
-          <div className="text-sm font-medium text-white mb-2">Wrap USDC → cUSDC</div>
-          <div className="text-xs text-zinc-500 mb-3">
-            Convert plain USDC to confidential cUSDC via a 3-step escrow workaround.
-          </div>
-          <div className="flex items-center gap-3">
-            <input
-              type="number"
-              min="1"
-              step="1"
-              value={wrapAmount}
-              onChange={(e) => setWrapAmount(e.target.value)}
-              className="w-32 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none focus:border-zinc-500"
-              placeholder="Amount"
-            />
-            <button
-              onClick={() => wrapUsdc(Number(wrapAmount))}
-              disabled={wrapLoading || !address}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-500 disabled:opacity-50 flex items-center gap-2"
-            >
-              {wrapLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Wrapping...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="w-4 h-4" />
-                  Wrap USDC
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Wrap progress steps */}
-          {wrapSteps.some((s) => s.status !== 'pending') && (
-            <div className="mt-3 space-y-2">
-              {wrapSteps.map((step, idx) => (
-                <div key={idx} className="flex items-center gap-2 text-xs">
-                  {step.status === 'done' && <CheckCircle className="w-3 h-3 text-green-400" />}
-                  {step.status === 'in-progress' && <Loader2 className="w-3 h-3 animate-spin text-yellow-400" />}
-                  {step.status === 'error' && <div className="w-3 h-3 rounded-full bg-red-400" />}
-                  {step.status === 'pending' && <div className="w-3 h-3 rounded-full border border-zinc-600" />}
-                  <span
-                    className={
-                      step.status === 'done'
-                        ? 'text-green-400'
-                        : step.status === 'in-progress'
-                        ? 'text-yellow-400'
-                        : step.status === 'error'
-                        ? 'text-red-400'
-                        : 'text-zinc-500'
-                    }
+            {/* Approval banner */}
+            {address && needsApproval && (
+              <GlassCard className="p-4 border-amber-500/30" hoverEffect={false}>
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <div className="text-sm font-medium text-amber-400">BLIND Approval Required</div>
+                    <div className="text-xs text-amber-400/70 mt-1">
+                      Approve the Payment Service to spend your BLIND tokens for purchases.
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleApprove}
+                    disabled={approving}
+                    className="btn-primary px-4 py-2 text-sm font-semibold disabled:opacity-50 flex items-center gap-2 shrink-0"
                   >
-                    {step.label}
-                    {step.txHash && (
-                      <a
-                        href={`https://sepolia.arbiscan.io/tx/${step.txHash}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="ml-1 text-zinc-400 hover:text-white underline"
-                      >
-                        (view)
-                      </a>
+                    {approving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Approving...
+                      </>
+                    ) : (
+                      'Approve BLIND'
                     )}
-                  </span>
+                  </button>
                 </div>
+              </GlassCard>
+            )}
+
+            {/* Global error / success */}
+            {error && (
+              <GlassCard className="p-4 border-red-500/30" hoverEffect={false}>
+                <div className="text-sm text-red-400">{error}</div>
+              </GlassCard>
+            )}
+            {success && (
+              <GlassCard className="p-4 border-emerald-500/30" hoverEffect={false}>
+                <div className="text-sm text-emerald-400 flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" />
+                  {success}
+                </div>
+              </GlassCard>
+            )}
+
+            {/* Package cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {packages.map((pkg) => (
+                <GlassCard
+                  key={pkg.id}
+                  className="p-6 flex flex-col"
+                  hoverEffect
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-xl bg-[rgba(10,10,10,0.6)] border border-white/10">
+                      {PACKAGE_ICONS[pkg.id] || <CreditCard className="w-6 h-6 text-white/50" />}
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-white/90">{pkg.name}</h3>
+                      <p className="text-xs text-white/50">{pkg.base_calls.toLocaleString()} base calls</p>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 space-y-3 mb-6">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-white/50">Bonus</span>
+                      <span className="text-white/90 font-medium">+{pkg.bonus_percent}%</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-white/50">Total calls</span>
+                      <span className="text-white/90 font-medium">{pkg.total_calls.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-white/50">Price</span>
+                      <span className="text-white/90 font-medium">{pkg.price_blind.toLocaleString()} BLIND</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-white/50">Effective per-call</span>
+                      <span className="text-white/50">
+                        {(pkg.price_blind / pkg.total_calls).toFixed(4)} BLIND
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handlePurchase(pkg)}
+                    disabled={purchasing === pkg.id || !address || !BLIND_TOKEN_ADDRESS || needsApproval}
+                    className="w-full btn-primary px-4 py-2.5 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {purchasing === pkg.id ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="w-4 h-4" />
+                        Buy {pkg.name}
+                      </>
+                    )}
+                  </button>
+                </GlassCard>
               ))}
             </div>
-          )}
-          {wrapError && (
-            <div className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs text-red-400">
-              {wrapError}
-            </div>
-          )}
-          {wrapSuccess && (
-            <div className="mt-2 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-2 text-xs text-green-400 flex items-center gap-2">
-              <CheckCircle className="w-3 h-3" />
-              {wrapSuccess}
-            </div>
-          )}
-
-          {/* Check Balances */}
-          <div className="mt-3 flex items-center gap-3">
-            <button
-              onClick={checkBalances}
-              disabled={balanceLoading || !address}
-              className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-700 disabled:opacity-50 flex items-center gap-2"
-            >
-              {balanceLoading ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
-              ) : (
-                <RefreshCw className="w-3 h-3" />
-              )}
-              Check Balances
-            </button>
           </div>
-          {balances && (
-            <div className="mt-2 rounded-lg border border-zinc-700 bg-zinc-900/50 px-3 py-2 text-xs space-y-1">
-              <div className="flex justify-between">
-                <span className="text-zinc-400">USDC</span>
-                <span className="text-white font-mono">{balances.usdc}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-400">cUSDC</span>
-                <span className="text-emerald-400 font-mono">{balances.cusdc}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-400">ETH</span>
-                <span className="text-white font-mono">{balances.eth}</span>
-              </div>
-              <div className="text-zinc-500 text-[10px] pt-1 border-t border-zinc-800 mt-1">
-                cUSDC is FHE-encrypted. The handle proves your wallet is recognized by the token contract.
-              </div>
+        )}
+
+        {/* ── Tab 2: BLIND Faucet ── */}
+        {activeTab === 'faucet' && (
+          <div className="space-y-6">
+            <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/40">
+              Testnet Faucet
             </div>
-          )}
-        </div>
+
+            <GlassCard className="p-6" hoverEffect={false}>
+              <div className="flex items-start justify-between mb-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-1">BLIND Faucet</h3>
+                  <p className="text-xs text-white/50">
+                    {lastDripTime !== null && lastDripTime > 0n
+                      ? 'You have already dripped BLIND tokens.'
+                      : 'Get free BLIND tokens for testnet use.'}
+                  </p>
+                </div>
+                <div className="p-2 rounded-xl bg-[rgba(10,10,10,0.6)] border border-white/10">
+                  <Droplets className="w-5 h-5 text-orange-400" />
+                </div>
+              </div>
+
+              {/* Status card */}
+              <div className="glass-card p-4 mb-6">
+                <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/40 mb-2">Status</div>
+                <div className="text-sm text-white/70">
+                  {lastDripTime !== null && lastDripTime > 0n
+                    ? `Last drip: block ${lastDripTime.toString()}`
+                    : 'No drip recorded for this wallet.'}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={dripBlind}
+                  disabled={faucetLoading || !address || (lastDripTime !== null && lastDripTime > 0n)}
+                  className="btn-primary px-6 py-2.5 text-sm font-semibold disabled:opacity-50 flex items-center gap-2"
+                >
+                  {faucetLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Dripping...
+                    </>
+                  ) : (
+                    <>
+                      <Droplets className="w-4 h-4" />
+                      Drip BLIND
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={fetchLastDripTime}
+                  className="px-4 py-2.5 rounded-full border border-white/10 bg-[rgba(10,10,10,0.6)] text-sm font-semibold text-white/60 hover:border-white/20 hover:text-white transition-all flex items-center gap-2"
+                  title="Check drip status"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Check Status
+                </button>
+              </div>
+
+              {faucetError && (
+                <div className="mt-4 glass-card border-red-500/30 p-3 text-xs text-red-400">
+                  {faucetError}
+                </div>
+              )}
+              {faucetSuccess && (
+                <div className="mt-4 glass-card border-emerald-500/30 p-3 text-xs text-emerald-400 flex items-center gap-2">
+                  <CheckCircle className="w-3 h-3" />
+                  {faucetSuccess}
+                </div>
+              )}
+            </GlassCard>
+          </div>
+        )}
+
+        {/* ── Tab 3: Wrap USDC ── */}
+        {activeTab === 'wrap' && (
+          <div className="space-y-6">
+            <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/40">
+              USDC → cUSDC
+            </div>
+
+            <GlassCard className="p-6" hoverEffect={false}>
+              <div className="flex items-start justify-between mb-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-1">Wrap USDC</h3>
+                  <p className="text-xs text-white/50">
+                    Convert plain USDC to confidential cUSDC via a 3-step escrow workaround.
+                  </p>
+                </div>
+                <a
+                  href="https://faucet.circle.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-full border border-white/10 bg-[rgba(10,10,10,0.6)] text-xs font-medium text-white/50 hover:border-orange-500/30 hover:text-orange-400 transition-all flex items-center gap-2"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Circle Faucet
+                </a>
+              </div>
+
+              {/* Amount input */}
+              <div className="mb-5">
+                <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/40 mb-2">Amount</div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={wrapAmount}
+                    onChange={(e) => setWrapAmount(e.target.value)}
+                    className="w-40 input-glass px-4 py-2.5 text-sm text-white/90"
+                    placeholder="Amount"
+                  />
+                  <button
+                    onClick={() => wrapUsdc(Number(wrapAmount))}
+                    disabled={wrapLoading || !address}
+                    className="btn-primary px-6 py-2.5 text-sm font-semibold disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {wrapLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Wrapping...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-4 h-4" />
+                        Wrap USDC
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Step progress indicators */}
+              {wrapSteps.some((s) => s.status !== 'pending') && (
+                <div className="mb-5">
+                  <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/40 mb-3">Progress</div>
+                  <div className="flex items-center gap-2">
+                    {wrapSteps.map((step, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <div className="flex flex-col items-center">
+                          <div
+                            className={
+                              'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border transition-colors ' +
+                              (step.status === 'done'
+                                ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
+                                : step.status === 'in-progress'
+                                ? 'bg-amber-500/20 border-amber-500/50 text-amber-400'
+                                : step.status === 'error'
+                                ? 'bg-red-500/20 border-red-500/50 text-red-400'
+                                : 'bg-[rgba(10,10,10,0.6)] border-white/10 text-white/30')
+                            }
+                          >
+                            {step.status === 'done' && <CheckCircle className="w-4 h-4" />}
+                            {step.status === 'in-progress' && <Loader2 className="w-4 h-4 animate-spin" />}
+                            {step.status === 'error' && <div className="w-2 h-2 rounded-full bg-red-400" />}
+                            {step.status === 'pending' && <span>{idx + 1}</span>}
+                          </div>
+                          <span
+                            className={
+                              'text-[10px] mt-1.5 font-medium ' +
+                              (step.status === 'done'
+                                ? 'text-emerald-400'
+                                : step.status === 'in-progress'
+                                ? 'text-amber-400'
+                                : step.status === 'error'
+                                ? 'text-red-400'
+                                : 'text-white/30')
+                            }
+                          >
+                            {step.label}
+                          </span>
+                        </div>
+                        {idx < wrapSteps.length - 1 && (
+                          <div
+                            className={
+                              'w-8 h-px mb-4 ' +
+                              (wrapSteps[idx + 1].status !== 'pending'
+                                ? 'bg-emerald-500/40'
+                                : 'bg-white/10')
+                            }
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {wrapSteps.map((step, idx) => (
+                    <div key={`detail-${idx}`} className="mt-2 flex items-center gap-2 text-xs">
+                      {step.status === 'done' && <CheckCircle className="w-3 h-3 text-emerald-400" />}
+                      {step.status === 'in-progress' && <Loader2 className="w-3 h-3 animate-spin text-amber-400" />}
+                      {step.status === 'error' && <div className="w-3 h-3 rounded-full bg-red-400" />}
+                      {step.status === 'pending' && <div className="w-3 h-3 rounded-full border border-white/50" />}
+                      <span
+                        className={
+                          step.status === 'done'
+                            ? 'text-emerald-400'
+                            : step.status === 'in-progress'
+                            ? 'text-amber-400'
+                            : step.status === 'error'
+                            ? 'text-red-400'
+                            : 'text-white/50'
+                        }
+                      >
+                        {step.label}
+                        {step.txHash && (
+                          <a
+                            href={`https://sepolia.arbiscan.io/tx/${step.txHash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="ml-1 text-white/50 hover:text-white/90 underline"
+                          >
+                            (view)
+                          </a>
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {wrapError && (
+                <div className="mb-4 glass-card border-red-500/30 p-3 text-xs text-red-400">
+                  {wrapError}
+                </div>
+              )}
+              {wrapSuccess && (
+                <div className="mb-4 glass-card border-emerald-500/30 p-3 text-xs text-emerald-400 flex items-center gap-2">
+                  <CheckCircle className="w-3 h-3" />
+                  {wrapSuccess}
+                </div>
+              )}
+
+              {/* Check Balances */}
+              <div className="flex items-center gap-3 mb-3">
+                <button
+                  onClick={checkBalances}
+                  disabled={balanceLoading || !address}
+                  className="px-4 py-2 rounded-full border border-white/10 bg-[rgba(10,10,10,0.6)] text-xs font-medium text-white/50 transition-all hover:border-white/20 hover:text-white disabled:opacity-50 flex items-center gap-2"
+                >
+                  {balanceLoading ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-3 h-3" />
+                  )}
+                  Check Balances
+                </button>
+              </div>
+              {balances && (
+                <GlassCard className="p-4 text-xs space-y-2" variant="light">
+                  <div className="flex justify-between">
+                    <span className="text-white/50">USDC</span>
+                    <span className="text-white/90 font-mono">{balances.usdc}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/50">cUSDC</span>
+                    <span className="text-orange-400 font-mono">{balances.cusdc}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/50">ETH</span>
+                    <span className="text-white/90 font-mono">{balances.eth}</span>
+                  </div>
+                  <div className="text-white/50 text-[10px] pt-2 border-t border-white/10 mt-2">
+                    cUSDC is FHE-encrypted. The handle proves your wallet is recognized by the token contract.
+                  </div>
+                </GlassCard>
+              )}
+            </GlassCard>
+          </div>
+        )}
       </div>
 
-      {/* Approval button */}
-      {address && needsApproval && (
-        <div className="mb-6 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium text-yellow-400">BLIND Approval Required</div>
-              <div className="text-xs text-yellow-400/70 mt-1">
-                Approve the Payment Service to spend your BLIND tokens for purchases.
-              </div>
-            </div>
-            <button
-              onClick={handleApprove}
-              disabled={approving}
-              className="rounded-lg bg-yellow-500 px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-yellow-400 disabled:opacity-50 flex items-center gap-2"
-            >
-              {approving ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Approving...
-                </>
-              ) : (
-                'Approve BLIND'
-              )}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Error / Success */}
-      {error && (
-        <div className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-          {error}
-        </div>
-      )}
-      {success && (
-        <div className="mb-6 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400 flex items-center gap-2">
-          <CheckCircle className="w-4 h-4" />
-          {success}
-        </div>
-      )}
-
-      {/* Package cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {packages.map((pkg) => (
-          <div
-            key={pkg.id}
-            className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6 flex flex-col hover:border-zinc-700 transition-colors"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 rounded-lg bg-zinc-800/60">
-                {PACKAGE_ICONS[pkg.id] || <CreditCard className="w-6 h-6 text-zinc-400" />}
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-white">{pkg.name}</h3>
-                <p className="text-xs text-zinc-500">{pkg.base_calls.toLocaleString()} base calls</p>
-              </div>
-            </div>
-
-            <div className="flex-1 space-y-3 mb-6">
-              <div className="flex justify-between text-sm">
-                <span className="text-zinc-500">Bonus</span>
-                <span className="text-white font-medium">+{pkg.bonus_percent}%</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-zinc-500">Total calls</span>
-                <span className="text-white font-medium">{pkg.total_calls.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-zinc-500">Price</span>
-                <span className="text-white font-medium">{pkg.price_blind.toLocaleString()} BLIND</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-zinc-500">Effective per-call</span>
-                <span className="text-zinc-400">
-                  {(pkg.price_blind / pkg.total_calls).toFixed(4)} BLIND
-                </span>
-              </div>
-            </div>
-
-            <button
-              onClick={() => handlePurchase(pkg)}
-              disabled={purchasing === pkg.id || !address || !BLIND_TOKEN_ADDRESS || needsApproval}
-              className="w-full rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {purchasing === pkg.id ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <CreditCard className="w-4 h-4" />
-                  Buy {pkg.name}
-                </>
-              )}
-            </button>
-          </div>
-        ))}
-      </div>
-
-      {/* Info footer */}
-      <div className="mt-8 rounded-lg border border-zinc-800 bg-zinc-900/40 px-4 py-3 flex items-start gap-2">
-        <Info className="w-4 h-4 text-zinc-500 mt-0.5 shrink-0" />
-        <p className="text-xs text-zinc-500">
+      {/* ── Info Footer ── */}
+      <GlassCard className="px-5 py-4 flex items-start gap-3" variant="light">
+        <Info className="w-4 h-4 text-white/50 mt-0.5 shrink-0" />
+        <p className="text-xs text-white/50 leading-relaxed">
           Credits are awarded in cUSDC wei equivalent based on the cheapest model price
           (qwen2.5-7b). You can use credits for any inference model. BLIND payments
           receive a 20% discount vs. cUSDC.
         </p>
-      </div>
+      </GlassCard>
     </div>
   )
 }

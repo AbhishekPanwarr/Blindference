@@ -1,0 +1,348 @@
+---
+title: ICL API Reference
+description: 'REST API for submitting and tracking inference requests'
+icon: 'code'
+---
+
+# ICL API
+
+The Inference Coordination Layer (ICL) exposes a REST API for submitting requests, tracking status, and managing the inference lifecycle.
+
+## Base URL
+
+| Environment | URL |
+|-------------|-----|
+| Production | `https://icl.blindference.xyz` |
+| Local Development | `http://127.0.0.1:9000` |
+
+## Authentication
+
+Most endpoints are public (read-only). Write endpoints (submit request) use the `developer_address` field for authorization (signed by the user's wallet via MetaMask transactions).
+
+<Info>
+  The ICL never asks for private keys. Authorization is implicit via on-chain transaction signatures.
+</Info>
+
+## Core Endpoints
+
+<Card title="GET /v1/inference/quorum-preview" icon="search">
+  Preview which nodes would be selected for a given model and tier.
+
+  **Parameters**:
+
+  | Name | Type | Required | Default | Description |
+  |------|------|----------|---------|-------------|
+  | `model_id` | string | Yes | — | Model identifier (e.g., `qwen2.5-7b`) |
+  | `min_tier` | int | No | 0 | Minimum attestation tier |
+  | `verifier_count` | int | No | 2 | Number of verifiers |
+  | `zdr_required` | bool | No | false | Require ZDR compliance |
+
+  **Response**:
+
+  ```json title="Quorum preview response"
+  {
+    "leader": "0x61e72a024aE31ed2f0656a37b3B3172CDC364C85",
+    "verifiers": [
+      "0x9Cc0cBfCc4e3F45e2958F6EC0F5e70B500D0bB3E",
+      "0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5"
+    ],
+    "candidates": [
+      "0x61e72a024aE31ed2f0656a37b3B3172CDC364C85",
+      "0x9Cc0cBfCc4e3F45e2958F6EC0F5e70B500D0bB3E",
+      "0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5"
+    ]
+  }
+  ```
+</Card>
+
+<Card title="POST /v1/inference/requests" icon="send">
+  Submit a new inference request (text or risk).
+
+  **Text Inference Request Body**:
+
+  ```json title="Text inference request"
+  {
+    "developer_address": "0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5",
+    "model_id": "qwen2.5-7b",
+    "mode": "text",
+    "text_request": {
+      "prompt_cid": "QmTestPrompt123",
+      "encrypted_prompt_key": {
+        "high": "1234567890abcdef",
+        "low": "fedcba0987654321"
+      },
+      "model_id": "qwen2.5-7b",
+      "coverage_enabled": false
+    },
+    "min_tier": 0,
+    "verifier_count": 2,
+    "metadata": {
+      "cofhe_prompt_key_inputs": {
+        "high": {
+          "ctHash": "0xdead0001",
+          "securityZone": 0,
+          "utype": 6,
+          "signature": "0x"
+        },
+        "low": {
+          "ctHash": "0xdead0002",
+          "securityZone": 0,
+          "utype": 6,
+          "signature": "0x"
+        }
+      }
+    }
+  }
+  ```
+
+  **Risk Scoring Request Body**:
+
+  ```json title="Risk scoring request"
+  {
+    "developer_address": "0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5",
+    "model_id": "risk-model-v1",
+    "mode": "risk",
+    "encrypted_features": [
+      {
+        "ctHash": "0xabc123",
+        "utype": 6,
+        "signature": "0x..."
+      }
+    ],
+    "feature_types": ["credit_score", "loan_amount"],
+    "permits": [
+      {
+        "node": "0xNode1Address",
+        "permit": {...}
+      }
+    ],
+    "min_tier": 0,
+    "verifier_count": 2
+  }
+  ```
+
+  **Response**:
+
+  ```json title="Request submission response"
+  {
+    "job_id": "af1e0d039d254c5393a81426a4c171c8",
+    "status": "QUEUED",
+    "output_cid": null,
+    "commitment_hash": null,
+    "quorum": {
+      "verifier_addresses": [
+        "0x9Cc0cBfCc4e3F45e2958F6EC0F5e70B500D0bB3E",
+        "0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5"
+      ],
+      "confirmations": 0,
+      "confidence": 0
+    },
+    "dispute_deadline": 1779339025
+  }
+  ```
+</Card>
+
+<Card title="GET /v1/inference/{request_id}" icon="eye">
+  Get the status and result of a submitted request.
+
+  **Response** (text mode, initial):
+
+  ```json title="Initial status response"
+  {
+    "job_id": "af1e0d039d254c5393a81426a4c171c8",
+    "status": "QUEUED",
+    "output_cid": null,
+    "commitment_hash": null,
+    "encrypted_output_key_high": null,
+    "encrypted_output_key_low": null,
+    "quorum": {
+      "verifier_addresses": [...],
+      "confirmations": 0,
+      "confidence": 0
+    },
+    "dispute_deadline": 1779339025
+  }
+  ```
+
+  **Response** (after acceptance):
+
+  ```json title="Accepted status response"
+  {
+    "job_id": "af1e0d039d254c5393a81426a4c171c8",
+    "status": "ACCEPTED",
+    "output_cid": "QmOutputBlob456",
+    "commitment_hash": "0xabc123...",
+    "encrypted_output_key_high": "0xdead0003",
+    "encrypted_output_key_low": "0xdead0004",
+    "quorum": {
+      "verifier_addresses": [...],
+      "confirmations": 2,
+      "confidence": 100
+    },
+    "dispute_deadline": 1779339025
+  }
+  ```
+</Card>
+
+<Card title="POST /v1/inference/upload-prompt" icon="upload">
+  Upload an encrypted prompt blob to IPFS via the ICL.
+
+  **Form Data**:
+
+  | Field | Type | Description |
+  |-------|------|-------------|
+  | `file` | binary | Encrypted prompt blob (AES ciphertext) |
+
+  **Response**:
+
+  ```json title="Upload response"
+  {
+    "cid": "QmTestPrompt123"
+  }
+  ```
+</Card>
+
+<Card title="GET /v1/inference" icon="list">
+  List all inference requests.
+
+  **Response**: Array of `InferenceRequestResponse` objects.
+</Card>
+
+## Node Endpoints (Internal)
+
+<Warning>
+  These endpoints are used by node runtimes, not typically by agent developers.
+</Warning>
+
+<Card title="GET /internal/assignments/{node_address}" icon="clipboard-list">
+  Get pending assignments for a node.
+
+  **Response**:
+
+  ```json title="Assignments response"
+  {
+    "assignments": [
+      {
+        "jobId": "0xabc123",
+        "role": "leader",
+        "modelId": "qwen2.5-7b",
+        "promptCid": "QmTest123",
+        "deadline": 1779102916,
+        "insuranceOptIn": false,
+        "userAddress": "0x...",
+        "kpHighHandle": 3735928559,
+        "kpLowHandle": 3735928558
+      }
+    ]
+  }
+  ```
+</Card>
+
+<Card title="POST /internal/task/claim" icon="check-circle">
+  Claim a task assignment.
+
+  **Request Body**:
+
+  ```json title="Task claim request"
+  {
+    "jobId": "0xabc123",
+    "nodeAddress": "0xNodeAddress"
+  }
+  ```
+
+  **Response**:
+
+  ```json title="Task claim response"
+  {
+    "kpHighHandle": 3735928559,
+    "kpLowHandle": 3735928558,
+    "outputKeyGranted": true,
+    "claimDeadline": 1779103036
+  }
+  ```
+</Card>
+
+## Status Values
+
+| Status | Meaning | Next Action |
+|--------|---------|-------------|
+| `QUEUED` | Request received, quorum not yet completed | Poll every 5s |
+| `ACCEPTED` | Quorum consensus reached (2/3 match) | Decrypt output, reveal result |
+| `REJECTED` | Quorum failed (<2/3 match) | Check dispute process |
+| `DISPUTED` | Result disputed, under review | Wait for resolution |
+| `TIMEDOUT` | Execution window expired | Resubmit or refund |
+
+## Error Responses
+
+| Status Code | Meaning | Resolution |
+|-------------|---------|------------|
+| 400 | Invalid request body | Check request schema |
+| 404 | Request not found | Verify request_id |
+| 409 | Request already exists | Use existing request_id |
+| 422 | Validation error | Check field types |
+| 500 | Internal server error | Retry or contact support |
+| 502 | ICL dependency error | Check ICL health |
+
+## Rate Limits
+
+| Endpoint | Limit |
+|----------|-------|
+| Quorum preview | 10 requests/minute per IP |
+| Submit request | 5 requests/minute per address |
+| Status polling | No explicit limit (use ~5s intervals) |
+
+## SDK Clients
+
+<Tabs>
+  <Tab title="Python">
+    ```python title="Python ICL client"
+    import requests
+
+    class ICLClient:
+        def __init__(self, base_url: str = "https://icl.blindference.xyz"):
+            self.base_url = base_url
+
+        def get_quorum_preview(self, model_id: str, min_tier: int = 0, verifier_count: int = 2):
+            return requests.get(
+                f"{self.base_url}/v1/inference/quorum-preview",
+                params={"model_id": model_id, "min_tier": min_tier, "verifier_count": verifier_count}
+            ).json()
+
+        def submit_request(self, payload: dict):
+            return requests.post(
+                f"{self.base_url}/v1/inference/requests",
+                json=payload
+            ).json()
+
+        def get_status(self, request_id: str):
+            return requests.get(f"{self.base_url}/v1/inference/{request_id}").json()
+    ```
+  </Tab>
+  <Tab title="TypeScript">
+    ```typescript title="TypeScript ICL client"
+    class ICLClient {
+      constructor(private baseUrl: string = 'https://icl.blindference.xyz') {}
+
+      async getQuorumPreview(modelId: string, minTier = 0, verifierCount = 2) {
+        const params = new URLSearchParams({ model_id: modelId, min_tier: String(minTier), verifier_count: String(verifierCount) });
+        const res = await fetch(`${this.baseUrl}/v1/inference/quorum-preview?${params}`);
+        return res.json();
+      }
+
+      async submitRequest(payload: any) {
+        const res = await fetch(`${this.baseUrl}/v1/inference/requests`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        return res.json();
+      }
+
+      async getStatus(requestId: string) {
+        const res = await fetch(`${this.baseUrl}/v1/inference/${requestId}`);
+        return res.json();
+      }
+    }
+    ```
+  </Tab>
+</Tabs>

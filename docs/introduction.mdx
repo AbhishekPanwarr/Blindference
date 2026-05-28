@@ -1,19 +1,33 @@
 ---
 title: Introduction
 description: 'Private, verifiable, and economically accountable AI execution on Web3'
+icon: 'book-open'
 ---
 
 # Welcome to Blindference
 
-Blindference is a confidential AI execution layer for Web3. It enables users to submit sensitive prompts and data to frontier AI models — Groq Llama 3, Google Gemini — without ever revealing them to any single party.
+Blindference is a **confidential AI execution layer** for Web3. It enables users to submit sensitive prompts and data to frontier AI models — Groq Llama 3, Google Gemini — without ever revealing them to any single party.
+
+<Info>
+  Blindference is currently on **Arbitrum Sepolia testnet**. Mainnet deployment is planned after the testnet phase.
+</Info>
 
 ## What It Does
 
-- **Input Privacy**: User prompts are AES-256 encrypted in the browser before leaving the device
-- **Access Control**: Encryption keys are split into FHE-encrypted halves and stored on-chain via [CoFHE](https://www.fhenix.io/), only decryptable by assigned quorum nodes
-- **Execution Integrity**: A `1 leader + 2 verifier` quorum runs identical inference and cross-validates results
-- **Economic Accountability**: Disputed results trigger on-chain verification with automatic USDC payouts via [Reineira](https://reineira.xyz/)
-- **Output Privacy**: Only the user can decrypt the final result using their wallet
+<CardGroup cols={2}>
+  <Card title="Input Privacy" icon="lock">
+    User prompts are AES-256 encrypted in the browser before leaving the device. The encryption key is protected by CoFHE threshold FHE.
+  </Card>
+  <Card title="Access Control" icon="shield-check">
+    Encryption keys are split into FHE-encrypted halves and stored on-chain. Only assigned quorum nodes can decrypt.
+  </Card>
+  <Card title="Execution Integrity" icon="users">
+    A **1 leader + 2 verifier** quorum runs identical inference and cross-validates results. Mismatches trigger automatic rejection.
+  </Card>
+  <Card title="Economic Accountability" icon="coins">
+    Disputed results trigger on-chain verification with automatic USDC payouts via [Reineira](https://reineira.xyz/).
+  </Card>
+</CardGroup>
 
 ## Who Is This For?
 

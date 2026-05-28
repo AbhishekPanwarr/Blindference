@@ -1,6 +1,7 @@
 ---
 title: Rewards & Slashing
 description: 'How nodes earn fees and what gets them slashed'
+icon: 'coins'
 ---
 
 # Rewards & Slashing
@@ -9,12 +10,20 @@ description: 'How nodes earn fees and what gets them slashed'
 
 Nodes earn fees for successfully completing inference tasks. Fees are determined by:
 
-| Factor | Impact | Details |
-|--------|--------|---------|
-| **Task complexity** | Base fee | More complex prompts earn more |
-| **Model tier** | Multiplier | Premium APIs (Groq, Gemini) earn premium rates |
-| **Attestation tier** | Multiplier | Tier 1 (TPM) earns 1.5x, Tier 2 (TEE) earns 2x |
-| **Reputation score** | Priority | Higher scores get priority assignment |
+<CardGroup cols={2}>
+  <Card title="Task Complexity" icon="cpu">
+    More complex prompts earn higher base fees
+  </Card>
+  <Card title="Model Tier" icon="layers">
+    Premium APIs (Groq, Gemini) earn premium rates
+  </Card>
+  <Card title="Attestation Tier" icon="shield">
+    Tier 1 (TPM) earns 1.5x, Tier 2 (TEE) earns 2x
+  </Card>
+  <Card title="Reputation Score" icon="star">
+    Higher scores get priority assignment
+  </Card>
+</CardGroup>
 
 ## Fee Distribution
 
@@ -28,17 +37,19 @@ Total Task Fee
     └── Infrastructure costs
 ```
 
-Note: Exact percentages are configurable by the ICL and may vary by task type.
+<Info>
+  Exact percentages are configurable by the ICL and may vary by task type.
+</Info>
 
 ## Checking Your Earnings
 
 Use the CLI to see your earnings at any time:
 
-```bash
-# List recent jobs with BLIND earned per job
+```bash title="List recent jobs with earnings"
 blindference-node jobs list --limit 10
+```
 
-# Total BLIND earned across all completed jobs
+```bash title="Total BLIND earned"
 blindference-node jobs earnings
 ```
 
@@ -71,62 +82,62 @@ Reputation scores range from 0 to 10000.
 
 Nodes may be slashed (lose stake/rewards) for:
 
-### 1. Failed Attestation
+<Accordion title="1. Failed Attestation">
+  **Condition**: Attestation certificate expired and auto-re-attest failed.
 
-**Condition**: Attestation certificate expired and auto-re-attest failed.
+  **Consequence**:
+  - Removed from active pool
+  - Cannot receive new assignments
+  - Existing assignments may be reassigned
 
-**Consequence**:
-- Removed from active pool
-- Cannot receive new assignments
-- Existing assignments may be reassigned
+  **Recovery**: Fix connectivity issue, restart daemon. Auto-re-attest will retry.
+</Accordion>
 
-**Recovery**: Fix connectivity issue, restart daemon. Auto-re-attest will retry.
+<Accordion title="2. Missed Heartbeat">
+  **Condition**: No heartbeat within `HEARTBEAT_GRACE_SECONDS` (default: 300s = 5 minutes).
 
-### 2. Missed Heartbeat
+  **Consequence**:
+  - Temporarily removed from active pool
+  - Reputation penalty
 
-**Condition**: No heartbeat within `HEARTBEAT_GRACE_SECONDS` (default: 300s = 5 minutes).
+  **Recovery**: Resume heartbeats. Node re-enters active pool after next successful heartbeat.
+</Accordion>
 
-**Consequence**:
-- Temporarily removed from active pool
-- Reputation penalty
+<Accordion title="3. Bad Inference (Verifier Mismatch)">
+  **Condition**: Verifier consensus shows leader produced wrong result.
 
-**Recovery**: Resume heartbeats. Node re-enters active pool after next successful heartbeat.
+  **Consequence**:
+  - Leader reputation penalty (-200)
+  - Potential stake slashing (if stake > 0)
+  - May be temporarily excluded from leader role
 
-### 3. Bad Inference (Verifier Mismatch)
+  **Recovery**: Fix model configuration, ensure determinism. Run determinism test:
 
-**Condition**: Verifier consensus shows leader produced wrong result.
+  ```bash title="Run determinism test"
+  blindference-node test-determinism --model qwen2.5-7b --prompt "Hello, test"
+  ```
+</Accordion>
 
-**Consequence**:
-- Leader reputation penalty (-200)
-- Potential stake slashing (if stake > 0)
-- May be temporarily excluded from leader role
+<Accordion title="4. Job Timeout">
+  **Condition**: Failed to submit result within execution window (default: 600s).
 
-**Recovery**: Fix model configuration, ensure determinism. Run determinism test:
+  **Consequence**:
+  - Reputation penalty (-300)
+  - Job reassigned to another node
+  - No fee earned
 
-```bash
-blindference-node test-determinism --model qwen2.5-7b --prompt "Hello, test"
-```
+  **Recovery**: Check inference performance, network connectivity.
+</Accordion>
 
-### 4. Job Timeout
+<Accordion title="5. Double-Claiming">
+  **Condition**: Node claims a job but doesn't submit result, preventing reassignment.
 
-**Condition**: Failed to submit result within execution window (default: 600s).
+  **Consequence**:
+  - Reputation penalty (-500)
+  - Potential temporary ban
 
-**Consequence**:
-- Reputation penalty (-300)
-- Job reassigned to another node
-- No fee earned
-
-**Recovery**: Check inference performance, network connectivity.
-
-### 5. Double-Claiming
-
-**Condition**: Node claims a job but doesn't submit result, preventing reassignment.
-
-**Consequence**:
-- Reputation penalty (-500)
-- Potential temporary ban
-
-**Recovery**: Ensure job handler doesn't crash between claim and submit.
+  **Recovery**: Ensure job handler doesn't crash between claim and submit.
+</Accordion>
 
 ## Staking
 
@@ -134,12 +145,12 @@ Nodes must stake BLIND tokens to participate in the network. Minimum stake is **
 
 ### Check Your Stake
 
-```bash
+```bash title="Check staking status"
 blindference-node staking status
 ```
 
 Output:
-```
+```bash title="Staking status output"
 ============================================================
   BLIND Stake Status
 ============================================================
@@ -153,18 +164,27 @@ Output:
 
 ### Stake BLIND Tokens
 
-```bash
+```bash title="Stake BLIND tokens"
 blindference-node staking stake 1000
 ```
 
 This will:
-1. Approve the BlindferenceStaking contract to spend your BLIND
-2. Call `stake()` to lock your tokens
-3. Show your updated total stake
+
+<Steps>
+  <Step title="Approve spending" icon="check">
+    Approves the BlindferenceStaking contract to spend your BLIND
+  </Step>
+  <Step title="Lock tokens" icon="lock">
+    Calls `stake()` to lock your tokens
+  </Step>
+  <Step title="Show updated stake" icon="trending-up">
+    Displays your updated total stake
+  </Step>
+</Steps>
 
 ### Unstake (Start Unbonding)
 
-```bash
+```bash title="Start unstaking"
 blindference-node staking unstake
 ```
 
@@ -172,7 +192,7 @@ This initiates a **96-hour unbonding period**. Your stake is locked during this 
 
 ### Withdraw After Unbond
 
-```bash
+```bash title="Complete unstake"
 blindference-node staking withdraw
 ```
 
@@ -184,7 +204,9 @@ This completes the unstake and returns your BLIND to your wallet. Only callable 
 - **Verdict manipulation detected on-chain** → 25% of stake burned
 - **Failure to heartbeat within grace period** → Temporary exclusion from quorum (no stake burn)
 
-You can monitor your slash risk in the web **Node Dashboard** — a warning banner appears when consecutive failures reach 2/3.
+<Warning>
+  You can monitor your slash risk in the web **Node Dashboard** — a warning banner appears when consecutive failures reach 2/3.
+</Warning>
 
 ## Insurance & Coverage
 
@@ -206,30 +228,48 @@ Rewards are **auto-distributed** on job completion via the Payment Service. No m
 
 The `blindference-node jobs claim` command is a no-op:
 
-```bash
+```bash title="Claim command (auto-distributed)"
 blindference-node jobs claim
 # Output: Rewards are automatically distributed on job completion.
 ```
 
 ### Distribution Timing
 
-- **ICL Mode**: Rewards are sent immediately after the ICL confirms consensus
-- **On-Chain Mode**: Rewards are distributed by the smart contract after the reveal window closes
+| Mode | When Rewards Are Sent |
+|------|----------------------|
+| ICL Mode | Immediately after the ICL confirms consensus |
+| On-Chain Mode | Distributed by the smart contract after the reveal window closes |
 
 ### Where Rewards Go
 
 BLIND rewards are sent directly to your node wallet address. Track them with:
 
-```bash
+```bash title="Check BLIND balance"
 blindference-node balance
 ```
 
 ## Best Practices
 
-1. **Monitor reputation**: Keep reputation score > 5000 for priority assignments
-2. **Maintain uptime**: Heartbeat every 60s, avoid extended downtime
-3. **Run determinism test**: Before going live, verify model produces consistent outputs
-4. **Use stable network**: Avoid mobile or unstable connections
-5. **Keep logs**: Log retention helps debug disputes
-6. **Update regularly**: New versions may have performance improvements and bug fixes
-7. **Check slash warnings**: Use `staking status` or the web dashboard weekly
+<Steps>
+  <Step title="Monitor reputation" icon="star">
+    Keep reputation score > 5000 for priority assignments
+  </Step>
+  <Step title="Maintain uptime" icon="activity">
+    Heartbeat every 60s, avoid extended downtime
+  </Step>
+  <Step title="Run determinism test" icon="test-tube">
+    Before going live, verify model produces consistent outputs
+  </Step>
+  <Step title="Use stable network" icon="wifi">
+    Avoid mobile or unstable connections
+  </Step>
+  <Step title="Keep logs" icon="file-text">
+    Log retention helps debug disputes
+  </Step>
+  <Step title="Update regularly" icon="refresh-cw">
+    New versions may have performance improvements and bug fixes
+  </Step>
+  <Step title="Check slash warnings" icon="alert-triangle">
+    Use `staking status` or the web dashboard weekly
+  </Step>
+</Steps>

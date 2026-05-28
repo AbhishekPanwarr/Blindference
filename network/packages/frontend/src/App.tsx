@@ -1,19 +1,9 @@
-import { BrowserRouter, Link, NavLink, Outlet, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Link, NavLink, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
-import {
-  Search,
-  History,
-  Settings,
-  BookOpen,
-  MessageSquare,
-  Bell,
-  Cpu,
-  Globe,
-  Server,
-  CreditCard,
-  ShieldCheck,
-  BarChart3,
-} from 'lucide-react'
+import { Toaster, ToastBar } from 'react-hot-toast'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Check, AlertCircle } from 'lucide-react'
+import { lazy, Suspense, useMemo } from 'react'
 
 import { InferenceNewPage } from './pages/InferenceNewPage'
 import { InferenceStatusPage } from './pages/InferenceStatusPage'
@@ -23,260 +13,235 @@ import { SettingsPage } from './pages/SettingsPage'
 import { BuyCreditsPage } from './pages/BuyCreditsPage'
 import { CreateEscrowPage } from './pages/CreateEscrowPage'
 import { NodeDashboardPage } from './pages/NodeDashboardPage'
-import { ProtocolUpdatePopup } from './components/ProtocolUpdatePopup'
+import { WalletPage } from './pages/WalletPage'
+import LandingPage from './pages/LandingPage'
 import { truncateAddress } from './utils/helpers'
 
-function Placeholder({ title, subtitle }: { title: string; subtitle?: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-32 text-center text-white">
-      <h1 className="mb-3 text-3xl font-bold">{title}</h1>
-      <p className="text-sm text-zinc-500 max-w-lg mx-auto leading-relaxed">
-        {subtitle || 'This module is under active development.'}
-      </p>
-    </div>
-  )
-}
+const DocsLayout = lazy(() => import('./pages/docs/DocsLayout'))
 
-function WalletBadge() {
+function WalletButton() {
   const { address, isConnected } = useAccount()
   const { connectors, connect, isPending } = useConnect()
   const { disconnect } = useDisconnect()
-
-  const injectedConnector = connectors[0]
+  const injected = connectors[0]
 
   if (isConnected && address) {
     return (
       <button
-        className="flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-center transition-colors hover:border-zinc-600 hover:bg-zinc-800"
         onClick={() => disconnect()}
-        type="button"
+        className="flex items-center gap-2 rounded-full bg-white/[0.05] border border-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/[0.1] hover:border-white/20 transition-all"
       >
-        <span className="h-1.5 w-1.5 rounded-full bg-zinc-400" />
-        <span className="font-mono text-xs font-semibold text-zinc-200">{truncateAddress(address)}</span>
+        <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
+        <span className="font-mono">{truncateAddress(address)}</span>
       </button>
     )
   }
 
   return (
     <button
-      className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-1.5 text-xs font-semibold text-zinc-200 transition-colors hover:bg-zinc-800 disabled:opacity-50"
-      disabled={!injectedConnector || isPending}
-      onClick={() => {
-        if (injectedConnector) {
-          connect({ connector: injectedConnector })
-        }
-      }}
-      type="button"
+      onClick={() => injected && connect({ connector: injected })}
+      disabled={!injected || isPending}
+      className="rounded-full bg-white text-black px-5 py-2 text-xs font-bold hover:bg-gray-100 transition-all disabled:opacity-50"
     >
       {isPending ? 'Connecting...' : 'Connect Wallet'}
     </button>
   )
 }
 
-function SideNavItem({
-  to,
-  icon: Icon,
-  label,
-  badge,
-}: {
-  to: string
-  icon: any
-  label: string
-  badge?: string
-}) {
+function Navbar() {
+  const location = useLocation()
+  const isLanding = location.pathname === '/'
+
+  const navItems = [
+    { path: '/app', label: 'Inference' },
+    { path: '/history', label: 'History' },
+    { path: '/wallet', label: 'Wallet' },
+    { path: '/buy-credits', label: 'Credits' },
+    { path: '/create-escrow', label: 'Escrow' },
+    { path: '/node-dashboard', label: 'Nodes' },
+    { path: '/node-registration', label: 'Join' },
+    { path: '/settings', label: 'Settings' },
+  ]
+
   return (
-    <NavLink
-      to={to}
-      end={to === '/'}
-      className={({ isActive }) =>
-        `flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
-          isActive
-            ? 'bg-zinc-800 text-white font-medium'
-            : 'text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300'
-        }`
-      }
+    <motion.nav
+      initial={{ y: -100, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
+      className="fixed top-0 left-0 right-0 z-50 h-20 flex items-center justify-center px-6 pointer-events-none"
     >
-      <Icon className="w-4 h-4 shrink-0" />
-      <span className="flex-1">{label}</span>
-      {badge && (
-        <span className="rounded-full bg-zinc-700 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-300 uppercase tracking-wide">
-          {badge}
-        </span>
-      )}
-    </NavLink>
-  )
-}
+      <div className="w-full max-w-7xl flex items-center justify-between pointer-events-auto">
+        {/* Logo */}
+        <Link to="/" className="group flex items-center gap-3 no-underline">
+          <div className="relative w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.3)] group-hover:shadow-[0_0_35px_rgba(249,115,22,0.4)] transition-all duration-500">
+            <div className="w-4 h-4 border-2 border-black group-hover:border-orange-500 rotate-45 group-hover:rotate-90 transition-all duration-500" />
+          </div>
+          <div className="flex flex-col">
+            <span className="relative text-xl font-bold text-white tracking-tight transition-colors duration-500">
+              <span className="absolute inset-0 text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]" aria-hidden="true">Blindference</span>
+              <span className="group-hover:opacity-0 transition-opacity duration-500">Blindference</span>
+            </span>
+            <span className="relative text-[10px] text-gray-400 uppercase tracking-widest font-medium transition-colors duration-500">
+              <span className="absolute inset-0 text-orange-400/80 opacity-0 group-hover:opacity-100 transition-opacity duration-500" aria-hidden="true">Confidential AI</span>
+              <span className="group-hover:opacity-0 transition-opacity duration-500">Confidential AI</span>
+            </span>
+          </div>
+        </Link>
 
-function Sidebar() {
-  const { isConnected } = useAccount()
-
-  return (
-    <aside className="hidden lg:flex w-56 shrink-0 flex-col border-r border-zinc-800 bg-[#0d0d0d] h-screen sticky top-0">
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-4 py-4 border-b border-zinc-800">
-        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-white text-black font-extrabold text-sm">
-          B
-        </div>
-        <span className="font-semibold text-sm tracking-[0.28em] text-white">
-          BLINDFERENCE
-        </span>
-      </div>
-
-      {/* Nav */}
-      <nav className="flex-1 space-y-0.5 px-2 py-4 overflow-y-auto">
-        <SideNavItem to="/" icon={Search} label="Inference" />
-        <SideNavItem to="/history" icon={History} label="History" />
-        <SideNavItem to="/buy-credits" icon={CreditCard} label="Buy Credits" badge="NEW" />
-        <SideNavItem to="/create-escrow" icon={ShieldCheck} label="Create Escrow" />
-        {isConnected && (
-          <SideNavItem to="/node-dashboard" icon={BarChart3} label="Node Dashboard" />
+        {/* Navigation Pill */}
+        {!isLanding && (
+          <div className="absolute left-1/2 -translate-x-1/2 flex max-w-[calc(100%-400px)] items-center p-1.5 rounded-full bg-white/[0.03] backdrop-blur-[32px] border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.8)] gap-0.5 overflow-x-auto scrollbar-hide">
+            {navItems.map((item) => {
+              const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/')
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  end={item.path === '/'}
+                  className={({ isActive: active }) =>
+                    `relative px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-500 whitespace-nowrap ${
+                      active ? 'text-white' : 'text-white/40 hover:text-white'
+                    }`
+                  }
+                >
+                  {isActive && (
+                    <motion.span
+                      layoutId="navbar-active-indicator"
+                      className="absolute inset-0 rounded-full bg-white/[0.08] border border-white/10 shadow-[inset_0_0_12px_rgba(255,255,255,0.05),0_0_20px_rgba(0,0,0,0.2)]"
+                      transition={{ type: "spring", bounce: 0.15, duration: 0.6 }}
+                    />
+                  )}
+                  <span className="relative z-10">{item.label}</span>
+                </NavLink>
+              )
+            })}
+          </div>
         )}
-        <SideNavItem to="/node-registration" icon={Server} label="Node Registration" />
-        <SideNavItem to="/settings" icon={Settings} label="Settings" />
-      </nav>
 
-      {/* Bottom */}
-      <div className="border-t border-zinc-800 px-2 py-4 space-y-0.5">
-        <SideNavItem to="/docs" icon={BookOpen} label="Documentation" />
-        <SideNavItem to="/support" icon={MessageSquare} label="Support" />
-        <div className="mt-3 px-2 py-2 text-[10px] text-zinc-600 font-mono">v3.0.0-beta</div>
-      </div>
-    </aside>
-  )
-}
-
-function Header() {
-  return (
-    <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-zinc-800 bg-[#0d0d0d]/90 backdrop-blur-md px-6">
-      <div className="flex items-center gap-4 text-xs text-zinc-400">
-        <span className="flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-zinc-300" />
-          ICL: Online
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-zinc-300" />
-          CoFHE: Active
-        </span>
-        <span className="flex items-center gap-1.5">
-          <Cpu className="w-3 h-3 text-zinc-400" />
-          Quorum: Live
-        </span>
-      </div>
-      <div className="flex items-center gap-3">
-        <button
-          className="relative p-1.5 text-zinc-500 hover:text-zinc-300 transition-colors"
-          type="button"
-        >
-          <Bell className="w-4 h-4" />
-          <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-zinc-300 border border-[#0d0d0d]" />
-        </button>
-        <WalletBadge />
-      </div>
-    </header>
-  )
-}
-
-function MobileHeader() {
-  return (
-    <header className="lg:hidden sticky top-0 z-40 flex h-14 items-center justify-between border-b border-zinc-800 bg-[#0d0d0d]/90 backdrop-blur-md px-4">
-      <Link to="/" className="flex items-center gap-2">
-        <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-white text-black font-extrabold text-xs">
-          B
+        {/* Actions */}
+        <div className="flex items-center gap-4">
+          {isLanding && (
+            <Link
+              to="/app"
+              className="hidden md:flex items-center justify-center gap-2 bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 px-6 py-2.5 rounded-full backdrop-blur-[24px] transition-all duration-500 text-sm font-semibold text-white group shadow-[0_8px_32px_0_rgba(0,0,0,0.2)]"
+            >
+              Get Started
+              <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            </Link>
+          )}
+          <WalletButton />
         </div>
-        <span className="font-semibold text-sm tracking-[0.2em] text-white">
-          BLINDFERENCE
-        </span>
-      </Link>
-      <WalletBadge />
-    </header>
+      </div>
+    </motion.nav>
   )
 }
 
-function Layout() {
+function BackgroundOrbs() {
   return (
-    <div className="flex min-h-screen bg-[#09090b] text-white">
-      <ProtocolUpdatePopup />
-      <Sidebar />
-      <div className="flex flex-1 flex-col min-w-0">
-        <MobileHeader />
-        <Header />
-        <main className="flex-1 overflow-y-auto">
-          <Outlet />
-        </main>
-        <footer className="border-t border-zinc-800 px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Globe className="w-3.5 h-3.5 text-zinc-600" />
-            <span className="text-[10px] text-zinc-600 font-medium">EN</span>
-          </div>
-          <div className="font-mono text-[10px] text-zinc-600">
-            v3.0.0-beta | cofhe-sdk live
-          </div>
-        </footer>
-      </div>
+    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-white/5 rounded-full blur-[120px] animate-float" />
+      <div className="absolute top-[20%] right-[-5%] w-[30%] h-[30%] bg-zinc-800/20 rounded-full blur-[100px] animate-float-delayed" />
+      <div className="absolute bottom-[-10%] left-[20%] w-[35%] h-[35%] bg-white/5 rounded-full blur-[120px] animate-pulse-slow" />
+      <div className="absolute top-[60%] left-[60%] w-[25%] h-[25%] bg-orange-500/5 rounded-full blur-[100px] animate-float" />
     </div>
   )
 }
 
-export default function App() {
-  return (
-    <BrowserRouter>
+const RouteFallback = () => (
+  <div className="min-h-screen bg-black flex items-center justify-center">
+    <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+  </div>
+)
+
+const AppLayout = () => (
+  <div className="min-h-screen bg-black text-white relative overflow-hidden">
+    <BackgroundOrbs />
+    <Navbar />
+    <main className="relative z-10 pt-24 px-4 pb-12 container-custom min-h-screen">
+      <Outlet />
+    </main>
+  </div>
+)
+
+function App() {
+  const appContent = useMemo(() => (
+    <>
+      <Toaster position="bottom-center" containerStyle={{ bottom: 40 }}>
+        {(t) => (
+          <AnimatePresence mode="popLayout">
+            {t.visible && (
+              <motion.div
+                key={t.id}
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
+                transition={{ type: 'spring', damping: 22, stiffness: 320 }}
+                className="pointer-events-auto"
+              >
+                <ToastBar
+                  toast={t}
+                  style={{
+                    ...t.style,
+                    background: 'rgba(10, 10, 10, 0.92)',
+                    color: '#fff',
+                    border: '1px solid rgba(249, 115, 22, 0.24)',
+                    borderRadius: '24px',
+                    fontSize: '15.5px',
+                    fontWeight: '500',
+                    boxShadow: '0 28px 72px -12px rgba(0, 0, 0, 0.8)',
+                    whiteSpace: 'nowrap',
+                    maxWidth: 'none',
+                    padding: '12px 32px',
+                    backdropFilter: 'blur(20px)',
+                  }}
+                >
+                  {({ icon, message }: any) => (
+                    <div className="flex items-center gap-3.5">
+                      {t.type === 'success' ? (
+                        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-500/10 shadow-[0_0_12px_rgba(249,115,22,0.2)]">
+                          <Check className="h-3.5 w-3.5 text-orange-400 stroke-[3]" />
+                        </div>
+                      ) : t.type === 'error' ? (
+                        <AlertCircle className="h-5 w-5 text-red-400" />
+                      ) : (
+                        icon
+                      )}
+                      <div className="tracking-tight text-white/95">{message}</div>
+                    </div>
+                  )}
+                </ToastBar>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        )}
+      </Toaster>
       <Routes>
-        <Route element={<Layout />} path="/">
-          <Route element={<InferenceNewPage />} index />
+        <Route element={<LandingPage />} path="/" />
+        <Route element={<AppLayout />} path="/">
+          <Route element={<InferenceNewPage />} path="app" />
           <Route element={<InferenceStatusPage />} path="inference/:requestId" />
           <Route element={<HistoryPage />} path="history" />
+          <Route element={<WalletPage />} path="wallet" />
           <Route element={<BuyCreditsPage />} path="buy-credits" />
           <Route element={<CreateEscrowPage />} path="create-escrow" />
           <Route element={<NodeRegistrationPage />} path="node-registration" />
           <Route element={<NodeDashboardPage />} path="node-dashboard" />
           <Route element={<SettingsPage />} path="settings" />
-          <Route
-            element={
-              <Placeholder
-                title="Documentation"
-                subtitle="Protocol documentation and API references."
-              />
-            }
-            path="docs"
-          />
-          <Route
-            element={
-              <Placeholder
-                title="Support"
-                subtitle="Contact support and view troubleshooting guides."
-              />
-            }
-            path="support"
-          />
-          <Route
-            element={
-              <Placeholder
-                title="Model Marketplace"
-                subtitle="Browse available inference models and agents."
-              />
-            }
-            path="models"
-          />
-          <Route
-            element={
-              <Placeholder
-                title="Network Coverage"
-                subtitle="Insurance and dispute coverage management."
-              />
-            }
-            path="coverage"
-          />
-          <Route
-            element={
-              <Placeholder
-                title="Dashboard"
-                subtitle="Advanced analytics and node monitoring."
-              />
-            }
-            path="dashboard"
-          />
+          <Route element={
+            <Suspense fallback={<RouteFallback />}>
+              <DocsLayout />
+            </Suspense>
+          } path="docs/*" />
         </Route>
       </Routes>
+    </>
+  ), [])
+
+  return (
+    <BrowserRouter>
+      {appContent}
     </BrowserRouter>
   )
 }
+
+export default App

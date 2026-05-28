@@ -1,0 +1,270 @@
+
+# Rewards & Slashing
+
+## Earning Model
+
+Nodes earn fees for successfully completing inference tasks. Fees are determined by:
+
+<CardGroup cols={2}>
+  <Card title="Task Complexity" icon="cpu">
+    More complex prompts earn higher base fees
+  </Card>
+  <Card title="Model Tier" icon="layers">
+    Premium APIs (Groq, Gemini) earn premium rates
+  </Card>
+  <Card title="Attestation Tier" icon="shield">
+    Tier 1 (TPM) earns 1.5x, Tier 2 (TEE) earns 2x
+  </Card>
+  <Card title="Reputation Score" icon="star">
+    Higher scores get priority assignment
+  </Card>
+</CardGroup>
+
+## Fee Distribution
+
+```
+Total Task Fee
+├── Leader Fee (60%)
+│   └── Base + Complexity Multiplier
+├── Verifier Fee (20% each, 2 verifiers)
+│   └── Base Fee
+└── ICL Coordinator Fee (10%)
+    └── Infrastructure costs
+```
+
+<Info>
+  Exact percentages are configurable by the ICL and may vary by task type.
+</Info>
+
+## Checking Your Earnings
+
+Use the CLI to see your earnings at any time:
+
+```bash title="List recent jobs with earnings"
+blindference-node jobs list --limit 10
+```
+
+```bash title="Total BLIND earned"
+blindference-node jobs earnings
+```
+
+Or open the **Node Dashboard** in the web frontend for a visual breakdown.
+
+## Reputation System
+
+Reputation scores range from 0 to 10000.
+
+### Gaining Reputation
+
+| Action | Reputation Gain |
+|--------|----------------|
+| Successful job completion | +100 |
+| Verifier matching leader | +50 |
+| Consistent uptime (30 days) | +500 |
+| Tier upgrade (mock → TPM → TEE) | +1000 per tier |
+
+### Losing Reputation
+
+| Action | Reputation Loss |
+|--------|----------------|
+| Verifier no-match (wrong result) | -200 |
+| Missed heartbeat (within grace period) | -10 |
+| Missed heartbeat (outside grace period) | -100 |
+| Failed attestation | -500 |
+| Timeout on assigned job | -300 |
+
+## Slashing Conditions
+
+Nodes may be slashed (lose stake/rewards) for:
+
+<Accordion title="1. Failed Attestation">
+  **Condition**: Attestation certificate expired and auto-re-attest failed.
+
+  **Consequence**:
+  - Removed from active pool
+  - Cannot receive new assignments
+  - Existing assignments may be reassigned
+
+  **Recovery**: Fix connectivity issue, restart daemon. Auto-re-attest will retry.
+</Accordion>
+
+<Accordion title="2. Missed Heartbeat">
+  **Condition**: No heartbeat within `HEARTBEAT_GRACE_SECONDS` (default: 300s = 5 minutes).
+
+  **Consequence**:
+  - Temporarily removed from active pool
+  - Reputation penalty
+
+  **Recovery**: Resume heartbeats. Node re-enters active pool after next successful heartbeat.
+</Accordion>
+
+<Accordion title="3. Bad Inference (Verifier Mismatch)">
+  **Condition**: Verifier consensus shows leader produced wrong result.
+
+  **Consequence**:
+  - Leader reputation penalty (-200)
+  - Potential stake slashing (if stake > 0)
+  - May be temporarily excluded from leader role
+
+  **Recovery**: Fix model configuration, ensure determinism. Run determinism test:
+
+  ```bash title="Run determinism test"
+  blindference-node test-determinism --model qwen2.5-7b --prompt "Hello, test"
+  ```
+</Accordion>
+
+<Accordion title="4. Job Timeout">
+  **Condition**: Failed to submit result within execution window (default: 600s).
+
+  **Consequence**:
+  - Reputation penalty (-300)
+  - Job reassigned to another node
+  - No fee earned
+
+  **Recovery**: Check inference performance, network connectivity.
+</Accordion>
+
+<Accordion title="5. Double-Claiming">
+  **Condition**: Node claims a job but doesn't submit result, preventing reassignment.
+
+  **Consequence**:
+  - Reputation penalty (-500)
+  - Potential temporary ban
+
+  **Recovery**: Ensure job handler doesn't crash between claim and submit.
+</Accordion>
+
+## Staking
+
+Nodes must stake BLIND tokens to participate in the network. Minimum stake is **1000 BLIND**.
+
+### Check Your Stake
+
+```bash title="Check staking status"
+blindference-node staking status
+```
+
+Output:
+```bash title="Staking status output"
+============================================================
+  BLIND Stake Status
+============================================================
+  Staked          : 1000.00 BLIND
+  Unbonding       : 0.00 BLIND
+  Unbond ready in : 0s
+  Failures        : 0
+  Active          : Yes
+============================================================
+```
+
+### Stake BLIND Tokens
+
+```bash title="Stake BLIND tokens"
+blindference-node staking stake 1000
+```
+
+This will:
+
+<Steps>
+  <Step title="Approve spending" icon="check">
+    Approves the BlindferenceStaking contract to spend your BLIND
+  </Step>
+  <Step title="Lock tokens" icon="lock">
+    Calls `stake()` to lock your tokens
+  </Step>
+  <Step title="Show updated stake" icon="trending-up">
+    Displays your updated total stake
+  </Step>
+</Steps>
+
+### Unstake (Start Unbonding)
+
+```bash title="Start unstaking"
+blindference-node staking unstake
+```
+
+This initiates a **96-hour unbonding period**. Your stake is locked during this time. You cannot be assigned to jobs while unbonding.
+
+### Withdraw After Unbond
+
+```bash title="Complete unstake"
+blindference-node staking withdraw
+```
+
+This completes the unstake and returns your BLIND to your wallet. Only callable after the 96-hour unbond period ends.
+
+### Slash Mechanics
+
+- **3 consecutive failed jobs** → 10% of stake burned
+- **Verdict manipulation detected on-chain** → 25% of stake burned
+- **Failure to heartbeat within grace period** → Temporary exclusion from quorum (no stake burn)
+
+<Warning>
+  You can monitor your slash risk in the web **Node Dashboard** — a warning banner appears when consecutive failures reach 2/3.
+</Warning>
+
+## Insurance & Coverage
+
+The Reineira protocol provides insurance for inference tasks:
+
+- **User pays premium** when submitting request
+- **Coverage amount** is set based on task value
+- **If result is disputed** and verified as incorrect, insurance pays out to user
+- **If result is correct**, premium is distributed to nodes and ICL
+
+Nodes benefit from coverage because:
+- More tasks are submitted (users feel protected)
+- Higher-value tasks are available
+- Dispute resolution is automated
+
+## Reward Distribution
+
+Rewards are **auto-distributed** on job completion via the Payment Service. No manual claiming is required.
+
+The `blindference-node jobs claim` command is a no-op:
+
+```bash title="Claim command (auto-distributed)"
+blindference-node jobs claim
+# Output: Rewards are automatically distributed on job completion.
+```
+
+### Distribution Timing
+
+| Mode | When Rewards Are Sent |
+|------|----------------------|
+| ICL Mode | Immediately after the ICL confirms consensus |
+| On-Chain Mode | Distributed by the smart contract after the reveal window closes |
+
+### Where Rewards Go
+
+BLIND rewards are sent directly to your node wallet address. Track them with:
+
+```bash title="Check BLIND balance"
+blindference-node balance
+```
+
+## Best Practices
+
+<Steps>
+  <Step title="Monitor reputation" icon="star">
+    Keep reputation score > 5000 for priority assignments
+  </Step>
+  <Step title="Maintain uptime" icon="activity">
+    Heartbeat every 60s, avoid extended downtime
+  </Step>
+  <Step title="Run determinism test" icon="test-tube">
+    Before going live, verify model produces consistent outputs
+  </Step>
+  <Step title="Use stable network" icon="wifi">
+    Avoid mobile or unstable connections
+  </Step>
+  <Step title="Keep logs" icon="file-text">
+    Log retention helps debug disputes
+  </Step>
+  <Step title="Update regularly" icon="refresh-cw">
+    New versions may have performance improvements and bug fixes
+  </Step>
+  <Step title="Check slash warnings" icon="alert-triangle">
+    Use `staking status` or the web dashboard weekly
+  </Step>
+</Steps>

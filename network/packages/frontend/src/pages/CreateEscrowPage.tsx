@@ -5,6 +5,7 @@ import { ArrowLeft, Loader2, CheckCircle, ExternalLink } from 'lucide-react'
 import { getReineiraSdk } from '../lib/reineiraSdk'
 import { useCofheClient } from '../hooks/useCofheClient'
 import { encodeResolverData } from '@reineira-os/sdk'
+import { GlassCard } from '../components/ui/GlassCard'
 
 const PAYOUT_CLAIMER_ADDRESS = (import.meta.env.VITE_PAYOUT_CLAIMER_ADDRESS || '0xEfB565c7989dd1dEDD0C5B8c95dA24Ef2d94FBbd') as `0x${string}`
 const INFERENCE_GATE_ADDRESS = (import.meta.env.VITE_INFERENCE_GATE_ADDRESS || '0x6a3fA63542d0b69937949372c11348A9EE3f6459') as `0x${string}`
@@ -92,13 +93,13 @@ export function CreateEscrowPage() {
       <div className="flex items-center gap-4 mb-8">
         <button
           onClick={() => navigate(-1)}
-          className="p-2 rounded-lg border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 transition-colors"
+          className="p-2 rounded-lg border border-white/10 glass-card hover:bg-orange-500/10 transition-colors"
         >
-          <ArrowLeft className="w-4 h-4 text-zinc-400" />
+          <ArrowLeft className="w-4 h-4 text-white/50" />
         </button>
         <div>
-          <h1 className="text-2xl font-semibold text-white">Create Escrow</h1>
-          <p className="text-sm text-zinc-500 mt-1">
+          <h1 className="text-2xl font-semibold gradient-text font-heading">Create Escrow</h1>
+          <p className="text-sm text-white/50 mt-1">
             Create a Reineira escrow for inference payment. Owner is set to PayoutClaimer for automatic settlement.
           </p>
         </div>
@@ -114,31 +115,31 @@ export function CreateEscrowPage() {
       </div>
 
       {/* Form */}
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6 space-y-4">
+      <GlassCard className="p-6 space-y-4">
         <div>
-          <label className="block text-sm font-medium text-white mb-1">Amount (USDC)</label>
+          <label className="block text-sm font-medium text-white/90 mb-1">Amount (USDC)</label>
           <input
             type="number"
             min="1"
             step="1"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none focus:border-zinc-500"
+            className="w-full rounded-lg border border-white/10 bg-[rgba(10,10,10,0.6)] px-3 py-2 text-sm text-white/90 focus:outline-none focus:border-orange-500/50 input-glass"
             placeholder="e.g. 10"
           />
-          <p className="text-xs text-zinc-500 mt-1">Amount in USDC (6 decimals). This will be wrapped into cUSDC during funding.</p>
+          <p className="text-xs text-white/50 mt-1">Amount in USDC (6 decimals). This will be wrapped into cUSDC during funding.</p>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-white mb-1">Job ID (bytes32)</label>
+          <label className="block text-sm font-medium text-white/90 mb-1">Job ID (bytes32)</label>
           <input
             type="text"
             value={jobId}
             onChange={(e) => setJobId(e.target.value)}
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none focus:border-zinc-500 font-mono"
+            className="w-full rounded-lg border border-white/10 bg-[rgba(10,10,10,0.6)] px-3 py-2 text-sm text-white/90 focus:outline-none focus:border-orange-500/50 font-mono input-glass"
             placeholder="0x..."
           />
-          <p className="text-xs text-zinc-500 mt-1">
+          <p className="text-xs text-white/50 mt-1">
             The inference job ID as a bytes32 hex string (0x + 64 hex chars). Used as resolver data for the escrow condition.
           </p>
         </div>
@@ -146,7 +147,7 @@ export function CreateEscrowPage() {
         <button
           onClick={handleCreate}
           disabled={loading || !address}
-          className="w-full rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full rounded-lg btn-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {loading ? (
             <>
@@ -157,7 +158,7 @@ export function CreateEscrowPage() {
             'Create Escrow'
           )}
         </button>
-      </div>
+      </GlassCard>
 
       {/* Results */}
       {error && (
@@ -166,13 +167,13 @@ export function CreateEscrowPage() {
         </div>
       )}
       {success && (
-        <div className="mt-4 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400 flex flex-col gap-2">
+        <div className="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400 flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <CheckCircle className="w-4 h-4" />
             {success}
           </div>
           {escrowId && (
-            <div className="text-xs text-green-400/80 font-mono">
+            <div className="text-xs text-emerald-400/80 font-mono">
               Escrow ID: {escrowId}
             </div>
           )}
@@ -182,7 +183,7 @@ export function CreateEscrowPage() {
                 href={`https://sepolia.arbiscan.io/tx/${createTxHash}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-zinc-400 hover:text-white flex items-center gap-1 underline"
+                className="text-xs text-white/50 hover:text-white/90 flex items-center gap-1 underline"
               >
                 Create tx <ExternalLink className="w-3 h-3" />
               </a>
@@ -192,7 +193,7 @@ export function CreateEscrowPage() {
                 href={`https://sepolia.arbiscan.io/tx/${fundTxHash}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-zinc-400 hover:text-white flex items-center gap-1 underline"
+                className="text-xs text-white/50 hover:text-white/90 flex items-center gap-1 underline"
               >
                 Fund tx <ExternalLink className="w-3 h-3" />
               </a>

@@ -1,31 +1,32 @@
 ---
 title: Installation
 description: 'All ways to install the Blindference node runtime'
+icon: 'download'
 ---
 
 # Installation
 
-## Option 1: PyPI (Recommended)
+## PyPI (Recommended)
 
-```bash
+```bash title="Install from PyPI"
 pip install blindference-node
 ```
 
 For GPU-accelerated local inference:
 
-```bash
+```bash title="Install with GPU support"
 pip install "blindference-node[gpu]"
 ```
 
 For development (tests, linting):
 
-```bash
+```bash title="Install with dev dependencies"
 pip install "blindference-node[dev]"
 ```
 
-## Option 2: From Source
+## From Source
 
-```bash
+```bash title="Clone and install from source"
 git clone https://github.com/baync180705/Blindference-node.git
 cd Blindference-node
 pip install -e .
@@ -33,13 +34,13 @@ pip install -e .
 
 For GPU support from source:
 
-```bash
+```bash title="Install from source with GPU"
 pip install -e ".[gpu]"
 ```
 
-## Option 3: Docker
+## Docker
 
-```bash
+```bash title="Build Docker image"
 docker build -t blindference-node .
 docker run -e BLF_KEY_PASSWORD=secure_password \
   -e BLF_ICL_ENDPOINT=https://icl.blindference.xyz \
@@ -48,50 +49,50 @@ docker run -e BLF_KEY_PASSWORD=secure_password \
 
 Or use docker-compose:
 
-```bash
+```bash title="Run with docker-compose"
 docker-compose up
 ```
 
 ## System Requirements
 
-### Minimum (Mock Inference)
-
-| Resource | Requirement |
-|----------|-------------|
-| Python | 3.10+ |
-| CPU | 1 core |
-| RAM | 512MB |
-| Network | Outbound HTTPS |
-| GPU | None |
-
-### Recommended (Production)
-
-| Resource | Requirement |
-|----------|-------------|
-| Python | 3.11+ |
-| CPU | 2+ cores |
-| RAM | 2GB |
-| Network | Stable internet |
-| TPM | TPM 2.0 chip (for tier 1) |
-
-### Optional (Local Model Inference)
-
-| Resource | Requirement |
-|----------|-------------|
-| GPU | NVIDIA with CUDA |
-| VRAM | 4GB+ |
-| vLLM | Installed |
+<Tabs>
+  <Tab title="Minimum (Mock)">
+    | Resource | Requirement |
+    |----------|-------------|
+    | Python | 3.10+ |
+    | CPU | 1 core |
+    | RAM | 512MB |
+    | Network | Outbound HTTPS |
+    | GPU | None |
+  </Tab>
+  <Tab title="Recommended (Production)">
+    | Resource | Requirement |
+    |----------|-------------|
+    | Python | 3.11+ |
+    | CPU | 2+ cores |
+    | RAM | 2GB |
+    | Network | Stable internet |
+    | TPM | TPM 2.0 chip (for tier 1) |
+  </Tab>
+  <Tab title="Local Model Inference">
+    | Resource | Requirement |
+    |----------|-------------|
+    | GPU | NVIDIA with CUDA |
+    | VRAM | 4GB+ |
+    | vLLM | Installed |
+  </Tab>
+</Tabs>
 
 ## Verify Installation
 
-```bash
+```bash title="Check version"
 blindference-node --version
 # Expected: blindference-node, version 0.3.0
 ```
 
 Check all available commands:
 
-```bash
+```bash title="List all commands"
 blindference-node --help
 ```
 
@@ -99,7 +100,7 @@ blindference-node --help
 
 After installing, initialize your node:
 
-```bash
+```bash title="Initialize node"
 blindference-node init
 ```
 
@@ -107,53 +108,54 @@ This creates a wallet, detects your hardware, and saves configuration. See [Quic
 
 ## Troubleshooting Installation
 
-### Issue: `pip install` fails with compilation errors
+<Accordion title="pip install fails with compilation errors">
+  **Cause**: Missing system dependencies for `cryptography` or `web3`.
 
-**Cause**: Missing system dependencies for `cryptography` or `web3`.
+  **Fix** (Ubuntu/Debian):
 
-**Fix** (Ubuntu/Debian):
+  ```bash title="Install system dependencies (Ubuntu)"
+  sudo apt-get update
+  sudo apt-get install -y python3-dev libssl-dev libffi-dev build-essential
+  ```
 
-```bash
-sudo apt-get update
-sudo apt-get install -y python3-dev libssl-dev libffi-dev build-essential
-```
+  **Fix** (macOS):
 
-**Fix** (macOS):
+  ```bash title="Install system dependencies (macOS)"
+  brew install openssl libffi
+  ```
+</Accordion>
 
-```bash
-brew install openssl libffi
-```
+<Accordion title="blindference-node: command not found">
+  **Cause**: pip installed to a location not in your PATH.
 
-### Issue: `blindference-node: command not found`
+  **Fix**:
 
-**Cause**: pip installed to a location not in your PATH.
+  ```bash title="Add pip user bin to PATH"
+  # Find the binary
+  python -m site --user-base
+  # Add to PATH:
+  export PATH="$PATH:$(python -m site --user-base)/bin"
+  ```
 
-**Fix**:
+  Or use:
 
-```bash
-# Find the binary
-python -m site --user-base
-# Add to PATH:
-export PATH="$PATH:$(python -m site --user-base)/bin"
-```
+  ```bash title="Run via Python module"
+  python -m blindference_node.cli --help
+  ```
+</Accordion>
 
-Or use:
+<Accordion title="GPU inference fails with CUDA not available">
+  **Cause**: vLLM requires CUDA but GPU drivers are missing.
 
-```bash
-python -m blindference_node.cli --help
-```
+  **Fix**:
 
-### Issue: GPU inference fails with `CUDA not available`
+  ```bash title="Check CUDA availability"
+  python -c "import torch; print(torch.cuda.is_available())"
+  ```
 
-**Cause**: vLLM requires CUDA but GPU drivers are missing.
+  If `False`, install NVIDIA drivers and CUDA toolkit. Or run without GPU:
 
-**Fix**:
-
-```bash
-# Check CUDA availability
-python -c "import torch; print(torch.cuda.is_available())"
-
-# If False, install NVIDIA drivers and CUDA toolkit
-# Or run without GPU:
-BLF_SUPPORTED_MODELS=qwen2.5-7b blindference-node init
-```
+  ```bash title="Run without GPU"
+  BLF_SUPPORTED_MODELS=qwen2.5-7b blindference-node init
+  ```
+</Accordion>

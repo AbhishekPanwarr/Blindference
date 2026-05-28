@@ -1,242 +1,234 @@
 ---
 title: General Troubleshooting
 description: 'Common issues across the Blindference stack'
+icon: 'wrench'
 ---
 
 # Troubleshooting
 
-## Frontend Issues
+<Accordion title="Frontend: Failed to fetch during CoFHE encryption">
+  **Symptoms**: Browser console shows `Failed to fetch` or `NetworkError` during encryption.
 
-### "Failed to fetch" during CoFHE encryption
+  **Causes**:
+  - Stale IndexedDB cache in `@cofhe/sdk`
+  - ZK proof verifier endpoint unavailable
+  - Rate limiting
 
-**Symptoms**: Browser console shows `Failed to fetch` or `NetworkError` during encryption.
+  **Fix**:
 
-**Causes**:
-- Stale IndexedDB cache in `@cofhe/sdk`
-- ZK proof verifier endpoint unavailable
-- Rate limiting
+  ```javascript title="Clear cache and reload"
+  // 1. Clear browser cache and hard reload
+  // Ctrl+Shift+R (Chrome/Windows)
+  // Cmd+Shift+R (Chrome/Mac)
 
-**Fix**:
+  // 2. Remove Vite cache
+  rm -rf node_modules/.vite
+  ```
 
-```javascript
-// 1. Clear browser cache and hard reload
-// Ctrl+Shift+R (Chrome/Windows)
-// Cmd+Shift+R (Chrome/Mac)
+  ```typescript title="Ensure fheKeyStorage is null"
+  // 3. Ensure fheKeyStorage: null in config
+  const client = await cofheClient.create({
+    fheKeyStorage: null,  // Critical!
+    // ...
+  });
+  ```
 
-// 2. Remove Vite cache
-rm -rf node_modules/.vite
-
-// 3. Ensure fheKeyStorage: null in config
-const client = await cofheClient.create({
-  fheKeyStorage: null,  // Critical!
-  // ...
-});
-
-// 4. Add retry logic
-async function encryptWithRetry(value, retries = 3) {
-  for (let i = 0; i < retries; i++) {
-    try {
-      return await client.encryptInputs().execute(value);
-    } catch (e) {
-      if (i === retries - 1) throw e;
-      await new Promise(r => setTimeout(r, 2000 * (i + 1)));
+  ```typescript title="Add retry logic"
+  // 4. Add retry logic
+  async function encryptWithRetry(value, retries = 3) {
+    for (let i = 0; i < retries; i++) {
+      try {
+        return await client.encryptInputs().execute(value);
+      } catch (e) {
+        if (i === retries - 1) throw e;
+        await new Promise(r => setTimeout(r, 2000 * (i + 1)));
+      }
     }
   }
-}
-```
+  ```
+</Accordion>
 
-### Browser freezes during encryption
+<Accordion title="Frontend: Browser freezes during encryption">
+  **Symptoms**: Browser becomes unresponsive for 10-30 seconds after submitting.
 
-**Symptoms**: Browser becomes unresponsive for 10-30 seconds after submitting.
+  **Cause**: CoFHE ZK proof generation runs on main thread (`useWorkers: false`).
 
-**Cause**: CoFHE ZK proof generation runs on main thread (`useWorkers: false`).
+  **Fix**:
 
-**Fix**: Show a warning to the user:
+  ```javascript title="Show ZK warning"
+  function showZkWarning() {
+    const warning = document.createElement('div');
+    warning.innerHTML = `
+      <div style="position:fixed;top:0;left:0;right:0;background:#ff9800;color:black;padding:10px;text-align:center;z-index:9999">
+        ⚠️ Generating zero-knowledge proof... Browser may be unresponsive for 10-30s. Do not refresh.
+      </div>
+    `;
+    document.body.appendChild(warning);
+    return () => warning.remove();
+  }
+  ```
+</Accordion>
 
-```javascript
-function showZkWarning() {
-  const warning = document.createElement('div');
-  warning.innerHTML = `
-    <div style="position:fixed;top:0;left:0;right:0;background:#ff9800;color:black;padding:10px;text-align:center;z-index:9999">
-      ⚠️ Generating zero-knowledge proof... Browser may be unresponsive for 10-30s. Do not refresh.
-    </div>
-  `;
-  document.body.appendChild(warning);
-  return () => warning.remove();
-}
-```
+<Accordion title="Frontend: MetaMask doesn't open for storeKey">
+  **Symptoms**: Transaction doesn't prompt in MetaMask.
 
-### MetaMask doesn't open for storeKey
+  **Cause**: `storeKey` is called before user interaction, or wallet not connected.
 
-**Symptoms**: Transaction doesn't prompt in MetaMask.
+  **Fix**:
 
-**Cause**: `storeKey` is called before user interaction, or wallet not connected.
+  ```javascript title="Ensure wallet is connected before storeKey"
+  // Ensure wallet is connected first
+  if (!walletClient.account) {
+    await walletClient.connect();
+  }
 
-**Fix**:
+  // Call storeKey after user clicks submit button
+  // (must be inside user gesture handler)
+  button.addEventListener('click', async () => {
+    await storeKey(encHigh.ctHash, encLow.ctHash);
+  });
+  ```
+</Accordion>
 
-```javascript
-// Ensure wallet is connected first
-if (!walletClient.account) {
-  await walletClient.connect();
-}
+<Accordion title="ICL: Not enough active nodes available for quorum">
+  **Symptoms**: `GET /v1/inference/quorum-preview` returns 400 with this message.
 
-// Call storeKey after user clicks submit button
-// (must be inside user gesture handler)
-button.addEventListener('click', async () => {
-  await storeKey(encHigh.ctHash, encLow.ctHash);
-});
-```
+  **Cause**: Fewer than 3 nodes (1 leader + 2 verifiers) are active in the pool.
 
-## ICL Issues
+  **Fix**:
 
-### "not enough active nodes available for the requested quorum"
+  ```bash title="Check active node count"
+  curl -s http://127.0.0.1:9000/v1/nodes/active | python3 -m json.tool | grep -c "operator_address"
+  ```
 
-**Symptoms**: `GET /v1/inference/quorum-preview` returns 400 with this message.
+  If < 3, start more nodes or check existing nodes for attestation/heartbeat failures.
+</Accordion>
 
-**Cause**: Fewer than 3 nodes (1 leader + 2 verifiers) are active in the pool.
+<Accordion title="ICL: MongoDB connection fails">
+  **Symptoms**: ICL falls back to in-memory persistence.
 
-**Fix**:
+  **Cause**: MongoDB Atlas URI incorrect, network issues, or IP not allowlisted.
 
-```bash
-# Check active node count
-curl -s http://127.0.0.1:9000/v1/nodes/active | python3 -m json.tool | grep -c "operator_address"
+  **Fix**:
 
-# If < 3, start more nodes or check existing nodes
-# Check node logs for attestation/heartbeat failures
-```
+  ```bash title="Test MongoDB connection"
+  mongosh "mongodb+srv://..."
+  ```
 
-### ICL MongoDB connection fails
+  Check Atlas IP allowlist and add your server IP to Atlas Network Access. Use in-memory fallback for local dev (automatic).
+</Accordion>
 
-**Symptoms**: ICL falls back to in-memory persistence.
+<Accordion title="Node: Missing CoFHE key handles — cannot decrypt prompt">
+  **Symptoms**: Job aborts after claiming.
 
-**Cause**: MongoDB Atlas URI incorrect, network issues, or IP not allowlisted.
+  **Cause**: `claim_task` returned empty handles or claim failed.
 
-**Fix**:
+  **Fix**:
 
-```bash
-# Test MongoDB connection
-mongosh "mongodb+srv://..."
+  ```bash title="Check ICL logs for claim errors"
+  grep "task/claim" icl.log
+  ```
 
-# Check Atlas IP allowlist
-# Add your server IP to Atlas Network Access
+  ```bash title="Verify node is properly registered"
+  curl $BLF_ICL_ENDPOINT/v1/nodes/active | grep YOUR_ADDRESS
+  ```
+</Accordion>
 
-# Use in-memory fallback for local dev (automatic)
-```
+<Accordion title="Node: Too Many Requests from Alchemy">
+  **Symptoms**: CoFHE operations fail with rate limit errors.
 
-## Node Issues
+  **Cause**: Alchemy free tier limits requests.
 
-### "Missing CoFHE key handles — cannot decrypt prompt"
+  **Fix**:
 
-**Symptoms**: Job aborts after claiming.
+  ```bash title="Use dedicated RPC endpoint"
+  export BLF_COFHE_ENDPOINT=https://arb-sepolia.g.alchemy.com/v2/YOUR_DEDICATED_KEY
+  ```
 
-**Cause**: `claim_task` returned empty handles or claim failed.
+  Or use Fhenix Helios endpoint:
 
-**Fix**:
+  ```bash title="Use Fhenix Helios endpoint"
+  export BLF_COFHE_ENDPOINT=https://api.helios.fhenix.zone
+  ```
+</Accordion>
 
-```bash
-# Check ICL logs for claim errors
-grep "task/claim" icl.log
+<Accordion title="Contract: storeKey transaction reverted">
+  **Symptoms**: MetaMask shows transaction failed.
 
-# Verify node is properly registered
-curl $BLF_ICL_ENDPOINT/v1/nodes/active | grep YOUR_ADDRESS
-```
+  **Causes**:
+  - Insufficient gas
+  - Wrong PromptKeyStore address
+  - Invalid ciphertext handles
 
-### "Too Many Requests" from Alchemy
+  **Fix**:
 
-**Symptoms**: CoFHE operations fail with rate limit errors.
+  ```javascript title="Verify contract address and gas"
+  // Check you have Sepolia ETH for gas
+  // Ensure correct contract address:
+  const PROMPT_KEY_STORE = '0x1E22dD12f448B15f1Ca8560fB6B4463834FaAf73';
 
-**Cause**: Alchemy free tier limits requests.
+  // Verify handles are valid uint256
+  console.log(typeof kpHighHandle, kpHighHandle); // Should be string or BigNumber
+  ```
+</Accordion>
 
-**Fix**:
+<Accordion title="Contract: ResultRegistry not found">
+  **Symptoms**: ICL cannot commit results on-chain.
 
-```bash
-# Use dedicated RPC endpoint
-export BLF_COFHE_ENDPOINT=https://arb-sepolia.g.alchemy.com/v2/YOUR_DEDICATED_KEY
+  **Cause**: Wrong ResultRegistry address or contract not deployed.
 
-# Or use Fhenix Helios endpoint
-export BLF_COFHE_ENDPOINT=https://api.helios.fhenix.zone
-```
+  **Fix**:
 
-## Contract Issues
+  ```bash title="Verify contract is deployed"
+  curl -s "https://api-sepolia.arbiscan.io/api?module=contract&action=getabi&address=0xCebd831eCd00915E299b8Ef2666cAbf942dc7150&format=raw" | head -c 100
+  ```
 
-### "storeKey transaction reverted"
+  Should return ABI JSON, not "NOTOK".
+</Accordion>
 
-**Symptoms**: MetaMask shows transaction failed.
+<Accordion title="Network: Cannot connect to Arbitrum Sepolia">
+  **Symptoms**: Transactions fail, RPC errors.
 
-**Causes**:
-- Insufficient gas
-- Wrong PromptKeyStore address
-- Invalid ciphertext handles
+  **Fix**:
 
-**Fix**:
+  ```bash title="Test RPC endpoint"
+  curl -X POST https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY \
+    -H "Content-Type: application/json" \
+    -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
+  ```
 
-```javascript
-// Check you have Sepolia ETH for gas
-// Ensure correct contract address:
-const PROMPT_KEY_STORE = '0x1E22dD12f448B15f1Ca8560fB6B4463834FaAf73';
+  Should return: `{"jsonrpc":"2.0","id":1,"result":"0x..."}`
+</Accordion>
 
-// Verify handles are valid uint256
-console.log(typeof kpHighHandle, kpHighHandle); // Should be string or BigNumber
-```
+<Accordion title="Network: IPFS download timeout">
+  **Symptoms**: Nodes cannot download prompt/output blobs.
 
-### "ResultRegistry not found"
+  **Fix**:
 
-**Symptoms**: ICL cannot commit results on-chain.
+  ```bash title="Test IPFS gateway"
+  curl -s https://gateway.pinata.cloud/ipfs/QmTest123 | head -c 100
+  ```
 
-**Cause**: Wrong ResultRegistry address or contract not deployed.
-
-**Fix**:
-
-```bash
-# Verify contract is deployed
-curl -s "https://api-sepolia.arbiscan.io/api?module=contract&action=getabi&address=0xCebd831eCd00915E299b8Ef2666cAbf942dc7150&format=raw" | head -c 100
-
-# Should return ABI JSON, not "NOTOK"
-```
-
-## Network Issues
-
-### Cannot connect to Arbitrum Sepolia
-
-**Symptoms**: Transactions fail, RPC errors.
-
-**Fix**:
-
-```bash
-# Test RPC endpoint
-curl -X POST https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
-
-# Should return: {"jsonrpc":"2.0","id":1,"result":"0x..."}
-```
-
-### IPFS download timeout
-
-**Symptoms**: Nodes cannot download prompt/output blobs.
-
-**Fix**:
-
-```bash
-# Test IPFS gateway
-curl -s https://gateway.pinata.cloud/ipfs/QmTest123 | head -c 100
-
-# Try alternative gateways:
-# https://ipfs.io/ipfs/{cid}
-# https://cloudflare-ipfs.com/ipfs/{cid}
-```
+  Try alternative gateways:
+  - `https://ipfs.io/ipfs/{cid}`
+  - `https://cloudflare-ipfs.com/ipfs/{cid}`
+</Accordion>
 
 ## Getting Help
 
 If none of the above fixes work:
 
-1. **Collect logs**: 
-   - Frontend: Browser console logs (F12 → Console)
-   - ICL: `tail -n 1000 icl.log`
-   - Node: `tail -n 1000 ~/.blindference/node.log`
-
-2. **Open an issue**: 
-   - Frontend/ICL/Contracts: [github.com/baync180705/blindference](https://github.com/baync180705/blindference)
-   - Node runtime: [github.com/baync180705/Blindference-node](https://github.com/baync180705/Blindference-node)
-
-3. **Join Discord**: [Blindference Community](https://discord.gg/blindference)
+<Steps>
+  <Step title="Collect logs" icon="file-text">
+    - Frontend: Browser console logs (F12 → Console)
+    - ICL: `tail -n 1000 icl.log`
+    - Node: `tail -n 1000 ~/.blindference/node.log`
+  </Step>
+  <Step title="Open an issue" icon="github">
+    - Frontend/ICL/Contracts: [github.com/baync180705/blindference](https://github.com/baync180705/blindference/issues)
+    - Node runtime: [github.com/baync180705/Blindference-node](https://github.com/baync180705/Blindference-node/issues)
+  </Step>
+  <Step title="Join Discord" icon="message-circle">
+    [Blindference Community](https://discord.gg/blindference) for real-time support
+  </Step>
+</Steps>

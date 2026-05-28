@@ -1,5 +1,6 @@
-import { ExternalLink, Copy, CheckCircle } from 'lucide-react';
-import { useState } from 'react';
+import { ExternalLink } from 'lucide-react';
+import { GlassCard } from './ui/GlassCard';
+import { CopyButton } from './ui/CopyButton';
 
 interface OnChainEvidenceProps {
   taskId: string;
@@ -12,24 +13,15 @@ interface OnChainEvidenceProps {
 }
 
 function TxLink({ label, txHash }: { label: string; txHash: string }) {
-  const [copied, setCopied] = useState(false);
-  const handleCopy = () => {
-    navigator.clipboard.writeText(txHash);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   return (
-    <div className="flex justify-between items-center py-2 border-b border-zinc-800 last:border-0">
-       <span className="text-[11px] text-zinc-500 font-bold uppercase tracking-widest">{label}</span>
+    <div className="flex justify-between items-center py-2 border-b border-white/10 last:border-0">
+       <span className="text-[11px] text-white/50 font-bold uppercase tracking-widest">{label}</span>
        <div className="flex items-center gap-2">
-         <a href={`https://sepolia.arbiscan.io/tx/${txHash}`} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-zinc-300 hover:text-white transition-colors">
-            <span className="font-mono text-[11px] bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-700">{txHash.slice(0, 10)}...{txHash.slice(-4)}</span>
-            <ExternalLink className="w-3 h-3 text-zinc-600" />
+         <a href={`https://sepolia.arbiscan.io/tx/${txHash}`} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-white hover:text-orange-400 transition-colors">
+            <span className="font-mono text-[11px] bg-[rgba(10,10,10,0.8)] px-1.5 py-0.5 rounded border border-white/10">{txHash.slice(0, 10)}...{txHash.slice(-4)}</span>
+            <ExternalLink className="w-3 h-3 text-white/50" />
          </a>
-         <button onClick={handleCopy} className="text-zinc-600 hover:text-zinc-300 transition-colors">
-           {copied ? <CheckCircle className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-         </button>
+         <CopyButton text={txHash} title="Copy hash" className="text-white/50 hover:text-white transition-colors" />
        </div>
     </div>
   );
@@ -44,25 +36,16 @@ export function OnChainEvidence({
   disputeSubmissionTx,
   disputeResolutionTx,
 }: OnChainEvidenceProps) {
-  const [taskCopied, setTaskCopied] = useState(false);
-
   return (
-    <section className="bg-zinc-900/40 border border-zinc-800 rounded-xl p-5 space-y-4">
-      <h3 className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-black">On-Chain Evidence</h3>
+    <GlassCard className="p-5 space-y-4 rounded-xl">
+      <h3 className="text-[10px] uppercase tracking-[0.2em] text-white/50 font-black">On-Chain Evidence</h3>
       <div className="flex flex-col">
-        <div className="flex justify-between items-center py-2 border-b border-zinc-800">
-           <span className="text-[11px] text-zinc-500 font-bold uppercase tracking-widest">Task ID</span>
-           <button
-             onClick={() => {
-               navigator.clipboard.writeText(taskId);
-               setTaskCopied(true);
-               setTimeout(() => setTaskCopied(false), 2000);
-             }}
-             className="flex items-center gap-1.5 text-zinc-300 hover:text-white transition-colors"
-           >
-             <span className="font-mono text-[11px] text-zinc-400 bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-700">{taskId.slice(0, 16)}...</span>
-             {taskCopied ? <CheckCircle className="w-3 h-3 text-zinc-400" /> : <Copy className="w-3 h-3 text-zinc-600" />}
-           </button>
+        <div className="flex justify-between items-center py-2 border-b border-white/10">
+           <span className="text-[11px] text-white/50 font-bold uppercase tracking-widest">Task ID</span>
+           <div className="flex items-center gap-1.5 text-white hover:text-orange-400 transition-colors">
+             <span className="font-mono text-[11px] text-white/50 bg-[rgba(10,10,10,0.8)] px-1.5 py-0.5 rounded border border-white/10">{taskId.slice(0, 16)}...</span>
+             <CopyButton text={taskId} title="Copy task ID" className="text-white/50 hover:text-white transition-colors" />
+           </div>
         </div>
         {coveragePurchaseTx && <TxLink label="Coverage Plan" txHash={coveragePurchaseTx} />}
         {escrowCreationTx && <TxLink label="Escrow Created" txHash={escrowCreationTx} />}
@@ -71,6 +54,6 @@ export function OnChainEvidence({
         {disputeResolutionTx && <TxLink label="Dispute Resolution" txHash={disputeResolutionTx} />}
         {escrowReleaseTx && <TxLink label="Escrow Released" txHash={escrowReleaseTx} />}
       </div>
-    </section>
+    </GlassCard>
   );
 }

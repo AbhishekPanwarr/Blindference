@@ -1,0 +1,237 @@
+
+# Changelog
+
+## Latest Release
+
+<CardGroup cols={1}>
+  <Card title="Wave 4 — Full Quorum, NodeRegistry, PyPI, Professional Docs" icon="rocket">
+    Complete operational validation with 3-node quorum, unified node registry, PyPI package, and professional documentation site.
+  </Card>
+</CardGroup>
+
+### Major Changes
+
+<Accordion title="1. NodeRegistry Contract (Arbitrum Sepolia)">
+  New unified node registry deployed:
+
+  | Contract | Address | Purpose |
+  |----------|---------|---------|
+  | NodeRegistry (proxy) | `0x72C0Ead949Fd2C346598a30AF1A69c3c5Cb86082` | Unified node registration, heartbeat, staking |
+  | NodeRegistry (impl) | `0x3E008352F5c35fC0030Eded4C8013C7d7F4c3282` | Implementation contract |
+
+  **Features**:
+  - `register(tier, attestationHash, expiresAt, models)` — node self-registration with optional stake
+  - `heartbeat()` — on-chain liveness proof
+  - `isActive(node)` — checks attestation expiry + heartbeat recency
+  - `updateAttestation(...)` — ICL can update a node's attestation hash/tier
+  - `withdrawStake()` — node can exit and reclaim stake
+
+  **On-chain heartbeat frequency**: Once every **10 days** (was every 60s). ICL heartbeat stays every 60s (free REST call). Contract grace period set to 11 days for safety margin.
+</Accordion>
+
+<Accordion title="2. Interactive Attestation CLI">
+  `blindference-node attest` without `--mock` now presents an interactive menu:
+
+  ```bash
+  Attestation type:
+    [1] Mock (development)
+    [2] TEE / TPM (production)
+  Select [1]:
+  ```
+
+  - Option 1: Mock attestation with `weloveblindference`
+  - Option 2: TEE/TPM — explains hardware requirements, offers dev TEE simulation with custom key
+
+  New flag: `--tee-key <key>` overrides the default mock key.
+
+  After ICL attestation, the CLI asks for on-chain registration with gas estimation.
+</Accordion>
+
+<Accordion title="3. Blindference-Node PyPI Package">
+  A standalone Python package for operators joining the network:
+
+  - Published as `blindference-node` on PyPI (v0.3.0+)
+  - Auto-publish workflow: tags `v*` trigger GitHub Actions → PyPI
+  - Supports both `bridge` mode (TypeScript CoFHE subprocess) and `python` mode (direct HTTP)
+  - Auto-re-attestation: nodes self-heal on startup and via watchdog (no manual intervention)
+  - Configuration-driven: single `BLINDFERENCE_NODE_CONFIG_PATH` JSON file controls all behavior
+</Accordion>
+
+<Accordion title="4. Professional Documentation Site">
+  Mintlify-powered docs at `blindference/docs/`:
+
+  - **Compute section** (8 pages): Node operator quickstart, installation, configuration, attestation, running, monitoring, troubleshooting, rewards
+  - **Build section** (9 pages + 2 examples): Agent developer quickstart, architecture, CoFHE encryption, ICL API, contracts, deployment, risk-scoring example, text-inference example
+  - **API Reference**: Full ICL REST API documentation
+  - **Resources**: Changelog, contract addresses, troubleshooting, FAQ
+  - Dark Blindference theme (`#f97316` primary, dark background, white/zinc accents)
+  - Auto-validation CI: checks `mint.json` navigation, page existence, logo paths, broken links
+</Accordion>
+
+<Accordion title="5. Full Quorum Test Passed">
+  End-to-end operational validation with 3 nodes + ICL:
+
+  - ICL selected leader + 2 verifiers correctly
+  - All 3 nodes received task assignments and claimed successfully
+  - Nodes processed through CoFHE decrypt → IPFS fetch → inference pipeline
+  - ICL bugs discovered and fixed during live quorum testing
+</Accordion>
+
+<Accordion title="6. ICL Production Hardening">
+  Critical fixes found during quorum testing:
+
+  - **In-memory DB operators**: `_matches()` now supports `$or`, `$in`, `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`
+  - **Assignment dispatch**: `_get_pending_assignments()` returns `task_id` (not `request_id`)
+  - **Pydantic compatibility**: `get_assignments()` uses `getattr()` for model field access
+  - **Hex handle parsing**: `claim_task()` parses `0x`-prefixed handles with `int(val, 16)`
+  - **MongoDB Atlas persistence**: `USE_MONGO=true` with fallback to in-memory when unavailable
+  - **`HEARTBEAT_GRACE_SECONDS: 300`**: ICL can restart without losing active nodes (was 3600)
+</Accordion>
+
+<Accordion title="7. Branding Cleanup">
+  Removed all hackathon-era "Wave" naming:
+
+  - `wave2_network/` → `network/` (all path references updated)
+  - `Wave3Popup.tsx` → `ProtocolUpdatePopup.tsx`
+  - `WAVE2_SUBMISSION.md` → `SUBMISSION.md`
+  - `fhenix-fhe.md` → `FHE_INTEGRATION.md`
+  - `LLM_CONTEXT.md` → `CONTEXT.md`
+  - No "Wave 2", "Wave 3", "wave2", "wave3" references remain in source or docs
+</Accordion>
+
+### Contract Deployments (Arbitrum Sepolia)
+
+| Contract | Address | Purpose |
+|----------|---------|---------|
+| PromptKeyStore | `0x1E22dD12f448B15f1Ca8560fB6B4463834FaAf73` | Text inference key storage |
+| ResultRegistry | `0xCebd831eCd00915E299b8Ef2666cAbf942dc7150` | On-chain result commitment |
+| NodeRegistry | `0x72C0Ead949Fd2C346598a30AF1A69c3c5Cb86082` | Unified node registry (proxy) |
+| NodeAttestationRegistry | `0xB54e019e9717a8Ed4746bA9d7F1A3F83cf0a35E0` | Legacy operator attestation |
+| ExecutionCommitmentRegistry | `0xcd45aefE9a16772528fa30B7d47958a95e83440C` | Task dispatch |
+| ReputationRegistry | `0xdaDb4D46D231d3fe6D3754E0861c8bCD36aF0604` | Operator scoring |
+| AgentConfigRegistry | `0x85aE035d6a94c006B5d0808cAdF47F5c22536996` | Model configuration |
+| RewardAccumulator | `0xFa25Fb53eF8dAc88E4f43bB7558Cf3930Bf3e817` | Reward distribution |
+| BlindferenceInputVault | `0x8dD7B2A9B69C76A69d33B2DF46426Cbe657a902b` | CoFHE ACL input vault |
+
+### Bug Fixes
+
+- **ICL in-memory DB**: Full MongoDB operator support (`$or`, `$in`, `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`)
+- **Assignment dispatch**: `_get_pending_assignments()` returns `task_id` for correct node lookups
+- **Pydantic model handling**: `get_assignments()` uses `getattr()` for Pydantic models instead of `.get()` which fails on objects
+- **Hex handle parsing**: `claim_task` now parses `0x`-prefixed hex strings with `int(val, 16)` instead of `int(val)`
+- **ICL quorum preview**: Returns proper leader/verifier addresses when operators are active
+- **Node CoFHE default**: `get_cofhe_client()` defaults to `CoFHEBridgeClient`, mock mode fully removed
+- **Frontend mock removal**: `MockCoFHEClient` class deleted, all code paths use real CoFHE
+- **Vite optimizeDeps**: Only `tfhe` excluded; `@cofhe/sdk` pre-bundled for CJS interop
+- **TFHE WASM**: Absolute path `/node_modules/tfhe/tfhe_bg.wasm?url` survives cache invalidation
+
+### Technical Decisions
+
+<CardGroup cols={2}>
+  <Card title="NodeRegistry contract" icon="database">
+    Unified registration replaces NodeAttestationRegistry + NodeOperatorRegistry combo
+  </Card>
+  <Card title="On-chain heartbeat every 10 days" icon="clock">
+    Minimal gas while still providing objective liveness to external contracts
+  </Card>
+  <Card title="ICL heartbeat every 60s" icon="activity">
+    Free REST call keeps node eligible for real-time job dispatch
+  </Card>
+  <Card title="blindference-node PyPI package" icon="package">
+    Standalone distribution for operator onboarding
+  </Card>
+  <Card title="Mintlify over Docusaurus" icon="book-open">
+    Better dark mode default, built-in search, modern components
+  </Card>
+  <Card title="Docs split: Compute + Build" icon="users">
+    Two distinct audiences: node operators and agent developers
+  </Card>
+</CardGroup>
+
+---
+
+## Wave 3 — CoFHE SDK Alignment & Text Inference
+
+<Accordion title="Confidential Text Inference Pipeline">
+  - Browser-side AES-256 encryption: User prompts encrypted locally before leaving device
+  - Pinata/IPFS blob storage: Encrypted prompts stored off-chain, only ciphertext handles on-chain
+  - CoFHE key access control: AES key split into uint128 halves, each half CoFHE-encrypted and stored in `PromptKeyStore`
+  - Quorum decryption: Leader + 2 verifiers each receive CoFHE sharing permits to decrypt their key half
+  - Model inference: Nodes run identical inference via Groq Llama 3 or Google Gemini
+  - Output key escrow: Leader stores output AES key in PromptKeyStore for user-only decryption
+  - Frontend reveal: User decrypts output key via CoFHE and reveals generated text
+</Accordion>
+
+<Accordion title="CoFHE SDK Alignment">
+  Updated to `@cofhe/sdk@0.5.1` with critical fixes:
+
+  - `fheKeyStorage: null` in SDK config to prevent stale IndexedDB cache serialization errors
+  - `environment: 'MOCK'` on chain config enables local ZK proof verification (ciphertexts are real FHE)
+  - `useWorkers: false` — ZK proof generation runs on main thread (Web Workers broken in Vite dev)
+  - Absolute WASM URL path `/node_modules/tfhe/tfhe_bg.wasm?url` survives cache invalidation
+  - Vite `optimizeDeps` excludes only `tfhe`, pre-bundles `@cofhe/sdk` normally for CJS interop
+</Accordion>
+
+<Accordion title="Node Auto-Re-Attestation">
+  - Auto-detect missing/expired attestation certificates on startup
+  - Automatically re-attest via ICL challenge/response
+  - Watchdog re-attests within 6 hours of expiry
+  - No CLI flag needed — default behavior
+</Accordion>
+
+<Accordion title="ICL Persistence and Resilience">
+  - MongoDB Atlas integration for persistent operator records
+  - `HEARTBEAT_GRACE_SECONDS: 300` (5 min) — ICL can restart without losing active nodes
+  - In-memory fallback when MongoDB unavailable (local development)
+  - Fixed in-memory database query operators (`$or`, `$in`, array membership)
+</Accordion>
+
+<Accordion title="Professional Documentation">
+  - Removed all "Wave 2" / "Wave 3" branding from code and documentation
+  - Renamed `wave2_network/` monorepo directory to `network/`
+  - Comprehensive README, ARCHITECTURE.md, DEPLOYMENT.md
+  - Mintlify docs site with Compute and Build sections
+</Accordion>
+
+### Contract Deployments (Arbitrum Sepolia)
+
+| Contract | Address | Added |
+|----------|---------|-------|
+| PromptKeyStore | `0x1E22dD12f448B15f1Ca8560fB6B4463834FaAf73` | Text inference key storage |
+| ResultRegistry | `0xCebd831eCd00915E299b8Ef2666cAbf942dc7150` | On-chain result commitment |
+| NodeAttestationRegistry | `0xB54e019e9717a8Ed4746bA9d7F1A3F83cf0a35E0` | Operator attestation |
+| ExecutionCommitmentRegistry | `0xcd45aefE9a16772528fa30B7d47958a95e83440C` | Task dispatch |
+| ReputationRegistry | `0xdaDb4D46D231d3fe6D3754E0861c8bCD36aF0604` | Operator scoring |
+| AgentConfigRegistry | `0x85aE035d6a94c006B5d0808cAdF47F5c22536996` | Model configuration |
+| RewardAccumulator | `0xFa25Fb53eF8dAc88E4f43bB7558Cf3930Bf3e817` | Reward distribution |
+
+---
+
+## Wave 2 — Initial Implementation
+
+<Accordion title="Text Inference Foundation">
+  - Added browser-side AES-256 prompt encryption
+  - Added Pinata/IPFS encrypted blob storage
+  - Added `PromptKeyStore` contract for CoFHE-encrypted key halves
+  - Added node-side prompt key decryption under CoFHE ACL
+  - Added frontend text submission UI with Groq/Gemini model selection
+  - Added frontend output key decryption and answer reveal
+  - Added background demo stack scripts
+</Accordion>
+
+<Accordion title="Risk Scoring Foundation">
+  - Initial confidential risk scoring pipeline
+  - Browser CoFHE feature encryption (credit score, loan amount, account age, defaults)
+  - Quorum consensus with 1 leader + 2 verifiers
+  - On-chain commitment and coverage via Reineira
+  - Multi-recipient sharing permit flow
+</Accordion>
+
+<Accordion title="Infrastructure Foundation">
+  - Reineira protocol integration
+  - Fhenix CoFHE stack integration
+  - FastAPI ICL coordinator
+  - React/Vite frontend with wagmi wallet connection
+  - Node runtime with Groq/Gemini inference bridge
+  - Foundry contract suite with deployment scripts
+</Accordion>

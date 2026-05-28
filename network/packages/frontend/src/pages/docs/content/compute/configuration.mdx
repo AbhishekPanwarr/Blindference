@@ -1,0 +1,131 @@
+
+# Configuration
+
+All configuration is stored in `~/.blindference/config.json` and can be overridden via environment variables prefixed with `BLF_`.
+
+## Default Configuration
+
+```json title="~/.blindference/config.json"
+{
+  "node_address": "0x...",
+  "keystore_path": "~/.blindference/keystore.json",
+  "tier": 0,
+  "supported_model_ids": ["facebook/opt-125m"],
+  "custom_backends": [],
+  "attestation_backend": "mock",
+  "icl_endpoint": "https://icl.blindference.xyz",
+  "fhenix_rpc": "https://testnet.fhenix.zone",
+  "ipfs_gateway": "https://node.lighthouse.storage",
+  "model_cache_dir": "~/.blindference/models",
+  "log_level": "INFO",
+  "network": "fhenix_testnet",
+  "attestation_cert_hash": "",
+  "attestation_expiry": 0,
+  "stake_amount_wei": 0,
+  "cofhe_mode": "bridge",
+  "cofhe_endpoint": "",
+  "cofhe_chain_id": 421614,
+  "skip_output_key_storage": false
+}
+```
+
+## Environment Variables
+
+Every config field can be overridden via an environment variable. The mapping is: `BLF_` + uppercase field name.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `BLF_NODE_ADDRESS` | string | auto-generated | Ethereum address (0x…) |
+| `BLF_KEYSTORE_PATH` | string | `~/.blindference/keystore.json` | Path to encrypted keystore |
+| `BLF_TIER` | int | 0 | Attestation tier (0=mock, 1=TPM, 2=TEE) |
+| `BLF_SUPPORTED_MODEL_IDS` | list | `facebook/opt-125m` | Comma-separated model IDs |
+| `BLF_CUSTOM_BACKENDS` | list | (empty) | Dotted Python paths for custom backends |
+| `BLF_ATTESTATION_BACKEND` | string | `mock` | `mock`, `tpm`, or `sgx` |
+| `BLF_ICL_ENDPOINT` | string | `https://icl.blindference.xyz` | ICL base URL |
+| `BLF_FHENIX_RPC` | string | `https://testnet.fhenix.zone` | EVM RPC endpoint |
+| `BLF_IPFS_GATEWAY` | string | `https://node.lighthouse.storage` | IPFS download/upload gateway |
+| `BLF_LOG_LEVEL` | string | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
+| `BLF_COFHE_MODE` | string | `bridge` | `bridge` (TypeScript subprocess) or `python` (HTTP) |
+| `BLF_COFHE_ENDPOINT` | string | `https://arb-sepolia.g.alchemy.com/v2/demo` | CoFHE/EVM RPC endpoint |
+| `BLF_COFHE_CHAIN_ID` | int | 421614 | Chain ID for CoFHE (Arbitrum Sepolia) |
+| `BLF_KEY_PASSWORD` | string | (prompted) | Keystore decryption password |
+
+## CoFHE Modes
+
+<Tabs>
+  <Tab title="Bridge Mode (Default)">
+    Spawns a TypeScript subprocess via `@cofhe/sdk/node` for CoFHE operations.
+
+    - More reliable SDK lifecycle
+    - Handles WASM loading correctly
+    - Better error handling
+    - Slightly higher overhead
+
+    ```bash title="Run in bridge mode"
+    BLF_COFHE_MODE=bridge blindference-node run
+    ```
+
+    <Tip>
+      Bridge mode is recommended for production. It handles CoFHE SDK initialization more reliably than direct HTTP calls.
+    </Tip>
+  </Tab>
+  <Tab title="Python Mode (Alternative)">
+    Direct HTTP calls to CoFHE endpoints.
+
+    - Lighter weight
+    - Requires manual session management
+    - Good for resource-constrained environments
+
+    ```bash title="Run in python mode"
+    BLF_COFHE_MODE=python blindference-node run
+    ```
+  </Tab>
+</Tabs>
+
+## Model IDs
+
+Supported models for inference:
+
+| Model ID | Provider | Type | Notes |
+|----------|----------|------|-------|
+| `facebook/opt-125m` | Local | vLLM | ~125M params, 0.5GB VRAM |
+| `groq:llama-3.3-70b-versatile` | Groq | API | Fast, requires API key |
+| `gemini:gemini-2.5-flash` | Google | API | Requires API key |
+
+Set multiple models:
+
+```bash title="Set multiple supported models"
+BLF_SUPPORTED_MODEL_IDS=qwen2.5-7b,groq:llama-3.3-70b-versatile,gemini:gemini-2.5-flash
+```
+
+## Example: Full Non-Interactive Setup
+
+```bash title="Non-interactive environment setup"
+export BLF_PRIVATE_KEY=0x...
+export BLF_KEY_PASSWORD=secure_password
+export BLF_ICL_ENDPOINT=https://icl.blindference.xyz
+export BLF_COFHE_ENDPOINT=https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY
+export BLF_SUPPORTED_MODEL_IDS=facebook/opt-125m,groq:llama-3.3-70b-versatile
+
+blindference-node init
+blindference-node run
+```
+
+## Example: Local Development Stack
+
+```bash title="Local development configuration"
+# ICL running locally
+export BLF_ICL_ENDPOINT=http://127.0.0.1:9000
+
+# Custom IPFS gateway
+export BLF_IPFS_GATEWAY=https://gateway.pinata.cloud/ipfs
+
+# Debug logging
+export BLF_LOG_LEVEL=DEBUG
+
+blindference-node run
+```
+
+<Warning>
+  Never commit `.env` files with private keys or API keys to version control. Use a secrets manager in production.
+</Warning>

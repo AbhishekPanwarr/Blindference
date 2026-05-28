@@ -34,10 +34,10 @@ export function CreditBalance() {
     <>
       <button
         onClick={() => setShowDeposit(true)}
-        className="flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800 transition-colors"
+        className="flex items-center gap-2 rounded-full border border-orange-500/20 bg-[rgba(10,10,10,0.8)] px-3 py-1.5 text-xs font-medium text-white hover:border-orange-500/40 hover:bg-orange-500/10 transition-colors glow-primary"
         title="Click to deposit credits"
       >
-        <Wallet className="w-3.5 h-3.5 text-emerald-400" />
+        <Wallet className="w-3.5 h-3.5 text-success" />
         {loading ? (
           <span className="animate-pulse">...</span>
         ) : (
@@ -45,7 +45,7 @@ export function CreditBalance() {
             {cusdcFormatted} USDC · {blindFormatted} BLIND
           </span>
         )}
-        <Droplets className="w-3 h-3 text-zinc-500" />
+        <Droplets className="w-3 h-3 text-orange-400" />
       </button>
       {showDeposit && <DepositModal onClose={() => setShowDeposit(false)} onSuccess={refresh} />}
     </>

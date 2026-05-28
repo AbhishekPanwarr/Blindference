@@ -1,19 +1,53 @@
 ---
 title: Models
 description: 'Supported inference models and their requirements'
+icon: 'brain'
 ---
 
 # Supported Models
 
-Blindference currently supports three inference models across cloud and local backends.
+Blindference currently supports four inference models across cloud and local backends.
 
 ## Model Reference
 
-| Model ID | Provider | Backend | VRAM / Requirements | Tier | Speed | Quality |
-|----------|----------|---------|---------------------|------|-------|---------|
-| `groq:llama-3.3-70b-versatile` | Groq | Cloud API | `GROQ_API_KEY` env var | 0 | Fast | High |
-| `gemini:gemini-2.5-flash` | Google | Cloud API | `GOOGLE_API_KEY` env var | 0 | Fast | Medium-High |
-| `facebook/opt-125m` | Local | vLLM | 0.5GB+ VRAM, `vllm` package | 0 | Variable | Dev/Testing |
+<CardGroup cols={2}>
+  <Card title="Groq Llama 3.3 70B" icon="zap">
+    **Model ID**: `groq:llama-3.3-70b-versatile`
+
+    - **Provider**: Groq (Cloud API)
+    - **Requirements**: `GROQ_API_KEY` env var
+    - **Tier**: 0
+    - **Speed**: Fast ⚡
+    - **Quality**: High
+  </Card>
+  <Card title="Google Gemini 2.5 Flash" icon="sparkles">
+    **Model ID**: `gemini:gemini-2.5-flash`
+
+    - **Provider**: Google (Cloud API)
+    - **Requirements**: `GOOGLE_API_KEY` env var
+    - **Tier**: 0
+    - **Speed**: Fast ⚡
+    - **Quality**: Medium-High
+  </Card>
+  <Card title="OPT 125M (Local)" icon="cpu">
+    **Model ID**: `facebook/opt-125m`
+
+    - **Provider**: Local (vLLM)
+    - **Requirements**: 0.5GB+ VRAM, `vllm` package
+    - **Tier**: 0
+    - **Speed**: Variable
+    - **Quality**: Dev/Testing
+  </Card>
+  <Card title="Qwen 2.5 7B (Local)" icon="cpu">
+    **Model ID**: `qwen2.5-7b`
+
+    - **Provider**: Local (vLLM)
+    - **Requirements**: 4GB+ VRAM, `vllm` package
+    - **Tier**: 0
+    - **Speed**: Variable
+    - **Quality**: Good
+  </Card>
+</CardGroup>
 
 ## Resolution Order
 
@@ -30,7 +64,7 @@ The first backend that (a) is available and (b) advertises the requested `model_
 
 ### Groq
 
-```bash
+```bash title="Set Groq API key"
 export GROQ_API_KEY="gsk_..."
 ```
 
@@ -38,7 +72,7 @@ Get your key at [console.groq.com](https://console.groq.com).
 
 ### Google Gemini
 
-```bash
+```bash title="Set Google API key"
 export GOOGLE_API_KEY="AI..."
 ```
 
@@ -54,13 +88,13 @@ Get your key at [ai.google.dev](https://ai.google.dev).
 
 ### Install vLLM
 
-```bash
+```bash title="Install vLLM"
 pip install vllm
 ```
 
 ### Verify
 
-```bash
+```bash title="Test vLLM backend"
 blindference-node models test --backend vllm --model facebook/opt-125m --prompt "Hello"
 ```
 
@@ -73,7 +107,9 @@ blindference-node models test --backend vllm --model facebook/opt-125m --prompt 
 | Gemini | `temperature=0` (best-effort) |
 | Mock | SHA-256 of `(model_id, prompt)` |
 
-All cloud backends use a lightweight `[seed_anchor:{hash}]` prefix to reduce variance without restricting response creativity.
+<Tip>
+  All cloud backends use a lightweight `[seed_anchor:{hash}]` prefix to reduce variance without restricting response creativity.
+</Tip>
 
 ## Adding Custom Models
 

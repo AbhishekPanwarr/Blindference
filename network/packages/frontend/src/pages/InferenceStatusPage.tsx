@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { AlertCircle, CheckCircle2, Clock, Lock, Unlock, Copy, ShieldAlert, ShieldCheck } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Clock, Lock, Unlock, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 import { DisputeForm } from '../components/DisputeForm'
@@ -11,6 +11,8 @@ import { StatusTimeline } from '../components/StatusTimeline'
 import { useCofheClient } from '../hooks/useCofheClient'
 import { useInferenceStatus } from '../hooks/useInferenceStatus'
 import { decryptOutputKey, downloadAndDecryptTextOutput } from '../utils/textPromptKey'
+import { GlassCard } from '../components/ui/GlassCard'
+import { CopyButton } from '../components/ui/CopyButton'
 
 const EXECUTION_STEPS = [
   { label: 'Query Encrypted', desc: 'AES-GCM + CoFHE key split' },
@@ -140,21 +142,21 @@ export function InferenceStatusPage() {
   const getStatusDisplay = (value: string) => {
     switch (value) {
       case 'QUEUED':
-        return { text: 'In Queue', icon: Clock, color: 'text-zinc-400', bg: 'bg-white/[0.05]' }
+        return { text: 'In Queue', icon: Clock, color: 'text-white/50', bg: 'bg-[rgba(10,10,10,0.6)]' }
       case 'ASSIGNED':
-        return { text: 'Assigning Quorum', icon: CheckCircle2, color: 'text-zinc-300', bg: 'bg-zinc-500/10 border border-zinc-500/20' }
+        return { text: 'Assigning Quorum', icon: CheckCircle2, color: 'text-white', bg: 'bg-[rgba(10,10,10,0.8)] border border-white/10' }
       case 'EXECUTING':
-        return { text: 'Leader Executing FHE', icon: CheckCircle2, color: 'text-zinc-300', bg: 'bg-zinc-500/10 border border-zinc-500/20' }
+        return { text: 'Leader Executing FHE', icon: CheckCircle2, color: 'text-white', bg: 'bg-[rgba(10,10,10,0.8)] border border-white/10' }
       case 'VERIFYING':
-        return { text: 'Verifiers Checking Result', icon: CheckCircle2, color: 'text-yellow-400', bg: 'bg-yellow-500/10 border border-yellow-500/20' }
+        return { text: 'Verifiers Checking Result', icon: CheckCircle2, color: 'text-warning', bg: 'bg-warning/10 border border-warning/20' }
       case 'ACCEPTED':
-        return { text: 'Consensus Reached', icon: CheckCircle2, color: 'text-white', bg: 'bg-white/10 border border-white/20' }
+        return { text: 'Consensus Reached', icon: CheckCircle2, color: 'text-white', bg: 'bg-[rgba(10,10,10,0.8)] border border-white/10' }
       case 'REJECTED':
-        return { text: 'Quorum Rejected', icon: AlertCircle, color: 'text-red-400', bg: 'bg-red-500/10 border border-red-500/20' }
+        return { text: 'Quorum Rejected', icon: AlertCircle, color: 'text-error', bg: 'bg-error/10 border border-error/20' }
       case 'DISPUTED':
-        return { text: 'Dispute Open', icon: AlertCircle, color: 'text-amber-300', bg: 'bg-amber-500/10 border border-amber-500/20' }
+        return { text: 'Dispute Open', icon: AlertCircle, color: 'text-warning', bg: 'bg-warning/10 border border-warning/20' }
       default:
-        return { text: value, icon: Clock, color: 'text-zinc-400', bg: 'bg-white/[0.05]' }
+        return { text: value, icon: Clock, color: 'text-white/50', bg: 'bg-[rgba(10,10,10,0.6)]' }
     }
   }
 
@@ -168,12 +170,12 @@ export function InferenceStatusPage() {
             className="relative mb-6 h-24 w-24"
           >
             <div className="absolute inset-0 rounded-full border border-white/10" />
-            <div className="absolute inset-0 rounded-full border-t border-white/40" />
+            <div className="absolute inset-0 rounded-full border-t border-orange-500/40" />
           </motion.div>
           <motion.p
             animate={{ opacity: [0.5, 1, 0.5] }}
             transition={{ repeat: Infinity, duration: 1.5 }}
-            className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500"
+            className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50"
           >
             Loading request...
           </motion.p>
@@ -193,8 +195,8 @@ export function InferenceStatusPage() {
           {/* Header */}
           <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
             <div>
-              <h2 className="text-xl font-medium text-white mb-1">Active Task</h2>
-              <div className="flex items-center gap-2 font-mono text-[10px] uppercase text-zinc-500 tracking-wider">
+              <h2 className="text-xl font-medium gradient-text font-heading mb-1">Active Task</h2>
+              <div className="flex items-center gap-2 font-mono text-[10px] uppercase text-white/50 tracking-wider">
                 <span>REQ-ID: {requestId}</span>
               </div>
             </div>
@@ -211,8 +213,8 @@ export function InferenceStatusPage() {
           <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr_280px]">
             <div className="space-y-6">
               {/* Quorum */}
-              <section className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
-                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
+              <GlassCard className="p-5 space-y-4 rounded-xl">
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">
                   Quorum Progress
                 </h3>
                 <QuorumVisualizer
@@ -221,11 +223,11 @@ export function InferenceStatusPage() {
                   verifiers={status.quorum.verifiers}
                 />
                 {!status.quorum.leader ? (
-                  <div className="rounded-xl border border-dashed border-zinc-800 bg-zinc-900/20 py-8 text-center text-sm text-zinc-500">
+                  <div className="rounded-xl border border-dashed border-white/10 bg-[rgba(10,10,10,0.6)] py-8 text-center text-sm text-white/50">
                     Waiting for network node assignment...
                   </div>
                 ) : null}
-              </section>
+              </GlassCard>
 
               {/* On-chain evidence */}
               {(status.result_commit_tx ||
@@ -247,8 +249,8 @@ export function InferenceStatusPage() {
 
               {/* UAVP Proof Panel */}
               {status.status === 'ACCEPTED' && (
-                <section className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 space-y-4">
-                  <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 flex items-center gap-2">
+                <GlassCard className="p-5 space-y-4 rounded-xl">
+                  <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50 flex items-center gap-2">
                     <ShieldCheck className="w-3.5 h-3.5" /> UAVP Proof
                   </h3>
                   <div className="space-y-3 font-mono text-xs">
@@ -259,105 +261,104 @@ export function InferenceStatusPage() {
                     ].map((item) => (
                       <div
                         key={item.label}
-                        className="bg-zinc-900/80 p-3 rounded-lg border border-zinc-800 flex justify-between items-center group"
+                        className="bg-[rgba(10,10,10,0.8)] p-3 rounded-lg border border-white/10 flex justify-between items-center group"
                       >
                         <div>
-                          <div className="text-zinc-600 mb-1 text-[10px] uppercase">{item.label}</div>
-                          <div className="text-zinc-300">{item.value}</div>
+                          <div className="text-white/50 mb-1 text-[10px] uppercase">{item.label}</div>
+                          <div className="text-white">{item.value}</div>
                         </div>
-                        <button
-                          onClick={() => navigator.clipboard.writeText(item.value)}
-                          className="text-zinc-600 group-hover:text-zinc-300 transition-colors"
-                        >
-                          <Copy className="w-3.5 h-3.5" />
-                        </button>
+                        <CopyButton
+                          text={item.value}
+                          title="Copy"
+                          className="text-white/50 group-hover:text-white transition-colors"
+                        />
                       </div>
                     ))}
                   </div>
-                </section>
+                </GlassCard>
               )}
 
               {/* Coverage + dispute */}
               {status.status === 'ACCEPTED' && status.coverage_id ? (
-                <section className="mt-auto flex flex-col gap-4 rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
+                <GlassCard className="mt-auto flex flex-col gap-4 p-5 rounded-xl">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
+                      <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">
                         Coverage Status
                       </div>
                       <div className="flex items-center gap-2 text-sm font-bold text-white">
-                        <span className="h-2 w-2 animate-pulse rounded-full bg-zinc-300" />
+                        <span className="h-2 w-2 animate-pulse rounded-full bg-orange-500" />
                         ACTIVE{' '}
-                        <span className="ml-2 text-xs font-normal text-zinc-500 font-mono">
+                        <span className="ml-2 text-xs font-normal text-white/50 font-mono">
                           ID: {status.coverage_id}
                         </span>
                       </div>
                     </div>
                     <div className="text-left sm:text-right">
-                      <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
+                      <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">
                         Dispute Window
                       </div>
                       <div className="font-mono text-sm text-white">{timeLeft} remaining</div>
                     </div>
                   </div>
                   <button
-                    className="mt-2 w-full rounded-xl border border-red-500/50 bg-red-500/10 py-3.5 text-xs font-bold uppercase tracking-[0.2em] text-red-500 transition-colors hover:bg-red-500/20"
+                    className="mt-2 w-full rounded-xl border border-error/30 bg-error/10 py-3.5 text-xs font-bold uppercase tracking-[0.2em] text-error transition-colors hover:bg-error/20"
                     onClick={() => setIsDisputeOpen(true)}
                     type="button"
                   >
                     FILE DISPUTE CLAIM
                   </button>
-                </section>
+                </GlassCard>
               ) : null}
             </div>
 
             {/* Right panel - result */}
             <div>
-              <section className="sticky top-6 flex flex-col items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900/40 p-6 min-h-[360px]">
+              <GlassCard className="sticky top-6 flex flex-col items-center justify-center p-6 min-h-[360px] rounded-xl">
                 {status.mode === 'text' && status.status === 'ACCEPTED' ? (
                   <div className="flex w-full flex-col gap-4">
                     {/* Decrypt button or result */}
                     {!decrypted ? (
                       <div className="text-center space-y-4 py-8">
-                        <div className="w-14 h-14 rounded-full bg-white/[0.05] mx-auto flex items-center justify-center">
-                          <Lock className="w-6 h-6 text-zinc-400" />
+                        <div className="w-14 h-14 rounded-full bg-[rgba(10,10,10,0.6)] mx-auto flex items-center justify-center border border-white/10">
+                          <Lock className="w-6 h-6 text-white/50" />
                         </div>
-                        <h3 className="text-lg font-medium text-white">Results Encrypted</h3>
-                        <p className="text-xs text-zinc-500 max-w-xs mx-auto">
+                        <h3 className="text-lg font-medium text-white font-heading">Results Encrypted</h3>
+                        <p className="text-xs text-white/50 max-w-xs mx-auto">
                           Output requires your Fhenix private key to decrypt locally. Data is sealed.
                         </p>
                         <button
                           onClick={handleManualDecrypt}
                           disabled={isDecryptingAnswer}
-                          className="px-5 py-2.5 bg-white hover:bg-zinc-200 text-black rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                          className="px-5 py-2.5 btn-primary rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                         >
                           {isDecryptingAnswer ? 'Decrypting...' : 'Decrypt to View'}
                         </button>
                       </div>
                     ) : (
-                      <div className="w-full rounded-xl border border-white/10 bg-white/[0.02] p-4">
-                        <div className="border-b border-white/5 pb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 flex items-center gap-2">
+                      <div className="w-full rounded-xl border border-white/10 bg-[rgba(10,10,10,0.6)] p-4">
+                        <div className="border-b border-white/10 pb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-white/50 flex items-center gap-2">
                           <Unlock className="w-3 h-3" /> Decrypted Answer
                         </div>
                         {isDecryptingAnswer ? (
-                          <div className="py-6 text-sm text-zinc-500 font-mono">Decrypting answer...</div>
+                          <div className="py-6 text-sm text-white/50 font-mono">Decrypting answer...</div>
                         ) : textAnswerError ? (
-                          <div className="py-6 text-sm text-red-400">{textAnswerError}</div>
+                          <div className="py-6 text-sm text-error">{textAnswerError}</div>
                         ) : textAnswer ? (
                           <pre className="mt-3 whitespace-pre-wrap font-sans text-sm leading-relaxed text-white">
                             {textAnswer}
                           </pre>
                         ) : (
-                          <div className="py-6 text-sm text-zinc-500 font-mono">Waiting for output key...</div>
+                          <div className="py-6 text-sm text-white/50 font-mono">Waiting for output key...</div>
                         )}
                       </div>
                     )}
 
-                    <div className="w-full rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
-                      <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
+                    <div className="w-full rounded-xl border border-white/10 bg-[rgba(10,10,10,0.6)] p-4 glass-card">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">
                         Commitment
                       </div>
-                      <div className="mt-2 break-all font-mono text-[10px] leading-relaxed text-zinc-400">
+                      <div className="mt-2 break-all font-mono text-[10px] leading-relaxed text-white/50">
                         {status.text_result?.commitment_hash ?? 'Pending'}
                       </div>
                     </div>
@@ -368,16 +369,16 @@ export function InferenceStatusPage() {
 
                     <div className="mt-8 flex w-full justify-center gap-10">
                       <div className="text-center">
-                        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-2">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50 mb-2">
                           Confidence
                         </div>
-                        <div className="text-2xl font-medium text-white">{status.result.confidence}%</div>
+                        <div className="text-2xl font-medium text-white font-heading">{status.result.confidence}%</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-2">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50 mb-2">
                           Quorum
                         </div>
-                        <div className="text-2xl font-medium text-white">
+                        <div className="text-2xl font-medium text-white font-heading">
                           {status.quorum.confirm_count}/{status.quorum.verifiers.length}{' '}
                           <span className="text-white ml-1">✓</span>
                         </div>
@@ -385,21 +386,21 @@ export function InferenceStatusPage() {
                     </div>
                   </div>
                 ) : status.status === 'FAILED' ? (
-                  <div className="flex flex-col items-center justify-center text-center text-red-500">
+                  <div className="flex flex-col items-center justify-center text-center text-error">
                     <AlertCircle className="mb-4 h-12 w-12" />
                     <p className="text-sm font-medium leading-relaxed">
                       Inference failed.
                       <br />
-                      <span className="text-zinc-500 font-normal">{status.failure_reason ?? 'All quorum nodes failed to produce a result.'}</span>
+                      <span className="text-white/50 font-normal">{status.failure_reason ?? 'All quorum nodes failed to produce a result.'}</span>
                     </p>
                   </div>
                 ) : status.status === 'REJECTED' ? (
-                  <div className="flex flex-col items-center justify-center text-center text-red-500">
+                  <div className="flex flex-col items-center justify-center text-center text-error">
                     <AlertCircle className="mb-4 h-12 w-12" />
                     <p className="text-sm font-medium leading-relaxed">
                       Inference rejected by quorum.
                       <br />
-                      <span className="text-zinc-500 font-normal">Mismatched execution fingerprints.</span>
+                      <span className="text-white/50 font-normal">Mismatched execution fingerprints.</span>
                     </p>
                   </div>
                 ) : (
@@ -410,7 +411,7 @@ export function InferenceStatusPage() {
                         opacity: [0.3, 0.8, 0.3],
                       }}
                       transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
-                      className="absolute w-48 h-48 bg-white/5 rounded-full blur-3xl pointer-events-none"
+                      className="absolute w-48 h-48 bg-orange-500/5 rounded-full blur-3xl pointer-events-none"
                     />
 
                     <div className="relative mb-8 h-28 w-28">
@@ -422,10 +423,10 @@ export function InferenceStatusPage() {
                       <motion.div
                         animate={{ rotate: -360 }}
                         transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}
-                        className="absolute inset-2 rounded-full border border-white/20 border-t-white/40"
+                        className="absolute inset-2 rounded-full border border-orange-500/20 border-t-orange-500/40"
                       />
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-[10px] font-mono text-zinc-400 font-bold tracking-widest uppercase">
+                        <span className="text-[10px] font-mono text-white/50 font-bold tracking-widest uppercase">
                           {status.status === 'VERIFYING' ? 'VRFY' : 'EXEC'}
                         </span>
                       </div>
@@ -435,17 +436,17 @@ export function InferenceStatusPage() {
                       <motion.p
                         animate={{ opacity: [0.5, 1, 0.5] }}
                         transition={{ repeat: Infinity, duration: 2 }}
-                        className="text-xs font-bold uppercase tracking-[0.2em] text-zinc-300"
+                        className="text-xs font-bold uppercase tracking-[0.2em] text-white"
                       >
                         {status.status === 'VERIFYING' ? 'Verifying Results...' : 'Computing FHE...'}
                       </motion.p>
-                      <p className="text-[10px] font-mono text-zinc-600">
+                      <p className="text-[10px] font-mono text-white/50">
                         Generating cryptographic proofs
                       </p>
                     </div>
                   </div>
                 )}
-              </section>
+              </GlassCard>
             </div>
           </div>
         </div>
@@ -464,8 +465,8 @@ export function InferenceStatusPage() {
       </div>
 
       {/* Right sidebar — Execution trace */}
-      <div className="hidden xl:flex w-60 shrink-0 flex-col border-l border-zinc-800 bg-[#0d0d0d] px-4 py-6">
-        <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-500 mb-5">
+      <div className="hidden xl:flex w-60 shrink-0 flex-col border-l border-white/10 bg-black px-4 py-6">
+        <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/50 mb-5">
           Execution Trace
         </p>
         <div className="space-y-4">
@@ -487,18 +488,18 @@ export function InferenceStatusPage() {
               <div key={step.label} className="flex items-start gap-3">
                 <div
                   className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${
-                    isCurrent ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.5)]' : isCompleted ? 'bg-zinc-500' : 'bg-zinc-800'
+                    isCurrent ? 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]' : isCompleted ? 'bg-white/50' : 'bg-[rgba(10,10,10,0.8)]'
                   }`}
                 />
                 <div>
                   <div
                     className={`text-sm ${
-                      isCurrent ? 'text-white font-medium' : isCompleted ? 'text-zinc-400' : 'text-zinc-700'
+                      isCurrent ? 'text-white font-medium' : isCompleted ? 'text-white/50' : 'text-white/20'
                     }`}
                   >
                     {step.label}
                   </div>
-                  <div className="text-[11px] text-zinc-700 mt-0.5">{step.desc}</div>
+                  <div className="text-[11px] text-white/30 mt-0.5">{step.desc}</div>
                 </div>
               </div>
             )
@@ -506,8 +507,8 @@ export function InferenceStatusPage() {
         </div>
 
         {/* Status */}
-        <div className="mt-auto pt-6 border-t border-zinc-800 space-y-3">
-          <div className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">System</div>
+        <div className="mt-auto pt-6 border-t border-white/10 space-y-3">
+          <div className="text-[10px] text-white/50 uppercase tracking-widest font-bold">System</div>
           <div className="space-y-2">
             {[
               { label: 'Mode', value: status.mode === 'text' ? 'Private Inference' : 'Risk Scoring' },
@@ -515,24 +516,24 @@ export function InferenceStatusPage() {
               { label: 'Confirmations', value: `${status.quorum.confirm_count}/${status.quorum.verifiers.length}` },
             ].map((item) => (
               <div key={item.label} className="flex items-center justify-between text-xs">
-                <span className="text-zinc-600">{item.label}</span>
-                <span className="text-zinc-400 font-mono">{item.value}</span>
+                <span className="text-white/50">{item.label}</span>
+                <span className="text-white font-mono">{item.value}</span>
               </div>
             ))}
           </div>
 
           {/* Dispute button - only when accepted and has insurance coverage */}
           {status.status === 'ACCEPTED' && status.coverage_id && (
-            <div className="pt-3 border-t border-zinc-800">
+            <div className="pt-3 border-t border-white/10">
               <button
                 onClick={() => setIsDisputeOpen(true)}
-                className="w-full flex items-center justify-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/20 transition-colors"
+                className="w-full flex items-center justify-center gap-2 rounded-lg border border-error/20 bg-error/10 px-3 py-2 text-xs font-semibold text-error hover:bg-error/20 transition-colors"
                 type="button"
               >
                 <ShieldAlert className="w-3.5 h-3.5" />
                 File Dispute
               </button>
-              <p className="text-[10px] text-zinc-600 text-center mt-1.5">
+              <p className="text-[10px] text-white/50 text-center mt-1.5">
                 72h window from job completion
               </p>
             </div>
@@ -553,28 +554,28 @@ export function InferenceStatusPage() {
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="bg-zinc-900/90 border border-zinc-700/80 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl"
+              className="bg-[rgba(10,10,10,0.9)] border border-orange-500/20 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl glass-card"
             >
-              <div className="p-6 border-b border-zinc-800 text-center space-y-2">
-                <div className="w-14 h-14 rounded-full bg-white/[0.05] mx-auto flex items-center justify-center mb-3">
-                  <Unlock className="w-7 h-7 text-zinc-400" />
+              <div className="p-6 border-b border-white/10 text-center space-y-2">
+                <div className="w-14 h-14 rounded-full bg-[rgba(10,10,10,0.6)] mx-auto flex items-center justify-center mb-3 border border-white/10">
+                  <Unlock className="w-7 h-7 text-white/50" />
                 </div>
-                <h2 className="text-lg font-bold text-white">Decrypt Locally?</h2>
-                <p className="text-sm text-zinc-500">Plaintext will only exist in your browser memory.</p>
+                <h2 className="text-lg font-bold text-white font-heading">Decrypt Locally?</h2>
+                <p className="text-sm text-white/50">Plaintext will only exist in your browser memory.</p>
               </div>
 
               <div className="p-6 space-y-5">
                 <div className="space-y-2">
-                  <div className="flex justify-between text-xs font-mono text-zinc-500">
+                  <div className="flex justify-between text-xs font-mono text-white/50">
                     <span>Checking Fhenix Key...</span>
-                    <span className="text-zinc-400">Found</span>
+                    <span className="text-white">Found</span>
                   </div>
-                  <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-1 bg-[rgba(10,10,10,0.8)] rounded-full overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: isDecryptingAnswer ? '60%' : '100%' }}
                       transition={{ duration: 1.5 }}
-                      className="h-full bg-white"
+                      className="h-full bg-orange-500"
                     />
                   </div>
                 </div>
@@ -582,14 +583,14 @@ export function InferenceStatusPage() {
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowDecryptModal(false)}
-                    className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-lg font-medium transition-colors"
+                    className="flex-1 py-2.5 btn-outline rounded-lg font-medium transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleManualDecrypt}
                     disabled={isDecryptingAnswer}
-                    className="flex-1 py-2.5 bg-white hover:bg-zinc-200 text-black rounded-lg font-medium transition-colors disabled:opacity-50"
+                    className="flex-1 py-2.5 btn-primary rounded-lg font-medium transition-colors disabled:opacity-50"
                   >
                     {isDecryptingAnswer ? 'Decrypting...' : 'Confirm Decrypt'}
                   </button>

@@ -1,0 +1,85 @@
+
+# Welcome to Blindference
+
+Blindference is a **confidential AI execution layer** for Web3. It enables users to submit sensitive prompts and data to frontier AI models — Groq Llama 3, Google Gemini — without ever revealing them to any single party.
+
+<Info>
+  Blindference is currently on **Arbitrum Sepolia testnet**. Mainnet deployment is planned after the testnet phase.
+</Info>
+
+## What It Does
+
+<CardGroup cols={2}>
+  <Card title="Input Privacy" icon="lock">
+    User prompts are AES-256 encrypted in the browser before leaving the device. The encryption key is protected by CoFHE threshold FHE.
+  </Card>
+  <Card title="Access Control" icon="shield-check">
+    Encryption keys are split into FHE-encrypted halves and stored on-chain. Only assigned quorum nodes can decrypt.
+  </Card>
+  <Card title="Execution Integrity" icon="users">
+    A **1 leader + 2 verifier** quorum runs identical inference and cross-validates results. Mismatches trigger automatic rejection.
+  </Card>
+  <Card title="Economic Accountability" icon="coins">
+    Disputed results trigger on-chain verification with automatic USDC payouts via [Reineira](https://reineira.xyz/).
+  </Card>
+</CardGroup>
+
+## Who Is This For?
+
+<CardGroup cols={2}>
+  <Card title="Compute Providers" icon="server" href="compute/introduction">
+    Run a Blindference node to earn fees executing encrypted inference jobs. GPU optional.
+  </Card>
+  <Card title="Agent Developers" icon="code" href="build/introduction">
+    Build agents that use Blindference for confidential inference, risk scoring, or custom AI workflows.
+  </Card>
+</CardGroup>
+
+## Supported Modes
+
+- **Confidential Text Inference**: Submit natural language prompts through encrypted channels
+- **Confidential Risk Scoring**: Submit structured financial features for privacy-preserving evaluation
+
+## System Architecture
+
+```mermaid
+flowchart LR
+    U[User Wallet] --> FE[Frontend]
+    FE -->|AES encrypt prompt| ENC[(Encrypted Prompt Blob)]
+    FE -->|Store prompt key| PKS[PromptKeyStore]
+    FE -->|Submit request| ICL[ICL]
+
+    ICL --> L[Leader Node]
+    ICL --> V1[Verifier 1]
+    ICL --> V2[Verifier 2]
+
+    PKS --> L
+    PKS --> V1
+    PKS --> V2
+
+    L --> LLM1[Groq / Gemini]
+    V1 --> LLM2[Groq / Gemini]
+    V2 --> LLM3[Groq / Gemini]
+
+    L -->|Store output key for user| PKS
+    L -->|Leader result| ICL
+    V1 -->|Verdict| ICL
+    V2 -->|Verdict| ICL
+
+    ICL --> FE
+    PKS --> FE
+```
+
+## Quick Links
+
+<CardGroup cols={3}>
+  <Card title="Run a Node" icon="server" href="compute/quickstart">
+    Start earning in 5 minutes
+  </Card>
+  <Card title="Build an Agent" icon="code" href="build/quickstart">
+    Integrate confidential inference
+  </Card>
+  <Card title="Contract Addresses" icon="file-contract" href="resources/contract-addresses">
+    Arbitrum Sepolia deployments
+  </Card>
+</CardGroup>

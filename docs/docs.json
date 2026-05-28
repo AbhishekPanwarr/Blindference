@@ -2,15 +2,23 @@
   "name": "Blindference Docs",
   "theme": "mint",
   "colors": {
-    "primary": "#0D9373",
-    "light": "#55D799",
-    "dark": "#0D9373"
+    "primary": "#f97316",
+    "light": "#fb923c",
+    "dark": "#c2410c",
+    "background": {
+      "light": "#ffffff",
+      "dark": "#0a0a0a"
+    }
   },
   "logo": {
     "dark": "/logo/logo-dark.svg",
     "light": "/logo/logo-light.svg"
   },
   "favicon": "/favicon.svg",
+  "search": {
+    "prompt": "Search docs...",
+    "placeholder": "Search documentation"
+  },
   "topbarLinks": [
     {
       "name": "Website",
@@ -45,6 +53,11 @@
       "name": "Contract Addresses",
       "icon": "file-contract",
       "url": "resources/contract-addresses"
+    },
+    {
+      "name": "FAQ",
+      "icon": "circle-question",
+      "url": "resources/faq"
     }
   ],
   "navigation": {
@@ -54,7 +67,8 @@
         "pages": [
           "introduction",
           "what-is-blindference",
-          "architecture"
+          "architecture",
+          "components"
         ]
       },
       {
@@ -80,7 +94,6 @@
           "build/quickstart",
           "build/architecture",
           "build/cofhe-encryption",
-          "build/icl-api",
           "build/contracts",
           "build/deployment",
           "build/examples/risk-scoring",
@@ -90,6 +103,7 @@
       {
         "group": "API Reference",
         "pages": [
+          "api-reference/introduction",
           "api-reference/icl-api"
         ]
       },
@@ -98,6 +112,7 @@
         "pages": [
           "resources/changelog",
           "resources/contract-addresses",
+          "resources/faq",
           "resources/troubleshooting"
         ]
       }
@@ -107,5 +122,9 @@
     "twitter": "https://twitter.com/blindference",
     "github": "https://github.com/baync180705/blindference",
     "discord": "https://discord.gg/blindference"
+  },
+  "feedback": {
+    "thumbsRating": true,
+    "suggestEdit": true
   }
 }

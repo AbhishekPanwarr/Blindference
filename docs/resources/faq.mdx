@@ -1,0 +1,86 @@
+---
+title: FAQ
+description: 'Frequently asked questions about Blindference'
+---
+
+# Frequently Asked Questions
+
+<Accordion title="What is Blindference?">
+  Blindference is a confidential AI execution layer for Web3. It enables users to submit sensitive prompts and data to frontier AI models — without ever revealing them to any single party. A quorum of attested nodes runs the same inference under cryptographic access control, and results are cross-validated before settlement.
+</Accordion>
+
+<Accordion title="How is my data kept private?">
+  Your prompt is encrypted with AES-256-GCM in your browser before it leaves your device. The encryption key is split into two halves, each encrypted with CoFHE (threshold FHE), and stored on-chain. Only the specific quorum nodes assigned to your request can decrypt the key halves — and they run inside attested environments.
+</Accordion>
+
+<Accordion title="What is a quorum?">
+  A quorum is a group of 3 nodes (1 leader + 2 verifiers) that independently run the same inference on your encrypted prompt. The leader produces the canonical result, and verifiers check it. If 2 out of 3 agree, the result is accepted. This catches malicious or faulty nodes.
+</Accordion>
+
+<Accordion title="Do I need a GPU to run a node?">
+  No. For development and testing, you can run a tier-0 node with just a CPU and 512MB RAM. For local model inference, a GPU with 4GB+ VRAM is recommended. You can also use cloud APIs (Groq, Gemini) without any GPU.
+</Accordion>
+
+<Accordion title="How much does it cost to submit an inference request?">
+  Costs vary by model and complexity. Cloud API models (Groq, Gemini) incur the provider's API fees plus a small network fee. Local models are free to run but require hardware. The ICL coordinator takes a 10% fee from each task for infrastructure.
+</Accordion>
+
+<Accordion title="What happens if a node returns a wrong result?">
+  If verifiers disagree with the leader, the result is rejected. The leader may be slashed (lose reputation and stake). If you purchased coverage via Reineira, a disputed result triggers an automatic insurance payout.
+</Accordion>
+
+<Accordion title="How do I earn BLIND tokens?">
+  Run an attested node and complete inference jobs. Leaders earn 60% of the task fee, verifiers earn 20% each. Rewards are distributed automatically on job completion — no manual claiming required.
+</Accordion>
+
+<Accordion title="What is CoFHE and why does it matter?">
+  CoFHE (Confidential FHE) is Fhenix's threshold fully homomorphic encryption network. Blindference uses it for **access control** — not for running the AI model itself. It ensures only assigned nodes can decrypt your AES key, even though the key is stored on a public blockchain.
+</Accordion>
+
+<Accordion title="Can I use Blindference without MetaMask?">
+  Currently, MetaMask or any EIP-1193 compatible wallet is required for browser-side encryption and on-chain transactions. We plan to support WalletConnect and other providers in future releases.
+</Accordion>
+
+<Accordion title="How long does an inference request take?">
+  Typical end-to-end time is 30–120 seconds:
+  - Encryption: 10–30s (ZK proof generation)
+  - Quorum selection: <1s
+  - Node inference: 5–30s (depends on model)
+  - Consensus + settlement: 5–10s
+</Accordion>
+
+<Accordion title="What networks are supported?">
+  Blindference currently runs on **Arbitrum Sepolia** testnet. Mainnet deployment is planned after the testnet phase completes.
+</Accordion>
+
+<Accordion title="How do I report a bug or request a feature?">
+  Open an issue on GitHub:
+  - [Frontend / ICL / Contracts](https://github.com/baync180705/blindference/issues)
+  - [Node Runtime](https://github.com/baync180705/Blindference-node/issues)
+
+  Or join the [Discord community](https://discord.gg/blindference) for real-time support.
+</Accordion>
+
+<Accordion title="Is there a mobile app?">
+  No mobile app yet. The frontend is designed as a responsive web application that works on desktop and mobile browsers. A native mobile app is not on the current roadmap.
+</Accordion>
+
+<Accordion title="What models are supported?">
+  Currently supported models:
+  - `groq:llama-3.3-70b-versatile` (cloud, fast)
+  - `gemini:gemini-2.5-flash` (cloud, fast)
+  - `facebook/opt-125m` (local, dev/testing)
+  - `qwen2.5-7b` (local, 4GB VRAM)
+
+  More models can be added via the pluggable backend system. See [Model Backends](/compute/backends).
+</Accordion>
+
+<Accordion title="What is the difference between ICL mode and On-Chain mode?">
+  **ICL mode** uses the Inference Coordination Layer to manage quorum selection, dispatch, and aggregation. Faster, more flexible, but requires trusting the ICL for coordination (not decryption).
+
+  **On-Chain mode** uses smart contracts (`BlindferenceInference`) to assign nodes, collect commitments, and reach consensus directly on the blockchain. Slower but fully trustless.
+</Accordion>
+
+---
+
+Still have questions? [Join our Discord](https://discord.gg/blindference) or [open a GitHub issue](https://github.com/baync180705/blindference/issues).

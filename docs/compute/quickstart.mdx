@@ -1,6 +1,7 @@
 ---
 title: Quickstart
 description: 'Get your first Blindference node running in 5 minutes'
+icon: 'rocket'
 ---
 
 # Quickstart
@@ -14,35 +15,70 @@ Get a Blindference node running and earning in under 5 minutes.
 - A terminal with internet access
 - No GPU required for mock inference
 
-## Step 1: Install
+<Info>
+  No GPU? No problem. Tier-0 nodes can use cloud APIs (Groq, Gemini) for inference.
+</Info>
 
-```bash
-pip install blindference-node
-```
+## Install
 
-For GPU-accelerated local inference (optional):
+<Tabs>
+  <Tab title="PyPI (Recommended)">
+    ```bash title="Install from PyPI"
+    pip install blindference-node
+    ```
 
-```bash
-pip install "blindference-node[gpu]"
-```
+    For GPU-accelerated local inference (optional):
 
-## Step 2: Initialize
+    ```bash title="Install with GPU support"
+    pip install "blindference-node[gpu]"
+    ```
+  </Tab>
+  <Tab title="From Source">
+    ```bash title="Clone and install"
+    git clone https://github.com/baync180705/Blindference-node.git
+    cd Blindference-node
+    pip install -e .
+    ```
+  </Tab>
+  <Tab title="Docker">
+    ```bash title="Run with Docker"
+    docker build -t blindference-node .
+    docker run -e BLF_KEY_PASSWORD=secure_password \
+      -e BLF_ICL_ENDPOINT=https://icl.blindference.xyz \
+      blindference-node run
+    ```
+  </Tab>
+</Tabs>
 
-```bash
+## Initialize
+
+```bash title="Initialize your node"
 blindference-node init
 ```
 
 This smart command checks your environment first:
 
-1. **Detects env vars** — if `BLF_PRIVATE_KEY` is set, auto-imports wallet (no prompt)
-2. **Detects GPU** — checks for NVIDIA GPU and vLLM availability
-3. **Detects API keys** — if `GROQ_API_KEY` or `GOOGLE_API_KEY` set, includes cloud models
-4. **Prompts only what's missing** — wallet creation, password, API keys
-5. **Saves configuration** — writes `~/.blindference/config.json`
+<Steps>
+  <Step title="Detects env vars" icon="scan">
+    If `BLF_PRIVATE_KEY` is set, auto-imports wallet (no prompt)
+  </Step>
+  <Step title="Detects GPU" icon="cpu">
+    Checks for NVIDIA GPU and vLLM availability
+  </Step>
+  <Step title="Detects API keys" icon="key">
+    If `GROQ_API_KEY` or `GOOGLE_API_KEY` set, includes cloud models
+  </Step>
+  <Step title="Prompts missing fields" icon="message-circle">
+    Wallet creation, password, API keys — only what's needed
+  </Step>
+  <Step title="Saves configuration" icon="save">
+    Writes `~/.blindference/config.json`
+  </Step>
+</Steps>
 
 ### Example Output
 
-```
+```bash title="Initialization output"
 ============================================================
   Blindference Node — Initialisation
 ============================================================
@@ -85,24 +121,30 @@ Configuration saved to ~/.blindference/config.json
   ============================================================
 ```
 
-## Step 3: Attest Your Node
+## Attest Your Node
 
-Before running, you must attest your node with the ICL:
+<Warning>
+  You must attest before running. The daemon will exit with an error if no valid attestation certificate is found.
+</Warning>
 
-```bash
+```bash title="Interactive attestation"
 # Interactive attestation (choose mock or TEE)
 blindference-node attest
+```
 
+```bash title="Mock attestation (development)"
 # Or skip interactive menu and use mock directly
 blindference-node attest --mock
+```
 
+```bash title="Custom dev key"
 # Or with custom development key
 blindference-node attest --mock --tee-key mydevkey
 ```
 
 ### Interactive Attestation Flow
 
-```
+```bash title="Interactive prompt"
 Attestation type:
   [1] Mock (development)
   [2] TEE / TPM (production)
@@ -116,7 +158,7 @@ Select [1]:
 
 After ICL attestation, the CLI asks:
 
-```
+```bash title="On-chain registration prompt"
 Do you want to register on-chain? [Y/n]:
   → Gas estimate : 487,231 units
   → Est. cost    : 0.000058 ETH
@@ -127,7 +169,7 @@ Mock/development tiers can skip this. Production tiers require it.
 
 ### Example Output
 
-```
+```bash title="Attestation output"
 ============================================================
   Blindference Node — Attestation
 ============================================================
@@ -145,13 +187,13 @@ Attestation saved to ~/.blindference/config.json
 ============================================================
 ```
 
-## Step 4: Start the Daemon
+## Start the Daemon
 
-```bash
+```bash title="Start the daemon"
 blindference-node run
 ```
 
-Enter your keystore password when prompted. The daemon starts three concurrent loops:
+Enter your keystore password when prompted. The daemon starts four concurrent loops:
 
 | Loop | Frequency | Purpose |
 |------|-----------|---------|
@@ -162,7 +204,7 @@ Enter your keystore password when prompted. The daemon starts three concurrent l
 
 ### Example Output
 
-```
+```bash title="Daemon startup output"
 ============================================================
   Blindference Node Daemon
 ============================================================
@@ -171,28 +213,32 @@ Enter your keystore password when prompted. The daemon starts three concurrent l
   Models  : facebook/opt-125m, groq:llama-3.3-70b-versatile, gemini:gemini-2.5-flash
   Cert    : expires in 604663s
 
-[INFO] Daemon starting ...
+[INFO] Daemon starting …
 [INFO] Heartbeat sent to ICL
 [INFO] No assignments for last 60s
 [INFO] Heartbeat sent to ICL
 [INFO] Received 1 assignment(s)
-[INFO] Spawning leader job 0xabc123...
+[INFO] Spawning leader job 0xabc123…
 [INFO] Job 0xabc123: starting as leader
 [INFO] Job 0xabc123: claimed
 [INFO] Downloaded prompt blob from IPFS
 [INFO] Decrypted prompt key via CoFHE
-[INFO] Running inference via Groq...
+[INFO] Running inference via Groq…
 [INFO] Inference complete. Result hash: 0xdef456
-[INFO] Storing output key for user...
+[INFO] Storing output key for user…
 [INFO] Submitting leader result to ICL
 [INFO] Leader result accepted
 ```
 
-## Step 5: Verify
+<Tip>
+  Auto-re-attestation is enabled by default. If your certificate expires, the daemon will automatically re-attest without manual intervention.
+</Tip>
+
+## Verify
 
 Check that your node is registered:
 
-```bash
+```bash title="Check node status"
 blindference-node status
 ```
 
@@ -200,33 +246,50 @@ You should see your node address, tier, models, attestation status, and cert exp
 
 To check active nodes on the ICL:
 
-```bash
+```bash title="List active nodes"
 curl -s http://127.0.0.1:8000/v1/nodes/active | python3 -m json.tool
 ```
 
-## Step 6: Monitor Earnings
+## Monitor Earnings
 
 Once jobs start completing, check your progress:
 
-```bash
+```bash title="List recent jobs"
 # List recent jobs with earnings
 blindference-node jobs list --limit 10
+```
 
+```bash title="Check total earnings"
 # Total BLIND earned
 blindference-node jobs earnings
+```
 
+```bash title="Check staking status"
 # Check on-chain stake and slash risk
 blindference-node staking status
+```
 
+```bash title="Check BLIND balance"
 # BLIND token balance
 blindference-node balance
 ```
 
 You can also view a live **Node Dashboard** in the web frontend:
-1. Open the frontend (http://localhost:3000)
-2. Connect your MetaMask wallet
-3. Click "Node Dashboard" in the sidebar
-4. See real-time stats: stake, earnings, job history, slash warnings
+
+<Steps>
+  <Step title="Open frontend" icon="globe">
+    Open the frontend at http://localhost:3000
+  </Step>
+  <Step title="Connect wallet" icon="wallet">
+    Connect your MetaMask wallet
+  </Step>
+  <Step title="View dashboard" icon="layout-dashboard">
+    Click "Node Dashboard" in the sidebar
+  </Step>
+  <Step title="Monitor live" icon="activity">
+    See real-time stats: stake, earnings, job history, slash warnings
+  </Step>
+</Steps>
 
 ## Next Steps
 

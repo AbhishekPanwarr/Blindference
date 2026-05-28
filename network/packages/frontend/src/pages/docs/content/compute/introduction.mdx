@@ -1,0 +1,83 @@
+
+# Compute — Introduction
+
+Run a Blindference node to earn fees executing encrypted inference jobs. Help build a private, verifiable, and economically accountable AI execution layer.
+
+## What a Node Does
+
+A Blindference node is a compute provider that:
+
+1. **Attests** its identity to the ICL (Inference Coordination Layer)
+2. **Heartbeats** every 60 seconds to prove liveness
+3. **Polls** for pending inference jobs every 5 seconds
+4. **Decrypts** encrypted prompts via CoFHE threshold FHE under strict ACL
+5. **Executes** inference via Groq, Google Gemini, or local vLLM (pluggable backends)
+6. **Commits** results back to the ICL for quorum consensus
+
+## Earning Model
+
+Nodes earn fees for successful task completion. Fees are determined by:
+
+- **Task complexity**: More complex prompts earn more
+- **Model tier**: Higher-tier models (premium APIs) earn more
+- **Attestation tier**: Higher attestation tiers (TPM, TEE) earn premium rates
+- **Reputation**: Higher reputation scores get priority assignment
+
+## Attestation Tiers
+
+| Tier | Name | Hardware | Trust Level | Job Eligibility |
+|------|------|----------|-------------|-----------------|
+| 0 | Mock | None | Development only | Verifier-only, low-value |
+| 1 | TPM 2.0 | TPM chip | OS-level integrity | Leader + verifier, standard |
+| 2 | TEE/SGX | Intel SGX / AMD SEV | Memory encryption | Leader + verifier, premium |
+
+**Current status**: Tier 0 (mock) is fully functional for development. TPM and TEE tiers are planned for future releases.
+
+## Requirements
+
+### Minimum (Mock Inference)
+
+- Python 3.10+
+- 1 CPU core
+- 512MB RAM
+- Outbound HTTPS access
+- No GPU required
+
+### Recommended (Production)
+
+- Python 3.11+
+- 2+ CPU cores
+- 2GB RAM
+- Stable internet connection
+- TPM 2.0 chip (for tier 1)
+
+### Optional (Local Model Inference)
+
+- NVIDIA GPU with CUDA support
+- 4GB+ VRAM
+- vLLM installed
+
+## Quick Facts
+
+<CardGroup cols={3}>
+  <Card title="Setup Time" icon="clock">
+    < 5 minutes with `blindference-node init`
+  </Card>
+  <Card title="Auto-Healing" icon="heart">
+    Auto-re-attests on certificate expiry
+  </Card>
+  <Card title="Concurrent Jobs" icon="layers">
+    Default: 2 concurrent inference tasks
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="quickstart">
+    Get your first node running in 5 minutes
+  </Card>
+  <Card title="Installation" icon="download" href="installation">
+    Detailed installation options
+  </Card>
+</CardGroup>

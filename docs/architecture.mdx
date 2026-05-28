@@ -1,6 +1,7 @@
 ---
 title: Architecture
 description: 'System-level view of all components and data flows'
+icon: 'sitemap'
 ---
 
 # Architecture
@@ -70,53 +71,53 @@ flowchart TB
 
 ## Component Details
 
-### Frontend (`network/packages/frontend`)
+<Accordion title="Frontend (network/packages/frontend)">
+  **Responsibilities:**
 
-**Responsibilities:**
+  - Wallet connection via MetaMask + wagmi/viem on Arbitrum Sepolia
+  - Browser encryption: CoFHE for risk features, AES-256-GCM for text prompts
+  - Quorum preview: calls ICL to see selected leader + verifiers before submitting
+  - Key storage: stores prompt key halves in `PromptKeyStore` via MetaMask transaction
+  - Request submission: submits encrypted inputs + sharing permits to ICL
+  - Status polling: long-polls ICL for quorum progress and result status
+  - Output decryption: decrypts output key from `PromptKeyStore`, downloads result blob from IPFS, reveals final answer
 
-- Wallet connection via MetaMask + wagmi/viem on Arbitrum Sepolia
-- Browser encryption: CoFHE for risk features, AES-256-GCM for text prompts
-- Quorum preview: calls ICL to see selected leader + verifiers before submitting
-- Key storage: stores prompt key halves in `PromptKeyStore` via MetaMask transaction
-- Request submission: submits encrypted inputs + sharing permits to ICL
-- Status polling: long-polls ICL for quorum progress and result status
-- Output decryption: decrypts output key from `PromptKeyStore`, downloads result blob from IPFS, reveals final answer
+  **Tech stack:** React 19 + TypeScript, Vite 6, wagmi + viem, @cofhe/sdk, TailwindCSS + shadcn/ui, Framer Motion
+</Accordion>
 
-**Tech stack:** React 19 + TypeScript, Vite 6, wagmi + viem, @cofhe/sdk, TailwindCSS + shadcn/ui, Framer Motion
+<Accordion title="ICL — Inference Coordination Layer (network/packages/icl)">
+  **Responsibilities:**
 
-### ICL — Inference Coordination Layer (`network/packages/icl`)
+  - Accept requests: validates encrypted inputs, model ID, coverage preferences
+  - Select quorum: chooses 1 leader + N verifiers from active attested node pool
+  - Persist state: stores request state in MongoDB Atlas (or in-memory for local dev)
+  - Dispatch tasks: pushes tasks to node callback servers with role assignments
+  - Aggregate results: collects leader results and verifier verdicts
+  - Consensus logic: 2/3 match = accepted, <2/3 = rejected, triggers on-chain commitment
+  - Status APIs: provides frontend and node status endpoints
+  - On-chain coordination: registers tasks, commits results, manages escrow
 
-**Responsibilities:**
+  **Tech stack:** Python 3.11+, FastAPI, Pydantic, Motor (async MongoDB), Web3.py
+</Accordion>
 
-- Accept requests: validates encrypted inputs, model ID, coverage preferences
-- Select quorum: chooses 1 leader + N verifiers from active attested node pool
-- Persist state: stores request state in MongoDB Atlas (or in-memory for local dev)
-- Dispatch tasks: pushes tasks to node callback servers with role assignments
-- Aggregate results: collects leader results and verifier verdicts
-- Consensus logic: 2/3 match = accepted, <2/3 = rejected, triggers on-chain commitment
-- Status APIs: provides frontend and node status endpoints
-- On-chain coordination: registers tasks, commits results, manages escrow
+<Accordion title="Node Runtime (Blindference-node/ — standalone package)">
+  **Responsibilities:**
 
-**Tech stack:** Python 3.11+, FastAPI, Pydantic, Motor (async MongoDB), Web3.py
+  - Attestation: auto-re-attests with ICL on startup and watchdog (mock TEE for tier 0)
+  - Heartbeat: sends liveness heartbeat to ICL every 60 seconds
+  - Assignment polling: polls ICL for pending tasks every 5 seconds
+  - Role execution: acts as leader or verifier depending on assignment
+  - CoFHE decryption: decrypts prompt key halves via ACL permits
+  - IPFS fetch: downloads encrypted prompt/output blobs
+  - Model inference: runs Groq Llama 3 or Google Gemini via API
+  - Result submission: submits leader results or verifier verdicts back to ICL
 
-### Node Runtime (`Blindference-node/` — standalone package)
+  **Tech stack:** Python 3.10+, click, aiohttp, Web3.py, eth-account, cryptography
+</Accordion>
 
-**Responsibilities:**
+## Smart Contracts
 
-- Attestation: auto-re-attests with ICL on startup and watchdog (mock TEE for tier 0)
-- Heartbeat: sends liveness heartbeat to ICL every 60 seconds
-- Assignment polling: polls ICL for pending tasks every 5 seconds
-- Role execution: acts as leader or verifier depending on assignment
-- CoFHE decryption: decrypts prompt key halves via ACL permits
-- IPFS fetch: downloads encrypted prompt/output blobs
-- Model inference: runs Groq Llama 3 or Google Gemini via API
-- Result submission: submits leader results or verifier verdicts back to ICL
-
-**Tech stack:** Python 3.10+, click, aiohttp, Web3.py, eth-account, cryptography
-
-### Smart Contracts
-
-#### Protocol Layer (`network/packages/contracts`)
+### Protocol Layer (network/packages/contracts)
 
 | Contract | Purpose |
 |----------|---------|
@@ -128,7 +129,7 @@ flowchart TB
 | `RewardAccumulator` | Reward distribution and claim management |
 | `PromptKeyStore` | Stores CoFHE-encrypted AES key halves for text inference |
 
-#### Demo Vertical (`network/packages/blindference-demo`)
+### Demo Vertical (network/packages/blindference-demo)
 
 | Contract | Purpose |
 |----------|---------|
@@ -141,13 +142,14 @@ flowchart TB
 
 ## Privacy Models
 
-### Risk Scoring Flow
-
-Browser CoFHE ciphertexts with per-node permit sharing. Features remain as FHE ciphertexts throughout.
-
-### Text Inference Flow
-
-AES-encrypted prompt/output blobs with on-chain key storage. Prompt content is encrypted in browser before upload. Keys are protected with CoFHE threshold FHE.
+<Tabs>
+  <Tab title="Risk Scoring Flow">
+    Browser CoFHE ciphertexts with per-node permit sharing. Features remain as FHE ciphertexts throughout.
+  </Tab>
+  <Tab title="Text Inference Flow">
+    AES-encrypted prompt/output blobs with on-chain key storage. Prompt content is encrypted in browser before upload. Keys are protected with CoFHE threshold FHE.
+  </Tab>
+</Tabs>
 
 ## Quorum Consensus
 
@@ -178,18 +180,18 @@ AES-encrypted prompt/output blobs with on-chain key storage. Prompt content is e
 
 ## Security Model
 
-### Threat: Malicious Leader
+<Accordion title="Threat: Malicious Leader">
+  **Mitigation**: Verifiers independently run the same inference. If leader result doesn't match, verifiers reject. <2/3 consensus = rejection, leader may be slashed.
+</Accordion>
 
-**Mitigation**: Verifiers independently run the same inference. If leader result doesn't match, verifiers reject. <2/3 consensus = rejection, leader may be slashed.
+<Accordion title="Threat: Compromised Node">
+  **Mitigation**: Tiered attestation (mock/TPM/TEE). Nodes must re-attest periodically. Compromised nodes lose reputation and are excluded from quorum selection.
+</Accordion>
 
-### Threat: Compromised Node
+<Accordion title="Threat: ICL Compromise">
+  **Mitigation**: ICL cannot decrypt anything — it only coordinates. Encryption keys are never sent to ICL. ACL enforcement happens in CoFHE threshold network, not ICL.
+</Accordion>
 
-**Mitigation**: Tiered attestation (mock/TPM/TEE). Nodes must re-attest periodically. Compromised nodes lose reputation and are excluded from quorum selection.
-
-### Threat: ICL Compromise
-
-**Mitigation**: ICL cannot decrypt anything — it only coordinates. Encryption keys are never sent to ICL. ACL enforcement happens in CoFHE threshold network, not ICL.
-
-### Threat: Front-end XSS
-
-**Mitigation**: All encryption happens in browser before DOM rendering. Keys are ephemeral (per-request). No long-lived secrets in localStorage.
+<Accordion title="Threat: Front-end XSS">
+  **Mitigation**: All encryption happens in browser before DOM rendering. Keys are ephemeral (per-request). No long-lived secrets in localStorage.
+</Accordion>

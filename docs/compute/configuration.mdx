@@ -1,6 +1,7 @@
 ---
 title: Configuration
 description: 'All configuration options and environment variables'
+icon: 'settings'
 ---
 
 # Configuration
@@ -9,7 +10,7 @@ All configuration is stored in `~/.blindference/config.json` and can be overridd
 
 ## Default Configuration
 
-```json
+```json title="~/.blindference/config.json"
 {
   "node_address": "0x...",
   "keystore_path": "~/.blindference/keystore.json",
@@ -27,7 +28,7 @@ All configuration is stored in `~/.blindference/config.json` and can be overridd
   "attestation_expiry": 0,
   "stake_amount_wei": 0,
   "cofhe_mode": "bridge",
-  "cofhe_endpoint": "https://arb-sepolia.g.alchemy.com/v2/demo",
+  "cofhe_endpoint": "",
   "cofhe_chain_id": 421614,
   "skip_output_key_storage": false
 }
@@ -39,7 +40,7 @@ Every config field can be overridden via an environment variable. The mapping is
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `BLF_NODE_ADDRESS` | string | auto-generated | Ethereum address (0x...) |
+| `BLF_NODE_ADDRESS` | string | auto-generated | Ethereum address (0x…) |
 | `BLF_KEYSTORE_PATH` | string | `~/.blindference/keystore.json` | Path to encrypted keystore |
 | `BLF_TIER` | int | 0 | Attestation tier (0=mock, 1=TPM, 2=TEE) |
 | `BLF_SUPPORTED_MODEL_IDS` | list | `facebook/opt-125m` | Comma-separated model IDs |
@@ -56,30 +57,35 @@ Every config field can be overridden via an environment variable. The mapping is
 
 ## CoFHE Modes
 
-### Bridge Mode (Default)
+<Tabs>
+  <Tab title="Bridge Mode (Default)">
+    Spawns a TypeScript subprocess via `@cofhe/sdk/node` for CoFHE operations.
 
-Spawns a TypeScript subprocess via `@cofhe/sdk/node` for CoFHE operations.
+    - More reliable SDK lifecycle
+    - Handles WASM loading correctly
+    - Better error handling
+    - Slightly higher overhead
 
-- More reliable SDK lifecycle
-- Handles WASM loading correctly
-- Better error handling
-- Slightly higher overhead
+    ```bash title="Run in bridge mode"
+    BLF_COFHE_MODE=bridge blindference-node run
+    ```
 
-```bash
-BLF_COFHE_MODE=bridge blindference-node run
-```
+    <Tip>
+      Bridge mode is recommended for production. It handles CoFHE SDK initialization more reliably than direct HTTP calls.
+    </Tip>
+  </Tab>
+  <Tab title="Python Mode (Alternative)">
+    Direct HTTP calls to CoFHE endpoints.
 
-### Python Mode (Alternative)
+    - Lighter weight
+    - Requires manual session management
+    - Good for resource-constrained environments
 
-Direct HTTP calls to CoFHE endpoints.
-
-- Lighter weight
-- Requires manual session management
-- Good for resource-constrained environments
-
-```bash
-BLF_COFHE_MODE=python blindference-node run
-```
+    ```bash title="Run in python mode"
+    BLF_COFHE_MODE=python blindference-node run
+    ```
+  </Tab>
+</Tabs>
 
 ## Model IDs
 
@@ -93,13 +99,13 @@ Supported models for inference:
 
 Set multiple models:
 
-```bash
+```bash title="Set multiple supported models"
 BLF_SUPPORTED_MODEL_IDS=qwen2.5-7b,groq:llama-3.3-70b-versatile,gemini:gemini-2.5-flash
 ```
 
 ## Example: Full Non-Interactive Setup
 
-```bash
+```bash title="Non-interactive environment setup"
 export BLF_PRIVATE_KEY=0x...
 export BLF_KEY_PASSWORD=secure_password
 export BLF_ICL_ENDPOINT=https://icl.blindference.xyz
@@ -112,7 +118,7 @@ blindference-node run
 
 ## Example: Local Development Stack
 
-```bash
+```bash title="Local development configuration"
 # ICL running locally
 export BLF_ICL_ENDPOINT=http://127.0.0.1:9000
 
@@ -124,3 +130,7 @@ export BLF_LOG_LEVEL=DEBUG
 
 blindference-node run
 ```
+
+<Warning>
+  Never commit `.env` files with private keys or API keys to version control. Use a secrets manager in production.
+</Warning>

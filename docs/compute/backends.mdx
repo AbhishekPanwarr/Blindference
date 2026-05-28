@@ -1,6 +1,7 @@
 ---
 title: Model Backends
 description: 'Pluggable inference backend system'
+icon: 'cpu'
 ---
 
 # Model Backends
@@ -20,7 +21,7 @@ Blindference Node uses a **pluggable backend registry** to support multiple infe
 
 All backends implement the `ModelBackend` abstract base class:
 
-```python
+```python title="Custom backend example"
 from blindference_node.models.base import ModelBackend
 
 class MyBackend(ModelBackend):
@@ -40,71 +41,72 @@ class MyBackend(ModelBackend):
 
 ## Adding Custom Backends
 
-### 1. Config Dotted Path (Fastest)
+<Accordion title="1. Config Dotted Path (Fastest)">
+  Write a Python module anywhere on your `PYTHONPATH`:
 
-Write a Python module anywhere on your `PYTHONPATH`:
+  ```python title="my_backend.py"
+  from blindference_node.models.base import ModelBackend
 
-```python
-# my_backend.py
-from blindference_node.models.base import ModelBackend
+  class OllamaBackend(ModelBackend):
+      def name(self): return "ollama"
+      def is_available(self): return True
+      def supported_models(self): return ["ollama:llama3.1"]
+      def run(self, model_id, prompt):
+          # Your inference logic
+          return "result"
+  ```
 
-class OllamaBackend(ModelBackend):
-    def name(self): return "ollama"
-    def is_available(self): return True
-    def supported_models(self): return ["ollama:llama3.1"]
-    def run(self, model_id, prompt):
-        # Your inference logic
-        return "result"
-```
+  Register via CLI:
 
-Register via CLI:
+  ```bash title="Register custom backend"
+  blindference-node models add my_backend:OllamaBackend
+  ```
 
-```bash
-blindference-node models add my_backend:OllamaBackend
-```
+  The path is validated (imported + instantiated), then persisted in `~/.blindference/config.json`:
 
-The path is validated (imported + instantiated), then persisted in `~/.blindference/config.json`:
+  ```json title="Updated config.json"
+  {
+    "custom_backends": ["my_backend:OllamaBackend"]
+  }
+  ```
+</Accordion>
 
-```json
-{
-  "custom_backends": ["my_backend:OllamaBackend"]
-}
-```
+<Accordion title="2. Entry-Point Plugins (For Published Packages)">
+  Declare in your `pyproject.toml`:
 
-### 2. Entry-Point Plugins (For Published Packages)
+  ```toml title="pyproject.toml"
+  [project.entry-points."blindference.backends"]
+  ollama = "my_package.backends:OllamaBackend"
+  ```
 
-Declare in your `pyproject.toml`:
+  Users install your package:
 
-```toml
-[project.entry-points."blindference.backends"]
-ollama = "my_package.backends:OllamaBackend"
-```
+  ```bash title="Install plugin package"
+  pip install blindference-node-ollama
+  ```
 
-Users install your package:
+  The node auto-discovers it on startup via `importlib.metadata`.
+</Accordion>
 
-```bash
-pip install blindference-node-ollama
-```
-
-The node auto-discovers it on startup via `importlib.metadata`.
-
-### 3. Fork & Extend
-
-Add your backend class under `blindference_node/models/` and register it in `backend_loader.py::_register_builtin()`.
+<Accordion title="3. Fork & Extend">
+  Add your backend class under `blindference_node/models/` and register it in `backend_loader.py::_register_builtin()`.
+</Accordion>
 
 ## CLI Backend Management
 
-```bash
-# List all registered backends and availability
+```bash title="List all registered backends"
 blindference-node models list
+```
 
-# Test a specific backend
+```bash title="Test a specific backend"
 blindference-node models test --backend groq --model groq:llama-3.3-70b-versatile --prompt "Hello"
+```
 
-# Test all available backends
+```bash title="Test all available backends"
 blindference-node models test --model qwen2.5-7b --prompt "2+2="
+```
 
-# Add a custom backend (validates import before saving)
+```bash title="Add a custom backend"
 blindference-node models add my_package.backends:CustomBackend
 ```
 
@@ -118,7 +120,9 @@ Later registrations override earlier ones for the same `model_id`.
 
 ## Determinism Requirement
 
-All backends **must produce byte-identical output** for the same `(model_id, prompt)` pair. Required for quorum consensus.
+<Warning>
+  All backends **must produce byte-identical output** for the same `(model_id, prompt)` pair. Required for quorum consensus.
+</Warning>
 
 **Tips**:
 - Set `temperature=0`, `top_p=1`, `top_k=-1`

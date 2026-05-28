@@ -9,21 +9,21 @@ interface NodeStatsCardProps {
 }
 
 const accentClasses = {
-  default: 'border-zinc-800 bg-zinc-900/40',
-  warning: 'border-yellow-900/30 bg-yellow-950/20',
-  danger: 'border-red-900/30 bg-red-950/20',
-  success: 'border-emerald-900/30 bg-emerald-950/20',
+  default: 'border-white/10 bg-[rgba(10,10,10,0.6)] glass-card',
+  warning: 'border-warning/30 bg-warning/10',
+  danger: 'border-error/30 bg-error/10',
+  success: 'border-success/30 bg-success/10',
 }
 
 export function NodeStatsCard({ title, value, subtitle, icon, accent = 'default' }: NodeStatsCardProps) {
   return (
-    <div className={`rounded-xl border p-5 ${accentClasses[accent]}`}>
+    <div className={`rounded-xl border p-5 ${accentClasses[accent]} glass-card-hover transition-colors`}>
       <div className="flex items-center gap-3 mb-3">
-        <div className="text-zinc-400">{icon}</div>
-        <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">{title}</span>
+        <div className="text-orange-400">{icon}</div>
+        <span className="text-xs font-medium text-white/50 uppercase tracking-wider">{title}</span>
       </div>
-      <div className="text-2xl font-semibold text-white">{value}</div>
-      {subtitle && <div className="text-xs text-zinc-500 mt-1">{subtitle}</div>}
+      <div className="text-2xl font-semibold text-white font-heading">{value}</div>
+      {subtitle && <div className="text-xs text-white/50 mt-1">{subtitle}</div>}
     </div>
   )
 }
