@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import PaymentServiceSettings, get_settings
 from db.database import close_database, ensure_indexes, get_database, ping_database
 from routers.credits import router as credits_router
+from routers.developers import router as developers_router
 from routers.jobs import router as jobs_router
 from routers.nodes import router as nodes_router
 from services import ServiceContainer
@@ -144,6 +145,7 @@ def create_app(settings: PaymentServiceSettings | None = None) -> FastAPI:
     # Consider slowapi (Redis-backed) or a reverse proxy (nginx/traefik).
 
     app.include_router(credits_router)
+    app.include_router(developers_router)
     app.include_router(jobs_router)
     app.include_router(nodes_router)
 

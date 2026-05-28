@@ -156,6 +156,7 @@ class JobService:
             escrow_id=escrow_id,
             coverage_id=coverage_id,
             status="RUNNING",
+            source=payload.source or "frontend",
             created_at=now,
             updated_at=now,
         )

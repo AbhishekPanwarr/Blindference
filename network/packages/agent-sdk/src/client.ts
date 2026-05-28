@@ -180,6 +180,7 @@ export class InferenceClient {
       modelId?: string
       paymentMode?: 'escrow' | 'credits'
       paymentCurrency?: 'cusdc' | 'blind'
+      source?: 'frontend' | 'sdk'
     },
     options?: { insurance?: boolean }
   ): Promise<InferenceResult> {
@@ -213,7 +214,9 @@ export class InferenceClient {
       verifier_count: 2,
       payment_mode: payload.paymentMode || 'credits',
       payment_currency: payload.paymentCurrency || 'blind',
-      metadata: {},
+      metadata: {
+        source: payload.source || 'sdk',
+      },
     })
 
     const data = resp.data as any

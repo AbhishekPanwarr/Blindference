@@ -14,6 +14,7 @@ import { BuyCreditsPage } from './pages/BuyCreditsPage'
 import { CreateEscrowPage } from './pages/CreateEscrowPage'
 import { NodeDashboardPage } from './pages/NodeDashboardPage'
 import { WalletPage } from './pages/WalletPage'
+import { DeveloperDashboardPage } from './pages/DeveloperDashboardPage'
 import LandingPage from './pages/LandingPage'
 import { truncateAddress } from './utils/helpers'
 
@@ -60,6 +61,7 @@ function Navbar() {
     { path: '/create-escrow', label: 'Escrow' },
     { path: '/node-dashboard', label: 'Nodes' },
     { path: '/node-registration', label: 'Join' },
+    { path: '/developer-dashboard', label: 'Developer' },
     { path: '/settings', label: 'Settings' },
   ]
 
@@ -226,6 +228,7 @@ function App() {
           <Route element={<CreateEscrowPage />} path="create-escrow" />
           <Route element={<NodeRegistrationPage />} path="node-registration" />
           <Route element={<NodeDashboardPage />} path="node-dashboard" />
+          <Route element={<DeveloperDashboardPage />} path="developer-dashboard" />
           <Route element={<SettingsPage />} path="settings" />
           <Route element={
             <Suspense fallback={<RouteFallback />}>

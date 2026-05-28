@@ -431,6 +431,7 @@ export function InferenceNewPage() {
           prompt_key_store_tx: promptKeyStoreTx,
           prompt_key_store_status: 'stored_by_user',
           prompt_key_store_address: promptKeyStoreAddress,
+          source: 'frontend',
         },
       })
 

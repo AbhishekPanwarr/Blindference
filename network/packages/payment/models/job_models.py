@@ -25,6 +25,7 @@ class JobSubmitRequest(BaseModel):
     min_tier: int = 0
     zdr_required: bool = False
     verifier_count: int = 2
+    source: Literal["frontend", "sdk"] = "frontend"
     metadata: dict = Field(default_factory=dict)
 
 
@@ -52,6 +53,7 @@ class JobRecord(BaseModel):
     reward_tx_hashes: list[str] = Field(default_factory=list)
     rewards: dict[str, float] = Field(default_factory=dict)
     task_id: str | None = None
+    source: Literal["frontend", "sdk"] = "frontend"
     created_at: datetime
     updated_at: datetime
 

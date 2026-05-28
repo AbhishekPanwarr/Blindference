@@ -220,12 +220,25 @@ export const inferenceApi = {
   },
 }
 
+export type DeveloperStats = {
+  address: string
+  total_jobs: number
+  completed: number
+  failed: number
+  rejected: number
+  total_cusdc_spent: number
+  total_blind_spent: number
+}
+
 export const jobApi = {
   submit(payload: JobSubmitPayload) {
     return paymentApiClient.post<JobSubmitResponse>('/v1/jobs/submit', payload)
   },
   getStatus(jobId: string) {
     return paymentApiClient.get<JobStatusResponse>(`/v1/jobs/${jobId}`)
+  },
+  getDeveloperStats(address: string) {
+    return paymentApiClient.get<DeveloperStats>(`/v1/developers/${address}/stats`)
   },
 }
 
