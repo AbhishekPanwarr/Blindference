@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from web3 import Web3
 
 from services import ServiceContainer, get_service_container
@@ -23,6 +25,46 @@ async def get_balance(
     """Return credit balance for a user address."""
     balance = await services.credit_service.get_balance(address)
     return {"user_address": address.lower(), **balance}
+
+
+@router.get("/balance/stream/{address}")
+async def balance_stream(
+    address: str,
+    request: Request,
+    services: ServiceContainer = Depends(get_service_container),
+):
+    """Server-Sent Events (SSE) stream of balance updates for *address*.
+
+    The backend polls the database every 10 seconds and only pushes an
+    event when the balance actually changes. This eliminates frontend
+    polling and scales to many concurrent clients per address.
+    """
+    user_address = address.lower()
+    last_balance: dict[str, Any] | None = None
+
+    async def event_generator():
+        nonlocal last_balance
+        while True:
+            if await request.is_disconnected():
+                break
+            try:
+                balance = await services.credit_service.get_balance(user_address)
+                payload = {"user_address": user_address, **balance}
+                if payload != last_balance:
+                    last_balance = payload
+                    yield f"data: {json.dumps(payload)}\n\n"
+            except Exception as exc:
+                logger.warning("Balance stream error for %s: %s", user_address, exc)
+            await asyncio.sleep(10)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering for SSE
+        },
+    )
 
 
 @router.post("/deposit")
