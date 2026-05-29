@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import random
+
 from services.chain_service import ChainService
 
 
@@ -43,6 +45,11 @@ class NodeSelector:
                 snapshot["operator_address"],
             )
         )
+
+        # Randomly shuffle among top candidates for fairness while preserving quality.
+        # A node in the top 2×(verifier_count+1) is eligible for any role.
+        top_k = min(len(candidate_snapshots), 2 * (verifier_count + 1))
+        random.shuffle(candidate_snapshots[:top_k])
 
         leader = candidate_snapshots[0]["operator_address"]
         verifiers = [
