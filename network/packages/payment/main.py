@@ -129,16 +129,22 @@ def create_app(settings: PaymentServiceSettings | None = None) -> FastAPI:
 
     @app.middleware("http")
     async def log_requests(request: Request, call_next):
+        """Production request logging: always log errors and slow paths; sample successes."""
         started_at = time.perf_counter()
         response = await call_next(request)
         elapsed_ms = (time.perf_counter() - started_at) * 1000
-        logger.info(
-            "%s %s status=%s elapsed_ms=%.2f",
-            request.method,
-            request.url.path,
-            response.status_code,
-            elapsed_ms,
-        )
+        status = response.status_code
+        is_error = status >= 400
+        is_slow = elapsed_ms > 1000
+        should_sample = (hash(request.url.path) % 10) == 0  # ~10% sample
+        if is_error or is_slow or should_sample:
+            logger.info(
+                "%s %s status=%s elapsed_ms=%.2f",
+                request.method,
+                request.url.path,
+                status,
+                elapsed_ms,
+            )
         return response
 
     # TODO: Add rate limiting middleware for production.
