@@ -161,7 +161,7 @@ class JobService:
             updated_at=now,
         )
         job_dict = job_record.model_dump()
-        job_dict.pop("source", None)  # Remove 'source' if DB schema doesn't have it yet
+        job_dict.pop("source", None)  # Supabase jobs table has no 'source' column (PGRST204)
         await self.database[JOBS].insert_one(job_dict)
         logger.info("Job record created: job_id=%s task_id=%s", job_id, payload.task_id)
 
