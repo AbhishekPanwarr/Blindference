@@ -149,7 +149,7 @@ contract ReineiraSettlementTest is Test {
 
         claimer.claim(escrowId, JOB_ID);
 
-        vm.expectRevert("Already claimed");
+        vm.expectRevert("Already redeemed");
         claimer.claim(escrowId, JOB_ID);
     }
 
