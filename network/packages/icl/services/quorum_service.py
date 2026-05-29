@@ -4,6 +4,7 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 import json
 import logging
+import time
 from typing import TYPE_CHECKING
 
 import httpx
@@ -59,6 +60,11 @@ logger = logging.getLogger("blindference.icl.quorum")
 
 
 class QuorumService:
+    # In-memory caches to reduce DB load under polling workloads.
+    # TTL values are chosen to balance freshness vs. query cost.
+    _ASSIGNMENT_CACHE_TTL_SECONDS = 15
+    _HEARTBEAT_MEMORY_FLUSH_INTERVAL_SECONDS = 300  # 5 minutes
+
     def __init__(
         self,
         database,
@@ -72,6 +78,32 @@ class QuorumService:
         self.node_selector = node_selector
         self.verdict_aggregator = verdict_aggregator
         self.model_registry_service = model_registry_service
+        # assignment_cache[node_address] = (task_ids_list, timestamp)
+        self._assignment_cache: dict[str, tuple[list[str], float]] = {}
+        # heartbeat_memory[node_address] = last_seen_timestamp
+        self._heartbeat_memory: dict[str, float] = {}
+        self._last_heartbeat_flush: float = 0.0
+
+    async def _maybe_flush_heartbeats(self) -> None:
+        """Flush accumulated in-memory heartbeats to the DB at most every 5 minutes."""
+        now = time.time()
+        if (now - self._last_heartbeat_flush) < self._HEARTBEAT_MEMORY_FLUSH_INTERVAL_SECONDS:
+            return
+        self._last_heartbeat_flush = now
+        if not self._heartbeat_memory:
+            return
+        # Snapshot and clear
+        snapshot = dict(self._heartbeat_memory)
+        self._heartbeat_memory.clear()
+        # Batch write via asyncio.gather for parallelism
+        tasks = [
+            self.chain_service.refresh_operator_heartbeat(addr)
+            for addr in snapshot.keys()
+        ]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        failed = sum(1 for r in results if isinstance(r, Exception))
+        if failed:
+            logger.warning("Heartbeat flush: %d/%d failed", failed, len(tasks))
 
     def _is_text_mode(self, payload: InferenceRequestCreate) -> bool:
         return payload.mode.lower() == "text"
@@ -224,39 +256,39 @@ class QuorumService:
         return await self.get_request(request_record.request_id)
 
     async def _create_text_request(self, payload: InferenceRequestCreate) -> InferenceRequestResponse:
-        logger.info("[Trace] _create_text_request start: task_id=%s model_id=%s", payload.task_id, payload.model_id)
+        logger.debug("[Trace] _create_text_request start: task_id=%s model_id=%s", payload.task_id, payload.model_id)
         if payload.text_request is None:
             logger.error("[Trace] text_request missing for text mode")
             raise ValueError("text_request is required when mode='text'")
 
         effective_model_id = payload.text_request.model_id or payload.model_id or "text-inference"
-        logger.info("[Trace] effective_model_id=%s", effective_model_id)
+        logger.debug("[Trace] effective_model_id=%s", effective_model_id)
 
         # Look up the model's min_tier from the catalog and enforce it
         effective_min_tier = payload.min_tier
-        logger.info("[Trace] _create_text_request: payload.min_tier=%d", payload.min_tier)
+        logger.debug("[Trace] _create_text_request: payload.min_tier=%d", payload.min_tier)
         if self.model_registry_service is not None:
             model_info = await self.model_registry_service.get_model(effective_model_id)
             if model_info is not None:
                 catalog_min_tier = model_info.get("min_tier", 0)
-                logger.info("[Trace] _create_text_request: catalog_min_tier=%d current_effective=%d", catalog_min_tier, effective_min_tier)
+                logger.debug("[Trace] _create_text_request: catalog_min_tier=%d current_effective=%d", catalog_min_tier, effective_min_tier)
                 if catalog_min_tier > effective_min_tier:
                     effective_min_tier = catalog_min_tier
-                    logger.info("[Trace] _create_text_request: elevated effective_min_tier to %d", effective_min_tier)
+                    logger.debug("[Trace] _create_text_request: elevated effective_min_tier to %d", effective_min_tier)
 
         selected_quorum = await self.preview_quorum(
             min_tier=effective_min_tier,
             zdr_required=payload.zdr_required,
             verifier_count=payload.verifier_count,
         )
-        logger.info("[Trace] preview_quorum: leader=%s verifiers=%s", selected_quorum.get("leader_address"), selected_quorum.get("verifier_addresses"))
+        logger.debug("[Trace] preview_quorum: leader=%s verifiers=%s", selected_quorum.get("leader_address"), selected_quorum.get("verifier_addresses"))
         quorum = self._resolve_requested_quorum(payload, selected_quorum)
         required_nodes = [
             quorum["leader_address"],
             *list(quorum["verifier_addresses"]),
         ]
         normalized_permits = self._normalize_permit_entries(payload.permits)
-        logger.info("[Trace] permits count=%d", len(normalized_permits))
+        logger.debug("[Trace] permits count=%d", len(normalized_permits))
         if normalized_permits:
             missing_nodes = [
                 node_address
@@ -341,7 +373,7 @@ class QuorumService:
 
         await self.database[INFERENCE_REQUESTS].insert_one(request_record.model_dump())
         await self.database[QUORUM_ASSIGNMENTS].insert_one(assignment_record.model_dump())
-        logger.info("[Trace] DB records inserted: request_id=%s", request_record.request_id)
+        logger.debug("[Trace] DB records inserted: request_id=%s", request_record.request_id)
         if normalized_permits:
             await self.database[PERMITS].update_one(
                 {"task_id": request_record.task_id},
@@ -355,7 +387,7 @@ class QuorumService:
             )
             metadata["permits"] = [self._permit_record_to_metadata(entry) for entry in normalized_permits]
 
-        logger.info("[Trace] Calling chain_service.register_task: task_id=%s model_id=%s", request_record.task_id, request_record.model_id)
+        logger.debug("[Trace] Calling chain_service.register_task: task_id=%s model_id=%s", request_record.task_id, request_record.model_id)
         try:
             chain_registration = await self.chain_service.register_task(
                 task_id=request_record.task_id,
@@ -364,7 +396,7 @@ class QuorumService:
                 cross_verifier_address=assignment_record.verifier_addresses[0],
                 model_id=request_record.model_id,
             )
-            logger.info("[Trace] register_task success: tx_hash=%s", chain_registration.get("tx_hash"))
+            logger.debug("[Trace] register_task success: tx_hash=%s", chain_registration.get("tx_hash"))
         except Exception as exc:
             logger.error("[Trace] register_task FAILED: %s", exc, exc_info=True)
             raise ValueError(f"On-chain task registration failed: {exc}") from exc
@@ -1683,8 +1715,19 @@ class QuorumService:
         )
 
     async def _get_pending_assignments(self, node_address: str) -> list[str]:
-        """Return task IDs that are assigned to *node_address* and still pending."""
+        """Return task IDs that are assigned to *node_address* and still pending.
+
+        Results are cached per node for 15 seconds to reduce DB load when
+        multiple nodes poll frequently.
+        """
         checksum = self.chain_service.web3_client.checksum_address(node_address)
+
+        # Check in-memory cache first
+        cached = self._assignment_cache.get(checksum)
+        now_ts = time.time()
+        if cached and (now_ts - cached[1]) < self._ASSIGNMENT_CACHE_TTL_SECONDS:
+            return cached[0]
+
         assigned_ids: list[str] = []
         now = datetime.now(timezone.utc)
 
@@ -1726,6 +1769,8 @@ class QuorumService:
 
             result_ids.append(task_id)
 
+        # Store in cache
+        self._assignment_cache[checksum] = (result_ids, now_ts)
         return result_ids
 
     async def _mark_node_assignment_failed(

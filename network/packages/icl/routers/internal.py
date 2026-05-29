@@ -321,7 +321,11 @@ async def receive_heartbeat(
     request: Request,
     services: ServiceContainer = Depends(get_service_container),
 ) -> dict[str, str]:
-    """Receive a node liveness heartbeat."""
+    """Receive a node liveness heartbeat.
+
+    Writes are accumulated in an in-memory cache and flushed to the
+    database every 5 minutes to reduce DB write load under many nodes.
+    """
     try:
         body = await request.json()
     except Exception:
@@ -331,8 +335,12 @@ async def receive_heartbeat(
     if not node_address:
         raise HTTPException(status_code=400, detail="nodeAddress is required")
 
+    # Accumulate in memory; flush to DB is handled periodically by QuorumService
+    services.quorum_service._heartbeat_memory[node_address] = time.time()
+
+    # Best-effort DB flush every 5 minutes (first heartbeat after window)
     try:
-        await services.chain_service.refresh_operator_heartbeat(node_address)
+        await services.quorum_service._maybe_flush_heartbeats()
     except Exception:
         pass
 
