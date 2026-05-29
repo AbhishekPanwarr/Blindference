@@ -160,7 +160,9 @@ class JobService:
             created_at=now,
             updated_at=now,
         )
-        await self.database[JOBS].insert_one(job_record.model_dump())
+        job_dict = job_record.model_dump()
+        job_dict.pop("source", None)  # Remove 'source' if DB schema doesn't have it yet
+        await self.database[JOBS].insert_one(job_dict)
         logger.info("Job record created: job_id=%s task_id=%s", job_id, payload.task_id)
 
         # 6. Forward to ICL with retry
