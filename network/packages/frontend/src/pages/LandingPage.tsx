@@ -75,12 +75,19 @@ function HeroSection() {
       <AuroraBlobs />
       <Scanlines />
 
-      {/* Globe as subtle background element */}
-      <div className="absolute inset-0 z-[1] pointer-events-none flex items-center justify-center opacity-30 lg:opacity-40">
-        <DottedGlobe className="w-[50rem] max-w-none lg:w-[60rem] xl:w-[70rem] scale-110" />
-      </div>
+      {/* Globe — positioned to the right, NullPay-style */}
+      <motion.div
+        variants={fadeInScale}
+        initial="hidden"
+        animate="show"
+        className="pointer-events-none absolute inset-0 z-[1] overflow-hidden"
+      >
+        <div className="absolute right-[-18rem] top-1/2 -translate-y-1/2 opacity-80 sm:right-[-12rem] md:right-[-12%] lg:right-[-8%] xl:right-[-4%]">
+          <DottedGlobe className="w-[26rem] max-w-none sm:w-[30rem] md:w-[34rem] lg:w-[38rem] xl:w-[42rem]" />
+        </div>
+      </motion.div>
 
-      <div className="relative z-10 w-full px-6 md:px-12 pt-24 pb-12 flex flex-col items-center text-center">
+      <div className="relative z-10 w-full px-6 md:px-12 lg:px-24 pt-6 md:pt-36 pb-12 flex flex-col items-center text-center">
         <motion.div
           variants={staggerSlow}
           initial="hidden"
