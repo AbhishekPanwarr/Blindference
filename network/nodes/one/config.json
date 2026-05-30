@@ -1,0 +1,29 @@
+{
+  "node_address": "0xdDef3Cf5A4d0A6404Bc084D74de3E2c0d6147dA5",
+  "keystore_path": "/app/nodes/one/keystore.json",
+  "tier": 1,
+  "supported_model_ids": [
+    "facebook/opt-125m",
+    "groq:llama-3.3-70b-versatile",
+    "gemini:gemini-2.5-flash"
+  ],
+  "attestation_backend": "mock",
+  "icl_endpoint": "http://0.0.0.0:8000",
+  "payment_service_url": "http://127.0.0.1:8001",
+  "rpc_url": "https://arb-sepolia.g.alchemy.com/v2/CLl67U7NpBZOh63FwiaV7",
+  "ipfs_gateway": "https://gateway.pinata.cloud/ipfs",
+  "model_cache_dir": "/app/nodes/one/models",
+  "log_level": "DEBUG",
+  "zdr_compliant": false,
+  "network": "fhenix_testnet",
+  "attestation_cert_hash": "0x01f3c98703ca4f43a510f7cfa0de10a4",
+  "attestation_expiry": 1780216912,
+  "registered_on_chain": true,
+  "stake_amount_wei": 0,
+  "cofhe_mode": "bridge",
+  "cofhe_endpoint": "https://arb-sepolia.g.alchemy.com/v2/CLl67U7NpBZOh63FwiaV7",
+  "cofhe_chain_id": 421614,
+  "skip_output_key_storage": false,
+  "custom_backends": [],
+  "blind_token_address": "0x232D5470DaaC7AD552a42d876aDEF1f778033cE0"
+}

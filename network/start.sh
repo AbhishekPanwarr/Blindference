@@ -42,7 +42,7 @@ BLF_STAKE_AMOUNT=1
 EOF
 }
 
-# Function to run a node's full lifecycle (sequential within node, parallel across nodes)
+# Function to run a node's lifecycle (using pre-generated config)
 run_node() {
     local node_dir=$1
     local node_name=$2
@@ -54,24 +54,17 @@ run_node() {
     cd "$node_dir"
     echo "[Railway] Starting $node_name lifecycle..."
     
-    # Step 1: Init (creates config.json + keystore from .env)
-    echo "[Railway] $node_name: init"
-    blindference-node init
-    
-    # Verify init succeeded
+    # Verify pre-generated config exists
     if [ ! -f "config.json" ]; then
-        echo "[Railway] ERROR: $node_name init failed - config.json not found"
+        echo "[Railway] ERROR: $node_name config.json not found"
         return 1
     fi
     
-    # Small delay to ensure filesystem sync
-    sleep 1
-    
-    # Step 2: Attest with mock attestation
+    # Step 1: Attest with mock attestation
     echo "[Railway] $node_name: attest --mock"
     blindference-node attest --mock
     
-    # Step 3: Stake 1000 BLIND (skip if already staked)
+    # Step 2: Stake 1000 BLIND (skip if already staked)
     echo "[Railway] $node_name: checking stake status..."
     STAKE_STATUS=$(blindference-node staking status 2>/dev/null || echo "staked: 0")
     if echo "$STAKE_STATUS" | grep -iq "staked: 0\|stake: 0\|not staked\|no stake\|0 BLIND"; then
@@ -81,7 +74,7 @@ run_node() {
         echo "[Railway] $node_name: already staked, skipping"
     fi
     
-    # Step 4: Run the node daemon
+    # Step 3: Run the node daemon
     echo "[Railway] $node_name: run"
     blindference-node run
 }

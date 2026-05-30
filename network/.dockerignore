@@ -78,6 +78,7 @@ protocol/
 
 # Blindference node directories (keep .env and keystores for Railway deploy)
 !real/
+!nodes/
 real/*/Blindference-node/.git/
 real/*/Blindference-node/node_modules/
 real/*/Blindference-node/__pycache__/

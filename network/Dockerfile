@@ -26,8 +26,13 @@ RUN pip install -r /app/icl/requirements.txt -r /app/payment/requirements.txt
 # Install blindference-node from PyPI
 RUN pip install blindference-node==0.3.4
 
-# Create isolated node directories (env + keystores generated at runtime)
-RUN mkdir -p /app/nodes/one /app/nodes/two /app/nodes/three
+# Copy pre-initialized node configs and keystores (avoid GPU detection crash in init)
+COPY ./nodes/one/config.json /app/nodes/one/config.json
+COPY ./nodes/one/keystore.json /app/nodes/one/keystore.json
+COPY ./nodes/two/config.json /app/nodes/two/config.json
+COPY ./nodes/two/keystore.json /app/nodes/two/keystore.json
+COPY ./nodes/three/config.json /app/nodes/three/config.json
+COPY ./nodes/three/keystore.json /app/nodes/three/keystore.json
 
 # Copy Nginx config and startup script
 COPY nginx.conf /etc/nginx/nginx.conf
