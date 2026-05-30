@@ -87,20 +87,14 @@ function Navbar() {
       className="fixed top-0 left-0 right-0 z-50 h-20 flex items-center justify-center px-6 pointer-events-none bg-gradient-to-b from-black/80 to-transparent"
     >
       <div className="w-full max-w-7xl flex items-center justify-between pointer-events-auto">
-        {/* Logo */}
-        <Link to="/" className="group flex items-center gap-3 no-underline">
-          <div className="relative w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.3)] group-hover:shadow-[0_0_35px_rgba(249,115,22,0.4)] transition-all duration-500">
-            <div className="w-4 h-4 border-2 border-black group-hover:border-orange-500 rotate-45 group-hover:rotate-90 transition-all duration-500" />
+        {/* Logo — NullPay-style static */}
+        <Link to="/" className="flex items-center gap-3 no-underline">
+          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.15)]">
+            <div className="w-4 h-4 border-2 border-black rotate-45" />
           </div>
           <div className="flex flex-col">
-            <span className="relative text-xl font-bold text-white tracking-tight transition-colors duration-500">
-              <span className="absolute inset-0 text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]" aria-hidden="true">Blindference</span>
-              <span className="group-hover:opacity-0 transition-opacity duration-500">Blindference</span>
-            </span>
-            <span className="relative text-[10px] text-gray-400 uppercase tracking-widest font-medium transition-colors duration-500">
-              <span className="absolute inset-0 text-orange-400/80 opacity-0 group-hover:opacity-100 transition-opacity duration-500" aria-hidden="true">Confidential AI</span>
-              <span className="group-hover:opacity-0 transition-opacity duration-500">Confidential AI</span>
-            </span>
+            <span className="text-xl font-bold text-white tracking-tight">Blindference</span>
+            <span className="text-[10px] text-gray-400 uppercase tracking-[0.2em] font-medium">Confidential AI</span>
           </div>
         </Link>
 
@@ -127,24 +121,16 @@ function Navbar() {
           })}
         </div>
 
-        {/* Actions */}
+        {/* Actions — single CTA */}
         <div className="flex items-center gap-3">
           {isLanding && (
-            <>
-              <Link
-                to="/whitepaper"
-                className="hidden lg:flex items-center justify-center gap-2 px-5 py-2.5 rounded-full border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/[0.12] transition-all duration-300 text-sm font-medium text-white/60 hover:text-white/90"
-              >
-                Read Whitepaper
-              </Link>
-              <Link
-                to="/app"
-                className="hidden md:flex items-center justify-center gap-2 px-5 py-2.5 rounded-full border border-white/[0.08] bg-white/[0.05] hover:bg-white/[0.08] hover:border-white/[0.12] transition-all duration-300 text-sm font-semibold text-white/80 hover:text-white group"
-              >
-                Launch App
-                <svg className="w-4 h-4 text-white/50 group-hover:text-white transition-colors group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-              </Link>
-            </>
+            <Link
+              to="/app"
+              className="hidden md:flex items-center justify-center gap-2 px-6 py-2.5 rounded-full border border-white/[0.1] bg-white/[0.05] hover:bg-white/[0.08] hover:border-white/[0.15] transition-all duration-300 text-sm font-semibold text-white/80 hover:text-white group"
+            >
+              Launch App
+              <svg className="w-4 h-4 text-white/50 group-hover:text-white transition-colors group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            </Link>
           )}
           <WalletButton />
         </div>
