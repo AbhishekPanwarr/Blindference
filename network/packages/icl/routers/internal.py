@@ -369,7 +369,7 @@ async def get_job_status(
             "status": request_doc.get("status", "pending"),
             "outputCid": request_doc.get("output_cid"),
             "leaderCommitment": request_doc.get("commitment_hash"),
-            "failureReason": request_doc.get("failure_reason"),
+            "failureReason": request_doc.get("rejection_reason"),
             "nodeAssignments": request_doc.get("node_assignments", {}),
         }
 
@@ -380,6 +380,6 @@ async def get_job_status(
         "status": data.get("status", "pending"),
         "outputCid": data.get("output_cid"),
         "leaderCommitment": data.get("commitment_hash"),
-        "failureReason": data.get("failure_reason"),
+        "failureReason": data.get("rejection_reason"),
         "nodeAssignments": data.get("node_assignments", {}),
     }

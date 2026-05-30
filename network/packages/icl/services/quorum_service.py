@@ -365,7 +365,7 @@ class QuorumService:
                 "status": "pending",
                 "claimed_at": None,
                 "completed_at": None,
-                "failure_reason": None,
+                "rejection_reason": None,
             }
 
         request_record = InferenceRequestRecord(
@@ -1893,7 +1893,7 @@ class QuorumService:
             {
                 "$set": {
                     f"node_assignments.{node_address}.status": "failed",
-                    f"node_assignments.{node_address}.failure_reason": reason,
+                    f"node_assignments.{node_address}.rejection_reason": reason,
                     f"node_assignments.{node_address}.completed_at": datetime.now(timezone.utc).isoformat(),
                     "updated_at": datetime.now(timezone.utc),
                 }
@@ -1922,7 +1922,7 @@ class QuorumService:
                     {
                         "$set": {
                             "status": "failed",
-                            "failure_reason": "All quorum nodes failed — " + reason,
+                            "rejection_reason": "All quorum nodes failed — " + reason,
                             "updated_at": datetime.now(timezone.utc),
                         }
                     },

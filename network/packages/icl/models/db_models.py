@@ -49,10 +49,10 @@ class InferenceRequestRecord(BaseModel):
     reject_count: int = 0
     dispute_deadline: datetime | None = None
     claimed_nodes: list[str] = Field(default_factory=list)
-    # Per-node assignment tracking: address -> {"status": "pending|claimed|completed|failed", "claimed_at": "...", "completed_at": "...", "failure_reason": "..."}
+    # Per-node assignment tracking: address -> {"status": "pending|claimed|completed|failed", "claimed_at": "...", "completed_at": "...", "rejection_reason": "..."}
     node_assignments: dict[str, dict[str, Any]] = Field(default_factory=dict)
     leader_output_ready: bool = False
-    failure_reason: str | None = None
+    rejection_reason: str | None = None
     escrow_id: int = 0
 
 
