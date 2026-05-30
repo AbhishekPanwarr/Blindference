@@ -99,12 +99,46 @@ export async function uploadToIpfs(data: Buffer, jwt: string, filename = 'blindf
 }
 
 /**
- * Download encrypted payload from IPFS gateway.
+ * Download encrypted payload from IPFS gateway with multi-gateway fallback.
+ *
+ * Checks BLINDFERENCE_IPFS_GATEWAY / IPFS_GATEWAY env vars first, then
+ * tries a list of public gateways.  This handles propagation delays and
+ * rate-limits that are common in cloud environments like Railway.
  */
-export async function downloadFromIpfs(cid: string, gateway = 'https://gateway.pinata.cloud/ipfs'): Promise<Buffer> {
-  const resp = await fetch(`${gateway}/${cid}`)
-  if (!resp.ok) {
-    throw new Error(`IPFS download failed: ${resp.status} ${resp.statusText}`)
+const DEFAULT_IPFS_GATEWAYS = [
+  'https://ipfs.io/ipfs',
+  'https://gateway.pinata.cloud/ipfs',
+  'https://dweb.link/ipfs',
+]
+
+export async function downloadFromIpfs(cid: string, gateway?: string): Promise<Buffer> {
+  // 1. Environment variable override (highest priority)
+  const envGateway = process.env.BLINDFERENCE_IPFS_GATEWAY || process.env.IPFS_GATEWAY
+
+  // 2. CLI / constructor override
+  // 3. Fallback list
+  const gateways = [
+    ...(envGateway ? [envGateway] : []),
+    ...(gateway ? [gateway] : []),
+    ...DEFAULT_IPFS_GATEWAYS,
+  ]
+
+  const errors: string[] = []
+  for (const g of gateways) {
+    const url = `${g.replace(/\/$/, '')}/${cid}`
+    try {
+      const resp = await fetch(url)
+      if (resp.ok) {
+        return Buffer.from(await resp.arrayBuffer())
+      }
+      errors.push(`${url}: ${resp.status} ${resp.statusText}`)
+    } catch (e: any) {
+      errors.push(`${url}: ${e.message || String(e)}`)
+    }
   }
-  return Buffer.from(await resp.arrayBuffer())
+
+  throw new Error(
+    `IPFS download failed after ${gateways.length} attempts (cid=${cid}). ` +
+    `Errors: ${errors.join('; ')}`
+  )
 }

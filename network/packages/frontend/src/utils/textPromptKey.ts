@@ -157,7 +157,7 @@ export async function downloadAndDecryptTextOutput(
   outputCid: string,
   key: Uint8Array,
 ): Promise<string> {
-  const gatewayBaseUrl = (import.meta.env.VITE_IPFS_GATEWAY_URL || 'https://gateway.pinata.cloud/ipfs').replace(/\/$/, '')
+  const gatewayBaseUrl = (import.meta.env.VITE_IPFS_GATEWAY_URL || 'https://ipfs.io/ipfs').replace(/\/\$/, '')
   const response = await fetch(`${gatewayBaseUrl}/${outputCid}`)
   if (!response.ok) {
     throw new Error(`Failed to download encrypted output from IPFS: ${response.statusText}`)

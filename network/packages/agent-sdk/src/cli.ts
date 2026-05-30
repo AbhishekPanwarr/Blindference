@@ -17,7 +17,7 @@ program
   .option('-p, --port <port>', 'Server port', '4000')
   .option('--payment-service <url>', 'Payment Service URL', 'http://localhost:8001')
   .option('--icl <url>', 'ICL URL (defaults to payment service port -1)')
-  .option('--ipfs-gateway <url>', 'IPFS download gateway', 'https://gateway.pinata.cloud/ipfs')
+  .option('--ipfs-gateway <url>', 'IPFS download gateway', process.env.BLINDFERENCE_IPFS_GATEWAY || process.env.IPFS_GATEWAY || 'https://ipfs.io/ipfs')
   .option('--rpc-url <url>', 'Arbitrum Sepolia RPC URL', 'https://sepolia-rollup.arbitrum.io/rpc')
   .option('--pinata-jwt <jwt>', 'Pinata JWT for direct IPFS uploads')
   .option('--prompt-key-store <address>', 'PromptKeyStore contract address')
@@ -57,7 +57,7 @@ program
   .option('--insurance', 'Enable insurance', false)
   .option('--payment-service <url>', 'Payment Service URL', 'http://localhost:8001')
   .option('--icl <url>', 'ICL URL')
-  .option('--ipfs-gateway <url>', 'IPFS download gateway', 'https://gateway.pinata.cloud/ipfs')
+  .option('--ipfs-gateway <url>', 'IPFS download gateway', process.env.BLINDFERENCE_IPFS_GATEWAY || process.env.IPFS_GATEWAY || 'https://ipfs.io/ipfs')
   .option('--rpc-url <url>', 'Arbitrum Sepolia RPC URL', 'https://sepolia-rollup.arbitrum.io/rpc')
   .option('--prompt-key-store <address>', 'PromptKeyStore contract address')
   .action(async (options) => {
