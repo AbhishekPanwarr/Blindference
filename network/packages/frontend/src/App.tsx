@@ -4,6 +4,7 @@ import { Toaster, ToastBar } from 'react-hot-toast'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check, AlertCircle } from 'lucide-react'
 import { lazy, Suspense, useMemo } from 'react'
+import { GrainOverlay } from './components/effects/GrainOverlay'
 
 import { InferenceNewPage } from './pages/InferenceNewPage'
 import { InferenceStatusPage } from './pages/InferenceStatusPage'
@@ -155,15 +156,29 @@ const RouteFallback = () => (
   </div>
 )
 
-const AppLayout = () => (
-  <div className="min-h-screen bg-black text-white relative overflow-hidden">
-    <BackgroundOrbs />
-    <Navbar />
-    <main className="relative z-10 pt-24 px-4 pb-12 container-custom min-h-screen">
-      <Outlet />
-    </main>
-  </div>
-)
+const AppLayout = () => {
+  const location = useLocation()
+  return (
+    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+      <GrainOverlay />
+      <BackgroundOrbs />
+      <Navbar />
+      <main className="relative z-10 pt-24 px-4 pb-12 container-custom min-h-screen">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
+      </main>
+    </div>
+  )
+}
 
 function App() {
   const appContent = useMemo(() => (

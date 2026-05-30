@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { fadeInUp, staggerSlow } from '../lib/animations'
+import { SectionLabel } from '../components/effects/GlowDivider'
 
 const INSTALL_SNIPPET = `npm install @blindference/agent-sdk`
 
@@ -102,7 +103,8 @@ export function DeveloperDashboardPage() {
             <Code2 className="w-5 h-5 text-orange-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold font-heading tracking-tight">Developer Dashboard</h1>
+            <SectionLabel>DEVELOPER DASHBOARD</SectionLabel>
+            <h1 className="text-2xl font-bold font-heading tracking-tight mt-1">Developer Dashboard</h1>
             <p className="text-sm text-white/50">Monitor your SDK usage and integration</p>
           </div>
         </motion.div>

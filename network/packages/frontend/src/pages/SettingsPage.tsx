@@ -3,6 +3,7 @@ import { useAccount, useDisconnect, useConnect } from 'wagmi'
 import { LogOut, Wallet, Lock, Unlock, Globe, Trash2, CheckCircle, Copy, Shield, Cpu } from 'lucide-react'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Badge } from '../components/ui/Badge'
+import { SectionLabel } from '../components/effects/GlowDivider'
 
 export function SettingsPage() {
   const { address, isConnected } = useAccount()
@@ -50,12 +51,13 @@ export function SettingsPage() {
   return (
     <div className="px-6 py-8 max-w-2xl mx-auto space-y-8">
       <div>
-        <h1 className="text-2xl font-heading gradient-text mb-1">Settings</h1>
+        <SectionLabel>SETTINGS</SectionLabel>
+        <h1 className="text-2xl font-heading gradient-text mb-1 mt-1">Settings</h1>
         <p className="text-sm text-white/50">Wallet, network, and protocol configuration.</p>
       </div>
 
       {/* Wallet */}
-      <GlassCard className="p-5 space-y-4">
+      <GlassCard className="gradient-accent-top p-5 space-y-4">
         <h2 className="text-sm font-heading font-semibold text-white/90 flex items-center gap-2">
           <Wallet className="w-4 h-4 text-white/50" />
           Wallet

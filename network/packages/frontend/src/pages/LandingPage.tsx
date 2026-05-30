@@ -1,23 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   Shield,
   Lock,
   Cpu,
-  Globe,
   ArrowRight,
-  ChevronDown,
   Zap,
   CheckCircle2,
   Server,
-  Users,
-  FileText,
   Wallet,
   Database,
-  Layers,
-  HardDrive,
-  Code2,
 } from 'lucide-react'
 import { fadeInUp, fadeInScale, staggerSlow } from '../lib/animations'
 import DottedGlobe from '../components/globe/DottedGlobe'
@@ -29,54 +21,46 @@ import ModelShowcase from '../components/landing/ModelShowcase'
 import { PrivacyComparison } from '../components/landing/PrivacyComparison'
 import { RolesSection } from '../components/landing/RolesSection'
 import { FinalCTA } from '../components/landing/FinalCTA'
+import HeroGrid from '../components/effects/HeroGrid'
+import { GrainOverlay } from '../components/effects/GrainOverlay'
+import { GlowDivider, SectionLabel } from '../components/effects/GlowDivider'
+import { FeatureCard } from '../components/effects/FeatureCard'
 
-/* ─── Cursor-tracking grid background ─── */
-function CursorGrid() {
-  const gridRef = useRef<HTMLDivElement>(null)
-  const [pos, setPos] = useState({ x: -100, y: -100 })
-
-  useEffect(() => {
-    const handleMove = (e: MouseEvent) => {
-      if (!gridRef.current) return
-      const rect = gridRef.current.getBoundingClientRect()
-      setPos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
-    }
-    window.addEventListener('mousemove', handleMove)
-    return () => window.removeEventListener('mousemove', handleMove)
-  }, [])
-
+/* ─── Scanline CRT effect ─── */
+function Scanlines() {
   return (
     <div
-      ref={gridRef}
-      className="absolute inset-0 z-0 pointer-events-none overflow-hidden"
-    >
-      {/* Base faint grid */}
-      <div
-        className="absolute inset-0 opacity-[0.06]"
-        style={{
-          backgroundImage:
-            'linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px)',
-          backgroundSize: '60px 60px',
-        }}
-      />
-      {/* Grid intersection glow dots */}
-      <div
-        className="absolute inset-0 opacity-40"
-        style={{
-          backgroundImage:
-            'radial-gradient(circle 2px at calc(var(--gx, 0px) + 1px) calc(var(--gy, 0px) + 1px), rgba(249,115,22,0.6) 0%, transparent 100%), radial-gradient(circle 2px at calc(var(--gx, 0px) + 61px) calc(var(--gy, 0px) + 61px), rgba(249,115,22,0.6) 0%, transparent 100%), radial-gradient(circle 2px at calc(var(--gx, 0px) + 1px) calc(var(--gy, 0px) + 61px), rgba(249,115,22,0.6) 0%, transparent 100%), radial-gradient(circle 2px at calc(var(--gx, 0px) + 61px) calc(var(--gy, 0px) + 1px), rgba(249,115,22,0.6) 0%, transparent 100%)',
-          backgroundSize: '120px 120px',
-          backgroundPosition: `${-pos.x % 120}px ${-pos.y % 120}px`,
-          filter: 'blur(0.5px)',
-        }}
-      />
+      className="absolute inset-0 z-[2] pointer-events-none opacity-[0.04]"
+      style={{
+        background:
+          'linear-gradient(to bottom, transparent 50%, rgba(249, 115, 22, 0.03) 51%, transparent 100%)',
+        backgroundSize: '100% 4px',
+      }}
+    />
+  )
+}
 
-      {/* Orange glow near cursor */}
-      <div
-        className="absolute inset-0 opacity-80"
-        style={{
-          background: `radial-gradient(500px circle at ${pos.x}px ${pos.y}px, rgba(249,115,22,0.28), rgba(249,115,22,0.08) 35%, transparent 65%)`,
+/* ─── Aurora blobs behind hero ─── */
+function AuroraBlobs() {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-[1]">
+      <motion.div
+        animate={{
+          x: [0, 100, -60, 0],
+          y: [0, -60, 80, 0],
+          scale: [1, 1.15, 0.9, 1],
         }}
+        transition={{ duration: 20, ease: 'linear', repeat: Infinity }}
+        className="absolute top-[10%] left-[20%] w-[500px] h-[500px] rounded-full bg-orange-500/5 blur-[120px]"
+      />
+      <motion.div
+        animate={{
+          x: [0, -80, 40, 0],
+          y: [0, 40, -60, 0],
+          scale: [1, 0.85, 1.1, 1],
+        }}
+        transition={{ duration: 25, ease: 'linear', repeat: Infinity }}
+        className="absolute top-[40%] right-[10%] w-[400px] h-[400px] rounded-full bg-white/3 blur-[100px]"
       />
     </div>
   )
@@ -85,101 +69,116 @@ function CursorGrid() {
 /* ─── Hero ─── */
 function HeroSection() {
   return (
-    <section className="relative min-h-[60vh] lg:min-h-[70vh] flex items-center overflow-hidden">
-      <CursorGrid />
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+      {/* Background grid + aurora */}
+      <HeroGrid />
+      <AuroraBlobs />
+      <Scanlines />
 
-      {/* Scanline effect */}
-      <div
-        className="absolute inset-0 z-[2] pointer-events-none opacity-[0.04]"
-        style={{
-          background: 'linear-gradient(to bottom, transparent 50%, rgba(249, 115, 22, 0.03) 51%, transparent 100%)',
-          backgroundSize: '100% 4px',
-        }}
-      />
+      {/* Globe as subtle background element */}
+      <div className="absolute inset-0 z-[1] pointer-events-none flex items-center justify-center opacity-30 lg:opacity-40">
+        <DottedGlobe className="w-[50rem] max-w-none lg:w-[60rem] xl:w-[70rem] scale-110" />
+      </div>
 
-      <div className="relative z-10 w-full px-6 md:px-12 lg:px-24 pt-24 pb-12">
+      <div className="relative z-10 w-full px-6 md:px-12 pt-24 pb-12 flex flex-col items-center text-center">
         <motion.div
           variants={staggerSlow}
           initial="hidden"
           animate="show"
-          className="mx-auto flex max-w-7xl flex-col lg:flex-row items-center gap-10 lg:gap-4"
+          className="max-w-3xl mx-auto"
         >
-          {/* Text content - centered */}
-          <div className="flex-1 flex flex-col items-center text-center max-w-2xl">
-            <motion.div variants={fadeInUp}>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 mb-6">
-                <Zap className="w-3.5 h-3.5 text-orange-400" />
-                <span className="text-xs font-medium text-orange-300 tracking-wide">
-                  CoFHE-Powered Confidential AI
-                </span>
-              </div>
-            </motion.div>
-
-            <motion.h1
-              variants={fadeInUp}
-              className="text-[3.3rem] font-black leading-[0.9] tracking-[-0.06em] sm:text-[3.9rem] md:text-7xl lg:text-[5rem] xl:text-[5.2rem] mb-6"
-            >
-              <span className="block text-white">Confidential AI</span>
-              <span className="block mt-1">
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-500 to-orange-400 drop-shadow-[0_0_30px_rgba(249,115,22,0.3)]">Inference,</span>{' '}
-                <span className="text-stroke" style={{ WebkitTextStroke: '1.5px rgba(255,255,255,0.1)', color: 'transparent' }}>Verified.</span>
+          <motion.div variants={fadeInUp}>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 mb-8">
+              <Zap className="w-3.5 h-3.5 text-orange-400" />
+              <span className="text-xs font-medium text-orange-300 tracking-wide">
+                CoFHE-Powered Confidential AI
               </span>
-            </motion.h1>
+            </div>
+          </motion.div>
 
-            <motion.p
-              variants={fadeInUp}
-              className="max-w-xl text-lg md:text-xl font-light leading-relaxed tracking-wide text-white/40 mb-8"
-            >
-              Your prompts are encrypted with <span className="text-white/80 font-medium border-b border-orange-500/30">FHE</span>.
-              Your answers are proven by <span className="text-white/80 font-medium border-b border-orange-500/30">quorum consensus</span> inside TEEs.
-            </motion.p>
-
-            <motion.div
-              variants={fadeInUp}
-              className="flex flex-col sm:flex-row items-center gap-4"
-            >
-              <Link
-                to="/app"
-                className="inline-flex items-center gap-2 bg-white text-black font-bold text-sm rounded-full px-8 py-3.5 transition-all hover:scale-[1.03] hover:shadow-[0_0_30px_rgba(255,255,255,0.25)]"
+          <motion.h1
+            variants={fadeInUp}
+            className="text-[3.3rem] font-black leading-[0.92] tracking-[-0.06em] sm:text-[3.9rem] md:text-7xl lg:text-[5.2rem] xl:text-[5.5rem] mb-8"
+          >
+            <span className="block text-white">Confidential AI</span>
+            <span className="block mt-2">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-500 to-orange-400 drop-shadow-[0_0_30px_rgba(249,115,22,0.3)]">
+                Inference,
+              </span>{' '}
+              <span
+                className="text-stroke-white"
+                style={{
+                  WebkitTextStroke: '1.5px rgba(255,255,255,0.12)',
+                  color: 'transparent',
+                }}
               >
-                Launch App
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-              <Link
-                to="/docs"
-                className="inline-flex items-center gap-2 glass-card glass-card-hover text-orange-300 font-semibold text-sm rounded-full px-8 py-3.5 border border-white/10"
-              >
-                Read Docs
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </motion.div>
+                Verified.
+              </span>
+            </span>
+          </motion.h1>
 
-            {/* Trust badges */}
-            <motion.div
-              variants={fadeInUp}
-              className="mt-8 flex flex-wrap justify-center gap-3"
-            >
-              {['100% Private', 'ZK Native', 'FHE Protected', 'Quorum Verified'].map(
-                (label) => (
-                  <div
-                    key={label}
-                    className="group inline-flex items-center gap-2 rounded-full bg-white/[0.03] border border-white/[0.06] hover:border-orange-500/20 px-4 py-2 text-xs text-white/40 transition-all duration-500 backdrop-blur-xl cursor-default"
-                  >
-                    <span className="text-[10px] font-mono tracking-[0.25em] text-white/40 group-hover:text-white transition-colors uppercase font-bold">{label}</span>
-                  </div>
-                )
-              )}
-            </motion.div>
-          </div>
+          <motion.p
+            variants={fadeInUp}
+            className="max-w-xl mx-auto text-lg md:text-xl font-light leading-relaxed tracking-wide text-white/40 mb-10"
+          >
+            Your prompts are encrypted with{' '}
+            <span className="text-white/80 font-medium border-b border-orange-500/30">
+              FHE
+            </span>
+            . Your answers are proven by{' '}
+            <span className="text-white/80 font-medium border-b border-orange-500/30">
+              quorum consensus
+            </span>{' '}
+            inside TEEs.
+          </motion.p>
 
-          {/* Globe - right */}
           <motion.div
             variants={fadeInUp}
-            className="hidden lg:block flex-1 relative"
+            className="flex flex-col sm:flex-row items-center justify-center gap-4"
           >
-            <div className="absolute right-[-18rem] top-1/2 -translate-y-1/2 opacity-80 lg:right-[-12%] xl:right-[-4%]">
-              <DottedGlobe className="w-[26rem] max-w-none sm:w-[30rem] md:w-[34rem] lg:w-[38rem] xl:w-[42rem]" />
-            </div>
+            <Link
+              to="/app"
+              className="btn-shimmer inline-flex items-center gap-2 bg-white text-black font-bold text-sm rounded-full px-8 py-3.5 transition-all hover:scale-[1.03] hover:shadow-[0_0_30px_rgba(255,255,255,0.25)]"
+            >
+              Launch App
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+            <Link
+              to="/docs"
+              className="inline-flex items-center gap-2 glass-panel glass-panel-hover text-orange-300 font-semibold text-sm rounded-full px-8 py-3.5 border border-white/10 transition-all hover:border-white/20"
+            >
+              Read Docs
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </motion.div>
+
+          {/* Trust badges — NullPay staggered TrustBar style */}
+          <motion.div
+            variants={fadeInUp}
+            className="mt-10 flex flex-wrap justify-center gap-3"
+          >
+            {[
+              '100% Private',
+              'ZK Native',
+              'FHE Protected',
+              'Quorum Verified',
+            ].map((label, i) => (
+              <motion.div
+                key={label}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{
+                  delay: 1 + i * 0.1,
+                  duration: 0.5,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+                className="group relative flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] hover:border-orange-500/20 transition-all duration-500 backdrop-blur-xl cursor-default"
+              >
+                <span className="text-[10px] font-mono tracking-[0.25em] text-white/40 group-hover:text-white transition-colors uppercase font-bold">
+                  {label}
+                </span>
+              </motion.div>
+            ))}
           </motion.div>
         </motion.div>
       </div>
@@ -190,8 +189,6 @@ function HeroSection() {
   )
 }
 
-
-
 /* ─── Feature bento grid ─── */
 function FeaturesSection() {
   const features = [
@@ -199,31 +196,43 @@ function FeaturesSection() {
       icon: Lock,
       title: 'End-to-End Encryption',
       desc: 'AES-256-GCM + CoFHE threshold encryption ensures only the quorum can access your prompts.',
+      accentColor: 'bg-orange-500/50',
+      glowColor: 'bg-orange-500/10',
     },
     {
       icon: CheckCircle2,
       title: 'Quorum Consensus',
       desc: '1 leader + 2 verifiers run the same inference. Mismatches trigger automatic dispute resolution.',
+      accentColor: 'bg-orange-500/50',
+      glowColor: 'bg-orange-500/10',
     },
     {
       icon: Shield,
       title: 'On-Chain Insurance',
       desc: 'Optional hallucination coverage via Reineira. Disputed results trigger USDC payouts.',
+      accentColor: 'bg-orange-500/50',
+      glowColor: 'bg-orange-500/10',
     },
     {
       icon: Server,
       title: 'Decentralized Nodes',
       desc: 'Anyone can run a compute node. Attestation, staking, and slashing keep the network honest.',
+      accentColor: 'bg-orange-500/50',
+      glowColor: 'bg-orange-500/10',
     },
     {
       icon: Wallet,
       title: 'Pay Per Inference',
       desc: 'Use cUSDC credits or create an escrow. No subscriptions, no hidden fees.',
+      accentColor: 'bg-orange-500/50',
+      glowColor: 'bg-orange-500/10',
     },
     {
       icon: Database,
       title: 'IPFS Storage',
       desc: 'Encrypted prompts stored on IPFS via Pinata. Decentralized, immutable, always available.',
+      accentColor: 'bg-orange-500/50',
+      glowColor: 'bg-orange-500/10',
     },
   ]
 
@@ -237,7 +246,8 @@ function FeaturesSection() {
           viewport={{ once: true }}
           className="text-center mb-20"
         >
-          <h2 className="text-3xl sm:text-4xl font-bold font-heading text-brand-text mb-4">
+          <SectionLabel>BUILT FOR PRIVACY</SectionLabel>
+          <h2 className="text-3xl sm:text-4xl font-bold font-heading text-brand-text mt-4 mb-4">
             Built for <span className="gradient-text">Privacy</span>
           </h2>
           <p className="text-brand-text-secondary max-w-xl mx-auto">
@@ -246,27 +256,15 @@ function FeaturesSection() {
         </motion.div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((feature, i) => (
-            <motion.div
+          {features.map((feature) => (
+            <FeatureCard
               key={feature.title}
-              variants={fadeInScale}
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.08 }}
-            >
-              <div className="glass-card glass-card-hover p-6 h-full">
-                <div className="w-10 h-10 rounded-xl bg-brand-primary/10 border border-brand-primary/15 flex items-center justify-center mb-4">
-                  <feature.icon className="w-5 h-5 text-brand-secondary" />
-                </div>
-                <h3 className="text-base font-bold text-brand-text mb-2 font-heading">
-                  {feature.title}
-                </h3>
-                <p className="text-sm text-brand-text-secondary leading-relaxed">
-                  {feature.desc}
-                </p>
-              </div>
-            </motion.div>
+              icon={feature.icon}
+              title={feature.title}
+              desc={feature.desc}
+              accentColor={feature.accentColor}
+              glowColor={feature.glowColor}
+            />
           ))}
         </div>
       </div>
@@ -285,22 +283,14 @@ function PartnersSection() {
   return (
     <section className="relative py-20 px-6">
       <div className="max-w-4xl mx-auto text-center">
-        <motion.p
-          variants={fadeInUp}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true }}
-          className="text-xs uppercase tracking-[0.3em] text-brand-text-secondary mb-10"
-        >
-          Built on
-        </motion.p>
+        <SectionLabel>BUILT ON</SectionLabel>
 
         <motion.div
           variants={staggerSlow}
           initial="hidden"
           whileInView="show"
           viewport={{ once: true }}
-          className="flex flex-wrap items-center justify-center gap-8 sm:gap-12"
+          className="flex flex-wrap items-center justify-center gap-8 sm:gap-12 mt-8"
         >
           {partners.map((partner) => (
             <motion.div
@@ -445,6 +435,8 @@ function Footer() {
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-brand-bg text-brand-text relative overflow-hidden">
+      <GrainOverlay />
+
       {/* Nav */}
       <nav className="relative z-50 flex items-center justify-between px-6 sm:px-10 py-5">
         <div className="flex items-center gap-2">
@@ -467,14 +459,32 @@ export default function LandingPage() {
 
       <main className="relative z-10">
         <HeroSection />
+
+        <GlowDivider />
+
         <AnimatedBanner />
         <PrivacyMarquee />
+
+        <GlowDivider />
+
         <HowItWorks />
+
+        <GlowDivider />
+
         <FeaturesSection />
+
+        <GlowDivider />
+
         <ArchitectureDiagram />
         <ModelShowcase />
+
+        <GlowDivider />
+
         <PrivacyComparison />
         <RolesSection />
+
+        <GlowDivider />
+
         <PartnersSection />
         <FinalCTA />
       </main>

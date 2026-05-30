@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { AlertCircle, CheckCircle2, Clock, Lock, Unlock, ShieldAlert, ShieldCheck, ThumbsDown, ThumbsUp } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { SectionLabel, GlowDivider } from '../components/effects/GlowDivider'
 
 import { DisputeForm } from '../components/DisputeForm'
 import { OnChainEvidence } from '../components/OnChainEvidence'
@@ -199,7 +200,8 @@ export function InferenceStatusPage() {
           {/* Header */}
           <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
             <div>
-              <h2 className="text-xl font-medium gradient-text font-heading mb-1">Active Task</h2>
+              <SectionLabel>INFERENCE STATUS</SectionLabel>
+              <h2 className="text-xl font-medium gradient-text font-heading mb-1 mt-1">Active Task</h2>
               <div className="flex items-center gap-2 font-mono text-[10px] uppercase text-white/50 tracking-wider">
                 <span>REQ-ID: {requestId}</span>
               </div>
@@ -217,7 +219,7 @@ export function InferenceStatusPage() {
           <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr_280px]">
             <div className="space-y-6">
               {/* Quorum */}
-              <GlassCard className="p-5 space-y-4 rounded-xl">
+              <GlassCard className="gradient-accent-top p-5 space-y-4 rounded-xl">
                 <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">
                   Quorum Progress
                 </h3>
@@ -251,9 +253,9 @@ export function InferenceStatusPage() {
                 />
               )}
 
-              {/* UAVP Proof Panel */}
-              {status.status === 'ACCEPTED' && (
-                <GlassCard className="p-5 space-y-4 rounded-xl">
+                {/* UAVP Proof Panel */}
+                {status.status === 'ACCEPTED' && (
+                  <GlassCard className="gradient-accent-top p-5 space-y-4 rounded-xl">
                   <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50 flex items-center gap-2">
                     <ShieldCheck className="w-3.5 h-3.5" /> UAVP Proof
                   </h3>
@@ -284,7 +286,7 @@ export function InferenceStatusPage() {
 
               {/* Coverage + dispute */}
               {status.status === 'ACCEPTED' && status.coverage_id ? (
-                <GlassCard className="mt-auto flex flex-col gap-4 p-5 rounded-xl">
+                <GlassCard className="gradient-accent-top mt-auto flex flex-col gap-4 p-5 rounded-xl">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">

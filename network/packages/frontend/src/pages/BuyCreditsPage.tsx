@@ -9,6 +9,7 @@ import { useWrapUSDC } from '../hooks/useWrapUSDC'
 import { Hex, parseAbi } from 'viem'
 import { arbitrumSepolia } from 'wagmi/chains'
 import { GlassCard } from '../components/ui/GlassCard'
+import { SectionLabel } from '../components/effects/GlowDivider'
 
 const BLIND_TOKEN_ADDRESS = (import.meta.env.VITE_BLIND_TOKEN_ADDRESS || '') as Hex
 const PAYMENT_WALLET_ADDRESS = (import.meta.env.VITE_PAYMENT_WALLET_ADDRESS || '') as Hex
@@ -223,14 +224,15 @@ export function BuyCreditsPage() {
   return (
     <div className="max-w-5xl mx-auto px-6 py-10 space-y-10">
       {/* ── Header ── */}
-      <GlassCard className="p-8 text-center" hoverEffect={false}>
+      <GlassCard className="gradient-accent-top p-8 text-center" hoverEffect={false}>
         <button
           onClick={() => navigate(-1)}
           className="absolute top-4 left-4 p-2 rounded-full border border-white/10 glass-card hover:bg-orange-500/10 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 text-white/50" />
         </button>
-        <h1 className="text-3xl font-bold text-white mb-2">
+        <SectionLabel>CREDITS & TOKENS</SectionLabel>
+        <h1 className="text-3xl font-bold text-white mb-2 mt-1">
           Manage Your <span className="gradient-text">Credits</span>
         </h1>
         <p className="text-sm text-white/50 max-w-xl mx-auto">

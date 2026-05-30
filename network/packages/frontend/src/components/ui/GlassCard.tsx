@@ -12,9 +12,9 @@ interface GlassCardProps extends HTMLMotionProps<"div"> {
 const GlassCard = React.forwardRef<HTMLDivElement, GlassCardProps>(
     ({ children, className, variant = "default", hoverEffect = true, ...props }, ref) => {
         const variants = {
-            default: "bg-[rgba(10,10,10,0.6)] backdrop-blur-xl border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] hover:shadow-[0_0_30px_rgba(249,115,22,0.1)]",
+            default: "bg-[#080808]/80 backdrop-blur-xl border border-white/[0.12] shadow-[0_8px_32px_0_rgba(0,0,0,0.5)]",
             heavy: "bg-[#02040a]/80 backdrop-blur-2xl border border-white/[0.08] shadow-2xl",
-            light: "bg-[rgba(10,10,10,0.6)] backdrop-blur-lg border border-white/[0.08] shadow-lg",
+            light: "bg-white/[0.03] backdrop-blur-lg border border-white/[0.08] shadow-lg",
         };
 
         return (

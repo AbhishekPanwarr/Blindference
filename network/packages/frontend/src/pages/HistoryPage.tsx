@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { loadHistory, clearHistory, type HistoryEntry } from '../utils/historyStore'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Badge } from '../components/ui/Badge'
+import { SectionLabel } from '../components/effects/GlowDivider'
 
 function formatDate(ts: number): string {
   const d = new Date(ts)
@@ -40,7 +41,8 @@ export function HistoryPage() {
     <div className="mx-auto max-w-4xl px-6 py-12">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-medium gradient-text font-heading tracking-tight">Inference History</h1>
+          <SectionLabel>INFERENCE HISTORY</SectionLabel>
+          <h1 className="text-3xl font-medium gradient-text font-heading tracking-tight mt-1">Inference History</h1>
           <p className="text-sm text-white/50 mt-2">Past prompts, results, and privately decrypted outputs.</p>
         </div>
         <div className="flex items-center gap-3">
@@ -61,7 +63,7 @@ export function HistoryPage() {
       </div>
 
       {entries.length === 0 ? (
-        <GlassCard className="p-12 text-center">
+        <GlassCard className="gradient-accent-top p-12 text-center">
           <Clock className="w-8 h-8 text-white/50 mx-auto mb-3" />
           <h3 className="text-lg font-medium text-white/90 mb-1">No history yet</h3>
           <p className="text-sm text-white/50 mb-4">Your inference runs will appear here once you submit a prompt.</p>
@@ -71,7 +73,7 @@ export function HistoryPage() {
           </Link>
         </GlassCard>
       ) : (
-        <GlassCard className="overflow-hidden">
+        <GlassCard className="gradient-accent-top overflow-hidden">
           {entries.map((item, i) => (
             <Link
               key={item.id}

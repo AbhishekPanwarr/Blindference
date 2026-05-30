@@ -5,6 +5,7 @@ import { Lock, ShieldAlert, ShieldCheck, Copy, Cpu, CheckCircle2, Loader2, Chevr
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Hex } from 'viem'
 import axios from 'axios'
+import { SectionLabel } from '../components/effects/GlowDivider'
 
 import { inferenceApi, jobApi } from '../api/inferenceApi'
 import { ChatView } from '../components/inference/ChatView'
@@ -694,9 +695,10 @@ export function InferenceNewPage() {
               </>
             ) : (
               /* Risk Scoring Mode */
-              <GlassCard className="p-6 space-y-5 max-w-2xl mx-auto" hoverEffect={false}>
+              <GlassCard className="gradient-accent-top p-6 space-y-5 max-w-2xl mx-auto" hoverEffect={false}>
                 <div className="mb-2">
-                  <h1 className="text-2xl font-semibold text-white font-heading mb-1">Risk Assessment</h1>
+                  <SectionLabel>RISK ASSESSMENT</SectionLabel>
+                  <h1 className="text-2xl font-semibold text-white font-heading mb-1 mt-1">Confidential Risk Scoring</h1>
                   <p className="text-sm text-white/50">Secure, end-to-end encrypted inference via FHE.</p>
                 </div>
 
@@ -1008,8 +1010,9 @@ export function InferenceNewPage() {
 
       {/* RIGHT: Execution Trace sidebar */}
       <div className="hidden xl:flex w-80 shrink-0 flex-col p-4">
-        <GlassCard variant="heavy" className="flex-1 flex flex-col p-6 overflow-y-auto" hoverEffect={false}>
-          <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/40 mb-8">Execution Trace</p>
+        <GlassCard variant="heavy" className="gradient-accent-top flex-1 flex flex-col p-6 overflow-y-auto" hoverEffect={false}>
+          <SectionLabel>EXECUTION TRACE</SectionLabel>
+          <div className="h-4" />
           <div className="relative flex flex-col gap-0">
             {TRACE_STEPS.map((step, i) => {
               const latestAssistant = [...messages].reverse().find(m => m.role === 'assistant' && m.requestId === latestRequestId)
