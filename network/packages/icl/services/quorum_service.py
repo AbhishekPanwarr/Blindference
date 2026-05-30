@@ -47,7 +47,13 @@ from models.response_models import (
     QuorumAssignmentResponse,
     VerifierVerdictResponse,
 )
-from models.text_inference import QuorumCertificate, TextInferenceRequest, TextInferenceResult
+from models.text_inference import (
+    LeaderSubmissionResponse as TextLeaderSubmissionResponse,
+    QuorumCertificate,
+    TextInferenceRequest,
+    TextInferenceResult,
+    VerifierVerdictResponse as TextVerifierVerdictResponse,
+)
 from services.chain_service import ChainService
 from services.node_selector import NodeSelector
 from services.verdict_aggregator import VerdictAggregator
@@ -1663,10 +1669,10 @@ class QuorumService:
         # Build leader submission from metadata (if any)
         metadata = dict(request_document.get("metadata", {}))
         raw_leader = metadata.get("text_leader_result")
-        leader_submission: LeaderSubmissionResponse | None = None
+        leader_submission: TextLeaderSubmissionResponse | None = None
         if isinstance(raw_leader, dict):
             submitted_at = raw_leader.get("submitted_at")
-            leader_submission = LeaderSubmissionResponse(
+            leader_submission = TextLeaderSubmissionResponse(
                 leader_address=raw_leader.get("leader_address", assignment_document.get("leader_address", "")),
                 confidence=raw_leader.get("confidence"),
                 summary=raw_leader.get("output_cid"),  # For text mode, store output in summary field
@@ -1677,7 +1683,7 @@ class QuorumService:
             )
 
         # Build verifier verdicts from DB
-        verdicts: list[VerifierVerdictResponse] = []
+        verdicts: list[TextVerifierVerdictResponse] = []
         if status in ("REJECTED", "ACCEPTED", "DISPUTED"):
             try:
                 verdict_cursor = self.database[VERIFIER_VERDICTS].find(
@@ -1686,7 +1692,7 @@ class QuorumService:
                 async for vd in verdict_cursor:
                     vd.pop("id", None)
                     verdicts.append(
-                        VerifierVerdictResponse(
+                        TextVerifierVerdictResponse(
                             verifier_address=str(vd.get("verifier_address", "")),
                             submitted=bool(vd.get("verifier_address")),
                             accepted=vd.get("accepted"),
