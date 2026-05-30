@@ -30,7 +30,9 @@ RUN pip install -r /app/icl/requirements.txt -r /app/payment/requirements.txt
 RUN pip install blindference-node==0.3.4
 
 # Install npm dependencies for the CoFHE bridge (used by blindference-node PyPI package)
+# The PyPI wheel includes the bridge script but not package.json, so we create one dynamically
 RUN BLF_NODE_DIR=$(python -c "import blindference_node, os; print(os.path.dirname(blindference_node.__file__))") && \
+    printf '{\n  "name": "blindference-node-cofhe-bridge",\n  "version": "0.2.0",\n  "dependencies": {\n    "@cofhe/sdk": "^0.5.0",\n    "viem": "^2.0.0"\n  }\n}\n' > "$BLF_NODE_DIR/package.json" && \
     cd "$BLF_NODE_DIR" && npm install
 
 # Copy pre-initialized node configs and keystores (avoid GPU detection crash in init)
