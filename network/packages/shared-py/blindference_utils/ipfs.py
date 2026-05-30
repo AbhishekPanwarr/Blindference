@@ -1,14 +1,27 @@
 from __future__ import annotations
 
 import os
+import logging
 
 import requests
+
+logger = logging.getLogger("blindference.ipfs")
 
 
 def _pinata_jwt() -> str:
     jwt = os.getenv("PINATA_JWT")
     if not jwt:
+        # Log all env vars starting with PINATA for debugging
+        pinata_vars = {k: v[:20] + "..." for k, v in os.environ.items() if "PINATA" in k.upper()}
+        logger.error("PINATA_JWT is not set. Found PINATA-related env vars: %s", pinata_vars)
         raise RuntimeError("PINATA_JWT is not set")
+    
+    # Debug log (don't expose full JWT in production, but we need to diagnose)
+    logger.info("PINATA_JWT loaded: length=%d, starts_with=%s, ends_with=%s, has_quotes=%s",
+                len(jwt), jwt[:10], jwt[-10:], str(jwt.startswith('"') or jwt.startswith("'")))
+    
+    # Strip quotes if accidentally included
+    jwt = jwt.strip().strip('"').strip("'")
     return jwt
 
 
@@ -33,8 +46,11 @@ def upload_to_ipfs(data: bytes) -> str:
 
     # Pinata returns 403 for revoked keys, 401 for malformed JWTs
     if response.status_code in (401, 403):
+        resp_text = response.text[:500]  # Capture response body for debugging
+        logger.error("Pinata auth failed: status=%s, response=%s, jwt_length=%d",
+                     response.status_code, resp_text, len(jwt))
         raise RuntimeError(
-            f"Pinata authentication failed ({response.status_code}). "
+            f"Pinata authentication failed ({response.status_code}). Response: {resp_text}. "
             "Your JWT may be revoked or expired. Generate a new key at "
             "https://pinata.cloud/keys and update PINATA_JWT."
         )
