@@ -122,6 +122,12 @@ class DisputeSubmissionRequest(BaseModel):
     notes: str | None = None
 
 
+class UserFeedbackRequest(BaseModel):
+    developer_address: str
+    rating: Literal["up", "down"]
+    notes: str | None = None
+
+
 class BootstrapDemoNodesRequest(BaseModel):
     count: int = Field(default=3, ge=1, le=3)
 

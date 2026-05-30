@@ -27,6 +27,7 @@ from models.request_models import (
     LeaderResultSubmissionRequest,
     InferencePermitAttachmentRequest,
     InferenceRequestCreate,
+    UserFeedbackRequest,
     VerifierVerdictSubmissionRequest,
 )
 from models.response_models import (
@@ -379,3 +380,67 @@ async def dispute_inference_request(
     except Exception as exc:
         logger.error("Dispute failed for request=%s: %s", request_id, exc)
         raise HTTPException(status_code=500, detail=f"Dispute failed: {exc}") from exc
+
+
+@router.post("/{request_id}/feedback")
+async def submit_feedback(
+    request_id: str,
+    payload: UserFeedbackRequest,
+    _: bool = Depends(rate_limit_guard),
+    services: ServiceContainer = Depends(get_service_container),
+) -> dict[str, Any]:
+    """Submit thumbs-up / thumbs-down feedback for a completed inference job.
+
+    Feedback is stored anonymously and used to calibrate quorum consensus
+    thresholds over time.
+    """
+    try:
+        request_doc = await services.database["inference_requests"].find_one(
+            {"request_id": request_id}
+        )
+        if not request_doc:
+            raise HTTPException(status_code=404, detail="Request not found")
+
+        if request_doc.get("status") != "accepted":
+            raise HTTPException(
+                status_code=400,
+                detail="Feedback can only be submitted for accepted jobs",
+            )
+
+        # Check for duplicate feedback from same address
+        existing = await services.database["user_feedback"].find_one(
+            {"request_id": request_id, "developer_address": payload.developer_address}
+        )
+        if existing:
+            raise HTTPException(
+                status_code=400,
+                detail="Feedback already submitted for this job",
+            )
+
+        feedback_doc = {
+            "request_id": request_id,
+            "task_id": request_doc.get("task_id", ""),
+            "developer_address": payload.developer_address,
+            "rating": payload.rating,
+            "notes": payload.notes,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await services.database["user_feedback"].insert_one(feedback_doc)
+
+        logger.info(
+            "Feedback submitted: request=%s rating=%s developer=%s",
+            request_id,
+            payload.rating,
+            payload.developer_address,
+        )
+
+        return {
+            "status": "ok",
+            "request_id": request_id,
+            "rating": payload.rating,
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Feedback failed for request=%s: %s", request_id, exc)
+        raise HTTPException(status_code=500, detail=f"Feedback failed: {exc}") from exc

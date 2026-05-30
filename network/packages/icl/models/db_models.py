@@ -160,4 +160,13 @@ class NodeRuntimeRecord(BaseModel):
     updated_at: datetime = Field(default_factory=utcnow)
 
 
+class UserFeedbackRecord(BaseModel):
+    request_id: str
+    task_id: str
+    developer_address: str
+    rating: Literal["up", "down"]
+    notes: str | None = None
+    created_at: datetime = Field(default_factory=utcnow)
+
+
 

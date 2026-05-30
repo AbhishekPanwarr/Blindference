@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { AlertCircle, CheckCircle2, Clock, Lock, Unlock, ShieldAlert, ShieldCheck } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Clock, Lock, Unlock, ShieldAlert, ShieldCheck, ThumbsDown, ThumbsUp } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 import { DisputeForm } from '../components/DisputeForm'
@@ -10,6 +10,7 @@ import { RiskGauge } from '../components/RiskGauge'
 import { StatusTimeline } from '../components/StatusTimeline'
 import { useCofheClient } from '../hooks/useCofheClient'
 import { useInferenceStatus } from '../hooks/useInferenceStatus'
+import { coverageApi } from '../api/inferenceApi'
 import { decryptOutputKey, downloadAndDecryptTextOutput } from '../utils/textPromptKey'
 import { GlassCard } from '../components/ui/GlassCard'
 import { CopyButton } from '../components/ui/CopyButton'
@@ -32,6 +33,8 @@ export function InferenceStatusPage() {
   const [isDecryptingAnswer, setIsDecryptingAnswer] = useState(false)
   const [showDecryptModal, setShowDecryptModal] = useState(false)
   const [decrypted, setDecrypted] = useState(false)
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState<'up' | 'down' | null>(null)
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false)
   const status = useInferenceStatus(requestId)
   const { client: cofheClient, isReady: cofheReady } = useCofheClient()
 
@@ -354,6 +357,82 @@ export function InferenceStatusPage() {
                           </pre>
                         ) : (
                           <div className="py-6 text-sm text-white/50 font-mono">Waiting for output key...</div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Feedback — only after successful decryption */}
+                    {textAnswer && !textAnswerError && (
+                      <div className="w-full rounded-xl border border-white/10 bg-[rgba(10,10,10,0.6)] p-4">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50 mb-3 flex items-center gap-2">
+                          <ShieldCheck className="w-3 h-3" /> Help Calibrate Consensus
+                        </div>
+                        {feedbackSubmitted ? (
+                          <div className="flex items-center gap-2 text-xs text-white/70">
+                            {feedbackSubmitted === 'up' ? (
+                              <>
+                                <ThumbsUp className="w-4 h-4 text-green-400" />
+                                <span>Thanks! Your positive feedback helps tune the quorum threshold.</span>
+                              </>
+                            ) : (
+                              <>
+                                <ThumbsDown className="w-4 h-4 text-error" />
+                                <span>Thanks! Your negative feedback flags potential false positives.</span>
+                              </>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex flex-col gap-3">
+                            <p className="text-xs text-white/70">
+                              Is this output accurate and useful? Your vote trains the consensus model.
+                            </p>
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={async () => {
+                                  setFeedbackSubmitting(true)
+                                  try {
+                                    await coverageApi.submitFeedback(requestId, {
+                                      developer_address: status.developer_address,
+                                      rating: 'up',
+                                    })
+                                    setFeedbackSubmitted('up')
+                                  } catch (e: any) {
+                                    console.error('[Blindference] Feedback failed:', e)
+                                  } finally {
+                                    setFeedbackSubmitting(false)
+                                  }
+                                }}
+                                disabled={feedbackSubmitting}
+                                className="flex items-center gap-2 rounded-lg border border-green-500/20 bg-green-500/10 px-4 py-2 text-xs font-semibold text-green-400 hover:bg-green-500/20 transition-colors disabled:opacity-50"
+                                type="button"
+                              >
+                                <ThumbsUp className="w-3.5 h-3.5" />
+                                Accurate
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  setFeedbackSubmitting(true)
+                                  try {
+                                    await coverageApi.submitFeedback(requestId, {
+                                      developer_address: status.developer_address,
+                                      rating: 'down',
+                                    })
+                                    setFeedbackSubmitted('down')
+                                  } catch (e: any) {
+                                    console.error('[Blindference] Feedback failed:', e)
+                                  } finally {
+                                    setFeedbackSubmitting(false)
+                                  }
+                                }}
+                                disabled={feedbackSubmitting}
+                                className="flex items-center gap-2 rounded-lg border border-error/20 bg-error/10 px-4 py-2 text-xs font-semibold text-error hover:bg-error/20 transition-colors disabled:opacity-50"
+                                type="button"
+                              >
+                                <ThumbsDown className="w-3.5 h-3.5" />
+                                Not Accurate
+                              </button>
+                            </div>
+                          </div>
                         )}
                       </div>
                     )}

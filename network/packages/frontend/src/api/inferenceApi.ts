@@ -265,4 +265,10 @@ export const coverageApi = {
   fileDispute(requestId: string, payload: { evidence: string }) {
     return apiClient.post(`/v1/inference/${requestId}/dispute`, payload)
   },
+  submitFeedback(
+    requestId: string,
+    payload: { developer_address: string; rating: 'up' | 'down'; notes?: string },
+  ) {
+    return apiClient.post(`/v1/inference/${requestId}/feedback`, payload)
+  },
 }
