@@ -500,7 +500,7 @@ function OverviewPage() {
               to={section.children?.[0]?.path || section.path}
               className="group block"
             >
-              <div className="relative rounded-2xl bg-[rgba(10,10,10,0.6)] backdrop-blur-xl border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] overflow-hidden transition-all duration-300 hover:border-white/[0.2] hover:shadow-[0_0_30px_rgba(249,115,22,0.1)] p-6">
+              <div className="relative rounded-2xl bg-[rgba(10,10,10,0.6)] backdrop-blur-xl border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] overflow-hidden transition-all duration-300 hover:border-white/[0.2] hover:shadow-[0_0_30px_rgba(249,115,22,0.1)] p-6 gradient-accent-top">
                 <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_2.5s_linear_infinite] bg-gradient-to-r from-transparent via-white/5 to-transparent pointer-events-none" />
                 <div className="relative z-10">
                   <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mb-4 text-orange-400">

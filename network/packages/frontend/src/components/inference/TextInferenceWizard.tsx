@@ -5,6 +5,7 @@ import axios from 'axios'
 import { Lock, ShieldAlert, Cpu } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Hex } from 'viem'
+import { SectionLabel } from '../effects/GlowDivider'
 
 import { inferenceApi, jobApi } from '../../api/inferenceApi'
 import { useCofheClient } from '../../hooks/useCofheClient'
@@ -349,7 +350,7 @@ export function TextInferenceWizard() {
         </details>
       </motion.div>
 
-      <motion.div variants={itemVariants} className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
+      <motion.div variants={itemVariants} className="rounded-xl border border-white/10 bg-white/[0.02] p-5 gradient-accent-top">
         <div className="flex items-start gap-4">
           <div className="mt-1 rounded-full bg-emerald-500/10 p-2 border border-emerald-500/20 text-emerald-500">
             <Lock className="w-4 h-4" />

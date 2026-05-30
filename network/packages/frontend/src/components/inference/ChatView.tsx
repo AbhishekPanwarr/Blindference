@@ -11,6 +11,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import { CopyButton } from '../ui/CopyButton'
+import { SectionLabel } from '../effects/GlowDivider'
 
 export interface ChatEntry {
   id: string
@@ -96,7 +97,7 @@ function UavpPanel({ metadata }: { metadata?: ChatEntry['metadata'] }) {
   if (!hasProofs) return null
 
   return (
-    <div className="mt-3 rounded-lg border border-white/10 bg-[rgba(10,10,10,0.6)] overflow-hidden glass-card">
+    <div className="mt-3 rounded-lg border border-white/10 bg-[rgba(10,10,10,0.6)] overflow-hidden glass-card gradient-accent-top">
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between px-3 py-2 text-[11px] text-white/50 hover:text-white transition-colors"
