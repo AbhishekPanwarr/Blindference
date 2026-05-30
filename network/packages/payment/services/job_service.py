@@ -410,8 +410,19 @@ class JobService:
         leader_address: str,
         verifier_addresses: list[str],
     ) -> dict[str, Any]:
-        """Distribute BLIND rewards to participating nodes."""
-        amount_blind_wei = 1 * 10 ** 18  # 1 BLIND per job
+        """Distribute BLIND rewards to participating nodes.
+
+        Reads the actual job price from the database; falls back to 1 BLIND
+        if no record is found or amount_blind is zero.
+        """
+        job = await self.get_job_by_any_id(job_id)
+        if job is None:
+            logger.warning("No job record found for reward distribution: %s", job_id)
+            amount_blind_wei = 1 * 10 ** 18  # fallback: 1 BLIND
+        else:
+            amount_blind_wei = int(job.get("amount_blind", 0))
+            if amount_blind_wei == 0:
+                amount_blind_wei = 1 * 10 ** 18  # fallback: 1 BLIND
         try:
             result = await self.chain_service.distribute_reward(
                 leader_address=leader_address,
