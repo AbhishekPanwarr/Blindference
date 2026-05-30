@@ -42,22 +42,36 @@ async def process_text_task_as_leader(
     model_runner: Any,
     config: dict[str, Any],
 ) -> dict[str, Any]:
+    job_id = _job_id(task)
+    logger.info("[leader:%s] starting leader task processing", job_id)
+
+    logger.info("[leader:%s] fetching and decrypting prompt from IPFS", job_id)
     prompt = await _fetch_and_decrypt_prompt(task, config)
+    logger.info("[leader:%s] prompt decrypted (length=%d)", job_id, len(prompt))
+
     model_name = _resolve_model_name(task, config)
+    logger.info("[leader:%s] running inference with model=%s", job_id, model_name)
     output_text = await _run_model(model_runner, prompt, model_name)
+    logger.info("[leader:%s] inference complete (output_length=%d)", job_id, len(output_text))
 
     output_key = generate_key()
     encrypted_output = encrypt_text(output_text, output_key)
     packed_output = pack_payload(encrypted_output)
+    logger.info("[leader:%s] uploading encrypted output to IPFS", job_id)
     output_cid = await _call_maybe_async(upload_to_ipfs, packed_output)
+    logger.info("[leader:%s] output uploaded: cid=%s", job_id, output_cid)
+
     output_hash = hash_output(output_text)
     commitment_hash = build_commitment_hash(output_cid, output_hash)
 
     output_key_high, output_key_low = split_key_for_fhe(output_key)
+    logger.info("[leader:%s] encrypting output key halves via CoFHE", job_id)
     encrypted_output_key = await _encrypt_output_key_halves(int(output_key_high), int(output_key_low), config)
+    logger.info("[leader:%s] storing output key on-chain", job_id)
     output_key_store = await _store_output_key(task, encrypted_output_key, config)
+
     payload = {
-        "job_id": _job_id(task),
+        "job_id": job_id,
         "output_cid": output_cid,
         "commitment_hash": commitment_hash,
         "encrypted_output_key_high": str(encrypted_output_key["high"]["ctHash"]),
@@ -68,7 +82,9 @@ async def process_text_task_as_leader(
         "verdict": "CONFIRM",
         "confidence": 100,
     }
+    logger.info("[leader:%s] submitting leader result to ICL", job_id)
     response = await _submit_leader_text_result(payload["job_id"], payload, config)
+    logger.info("[leader:%s] ICL accepted leader result", job_id)
     return {
         **payload,
         "prompt": prompt,
@@ -82,23 +98,39 @@ async def process_text_task_as_verifier(
     model_runner: Any,
     config: dict[str, Any],
 ) -> dict[str, Any]:
-    prompt = await _fetch_and_decrypt_prompt(task, config)
-    model_name = _resolve_model_name(task, config)
-    output_text = await _run_model(model_runner, prompt, model_name)
+    job_id = _job_id(task)
+    verifier_address = _operator_address(config, task)
+    logger.info("[verifier:%s:%s] starting verifier task processing", verifier_address[:10], job_id)
 
+    logger.info("[verifier:%s:%s] fetching and decrypting prompt from IPFS", verifier_address[:10], job_id)
+    prompt = await _fetch_and_decrypt_prompt(task, config)
+    logger.info("[verifier:%s:%s] prompt decrypted (length=%d)", verifier_address[:10], job_id, len(prompt))
+
+    model_name = _resolve_model_name(task, config)
+    logger.info("[verifier:%s:%s] running inference with model=%s", verifier_address[:10], job_id, model_name)
+    output_text = await _run_model(model_runner, prompt, model_name)
+    logger.info("[verifier:%s:%s] inference complete (output_length=%d)", verifier_address[:10], job_id, len(output_text))
+
+    logger.info("[verifier:%s:%s] resolving leader result from ICL", verifier_address[:10], job_id)
     leader_output_cid, leader_commitment_hash = await _resolve_leader_result(task, config)
+    logger.info("[verifier:%s:%s] leader result: cid=%s commitment=%s", verifier_address[:10], job_id, leader_output_cid, leader_commitment_hash)
+
     output_hash = hash_output(output_text)
     commitment_hash = build_commitment_hash(leader_output_cid, output_hash)
 
     verdict = "CONFIRM" if not leader_commitment_hash or leader_commitment_hash == commitment_hash else "REJECT"
+    logger.info("[verifier:%s:%s] verdict=%s (leader_hash=%s my_hash=%s)", verifier_address[:10], job_id, verdict, leader_commitment_hash, commitment_hash)
+
     payload = {
-        "job_id": _job_id(task),
-        "verifier_address": _operator_address(config, task),
+        "job_id": job_id,
+        "verifier_address": verifier_address,
         "commitment_hash": commitment_hash,
         "verdict": verdict,
         "confidence": 100 if verdict == "CONFIRM" else 0,
     }
+    logger.info("[verifier:%s:%s] submitting verdict to ICL", verifier_address[:10], job_id)
     response = await _submit_verifier_text_verdict(payload["job_id"], payload, config)
+    logger.info("[verifier:%s:%s] ICL accepted verdict", verifier_address[:10], job_id)
     return {
         **payload,
         "prompt": prompt,
@@ -112,24 +144,32 @@ async def _fetch_and_decrypt_prompt(
     config: dict[str, Any],
 ) -> str:
     prompt_cid = _resolve_prompt_cid(task)
+    logger.info("[prompt] downloading prompt from IPFS: cid=%s", prompt_cid)
     packed_prompt = await _call_maybe_async(download_from_ipfs, prompt_cid)
+    logger.info("[prompt] downloaded prompt blob (%d bytes)", len(packed_prompt))
 
     decrypt_prompt_key = config.get("decrypt_prompt_key")
     if callable(decrypt_prompt_key):
+        logger.info("[prompt] decrypting prompt key via CoFHE bridge")
         prompt_key = await _call_maybe_async(
             decrypt_prompt_key,
             _resolve_prompt_key_handle(task, "high"),
             _resolve_prompt_key_handle(task, "low"),
         )
+        logger.info("[prompt] prompt key decrypted (%d bytes)", len(prompt_key))
     else:
         key_hex = _resolve_prompt_key_hex(task, config)
         if not key_hex:
             raise ValueError(
                 "Text prompt decryption requires a CoFHE prompt-key decryptor or a test stub key."
             )
+        logger.info("[prompt] using stub prompt key (test mode)")
         prompt_key = bytes.fromhex(key_hex)
 
-    return decrypt_blob(packed_prompt, prompt_key)
+    logger.info("[prompt] AES-GCM decrypting prompt")
+    prompt = decrypt_blob(packed_prompt, prompt_key)
+    logger.info("[prompt] prompt decrypted successfully")
+    return prompt
 
 
 async def _encrypt_output_key_halves(
