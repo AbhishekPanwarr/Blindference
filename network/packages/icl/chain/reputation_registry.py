@@ -23,3 +23,7 @@ class ReputationRegistryClient:
             "cycles_active": int(value[2]),
             "cycles_guilty": int(value[3]),
         }
+
+    def current_cycle(self) -> int:
+        """Return the current reputation cycle epoch."""
+        return int(self.contract.functions.currentCycle().call())
