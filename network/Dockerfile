@@ -2,8 +2,8 @@ FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
 
-COPY ./network/packages/icl /app/icl
-COPY ./network/packages/payment /app/payment
+COPY ./packages/icl /app/icl
+COPY ./packages/payment /app/payment
 
 RUN pip install -r /app/icl/requirements.txt -r /app/payment/requirements.txt
 
