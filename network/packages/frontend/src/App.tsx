@@ -172,12 +172,13 @@ const RouteFallback = () => (
 
 const AppLayout = () => {
   const location = useLocation()
+  const isLandingPage = location.pathname === '/' || location.pathname === '/vision' || location.pathname === '/architecture' || location.pathname === '/whitepaper'
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
       <GrainOverlay />
       <BackgroundOrbs />
       <Navbar />
-      <main className="relative z-10 pt-24 px-4 pb-12 container-custom min-h-screen">
+      <main className={`relative z-10 min-h-screen ${isLandingPage ? '' : 'pt-24 px-4 pb-12 container-custom'}`}>
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
@@ -247,11 +248,11 @@ function App() {
         )}
       </Toaster>
       <Routes>
-        <Route element={<LandingPage />} path="/" />
-        <Route element={<VisionPage />} path="/vision" />
-        <Route element={<ArchitecturePage />} path="/architecture" />
-        <Route element={<WhitepaperPage />} path="/whitepaper" />
         <Route element={<AppLayout />} path="/">
+          <Route element={<LandingPage />} index />
+          <Route element={<VisionPage />} path="vision" />
+          <Route element={<ArchitecturePage />} path="architecture" />
+          <Route element={<WhitepaperPage />} path="whitepaper" />
           <Route element={<InferenceNewPage />} path="app" />
           <Route element={<InferenceStatusPage />} path="inference/:requestId" />
           <Route element={<HistoryPage />} path="history" />
