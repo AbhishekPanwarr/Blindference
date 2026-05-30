@@ -29,6 +29,10 @@ RUN pip install -r /app/icl/requirements.txt -r /app/payment/requirements.txt
 # Install blindference-node from PyPI
 RUN pip install blindference-node==0.3.4
 
+# Install npm dependencies for the CoFHE bridge (used by blindference-node PyPI package)
+RUN BLF_NODE_DIR=$(python -c "import blindference_node, os; print(os.path.dirname(blindference_node.__file__))") && \
+    cd "$BLF_NODE_DIR" && npm install
+
 # Copy pre-initialized node configs and keystores (avoid GPU detection crash in init)
 COPY ./nodes/one/config.json /app/nodes/one/config.json
 COPY ./nodes/one/keystore.json /app/nodes/one/keystore.json
