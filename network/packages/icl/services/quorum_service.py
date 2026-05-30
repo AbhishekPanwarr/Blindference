@@ -83,6 +83,29 @@ class QuorumService:
         # heartbeat_memory[node_address] = last_seen_timestamp
         self._heartbeat_memory: dict[str, float] = {}
         self._last_heartbeat_flush: float = 0.0
+        self._background_tasks: set[asyncio.Task] = set()
+
+    def _spawn_task(self, coro) -> asyncio.Task:
+        """Fire-and-forget a coroutine but keep a reference so we can cancel on shutdown."""
+        task = asyncio.create_task(coro)
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
+        return task
+
+    async def cancel_background_tasks(self, timeout: float = 5.0) -> None:
+        """Cancel all outstanding background tasks and wait for them to finish."""
+        if not self._background_tasks:
+            return
+        for task in self._background_tasks:
+            if not task.done():
+                task.cancel()
+        pending = [t for t in self._background_tasks if not t.done()]
+        if pending:
+            try:
+                await asyncio.wait(pending, timeout=timeout)
+            except asyncio.CancelledError:
+                pass
+        self._background_tasks.clear()
 
     async def _maybe_flush_heartbeats(self) -> None:
         """Flush accumulated in-memory heartbeats to the DB at most every 5 minutes."""
@@ -1145,7 +1168,7 @@ class QuorumService:
                     logger.error("ResultRegistry write failed: %s", exc)
 
             # Accrue rewards on-chain via RewardAccumulator
-            asyncio.create_task(
+            self._spawn_task(
                 self._accrue_rewards(
                     task_id=request_document["task_id"],
                     escrow_id=escrow_id,
@@ -1306,7 +1329,7 @@ class QuorumService:
         )
 
         # Notify Payment Service so rewards are distributed for risk-mode jobs too
-        asyncio.create_task(
+        self._spawn_task(
             self._notify_payment_service(
                 job_id=request_document["task_id"],
                 status="success" if commit_response.accepted else "rejected",
@@ -1382,7 +1405,7 @@ class QuorumService:
             )
 
             # Notify Payment Service of successful completion
-            asyncio.create_task(
+            self._spawn_task(
                 self._notify_payment_service(
                     job_id=job_id,
                     status="success",
@@ -1411,7 +1434,7 @@ class QuorumService:
                 },
             )
             # Notify Payment Service of rejected completion
-            asyncio.create_task(
+            self._spawn_task(
                 self._notify_payment_service(
                     job_id=job_id,
                     status="rejected",
@@ -1843,7 +1866,7 @@ class QuorumService:
                 # Notify Payment Service of timeout/failure
                 assignment_doc = await self.database[QUORUM_ASSIGNMENTS].find_one({"task_id": task_id})
                 if assignment_doc:
-                    asyncio.create_task(
+                    self._spawn_task(
                         self._notify_payment_service(
                             job_id=task_id,
                             status="timeout",

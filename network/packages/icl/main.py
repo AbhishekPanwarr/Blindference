@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import signal
+import sys
 import time
 from contextlib import asynccontextmanager
 from typing import Any
@@ -148,6 +149,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         try:
             yield
         finally:
+            await quorum_service.cancel_background_tasks(timeout=5.0)
             await close_database()
             logger.info("Blindference ICL stopped")
 
@@ -251,9 +253,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
 def _handle_signal(signum: int, _frame: Any) -> None:
     logger.info("Received signal %d, shutting down gracefully...", signum)
+    os._exit(0)
 
 
-signal.signal(signal.SIGTERM, _handle_signal)
-signal.signal(signal.SIGINT, _handle_signal)
+# Only install custom signal handlers when NOT running under uvicorn.
+# Uvicorn installs its own SIGINT/SIGTERM handlers; replacing them
+# causes Ctrl+C to hang because our handler never triggers Uvicorn's
+# server-shutdown sequence.  When uvicorn is present we skip this.
+if "uvicorn" not in sys.modules:
+    signal.signal(signal.SIGTERM, _handle_signal)
+    signal.signal(signal.SIGINT, _handle_signal)
 
 app = create_app()
