@@ -115,7 +115,7 @@ export class BlindferenceAgent {
     this.config = {
       paymentServiceUrl: config.paymentServiceUrl,
       iclUrl: config.iclUrl || config.paymentServiceUrl.replace(':8001', ':8000'),
-      ipfsGateway: config.ipfsGateway || 'https://gateway.pinata.cloud/ipfs',
+      ipfsGateway: config.ipfsGateway || process.env.BLINDFERENCE_IPFS_GATEWAY || process.env.IPFS_GATEWAY || 'https://ipfs.io/ipfs',
       pinataJwt: config.pinataJwt || '',
       rpcUrl: config.rpcUrl,
       chainId: config.chainId || 421614,
