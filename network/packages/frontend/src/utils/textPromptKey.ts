@@ -157,10 +157,14 @@ export async function downloadAndDecryptTextOutput(
   outputCid: string,
   key: Uint8Array,
 ): Promise<string> {
-  const gatewayBaseUrl = (import.meta.env.VITE_IPFS_GATEWAY_URL || 'https://ipfs.io/ipfs').replace(/\/\$/, '')
-  const response = await fetch(`${gatewayBaseUrl}/${outputCid}`)
+  console.log(`[IPFS-DEBUG] Downloading CID: ${outputCid} (length=${outputCid.length})`)
+  const gatewayBaseUrl = (import.meta.env.VITE_IPFS_GATEWAY_URL || 'https://ipfs.io/ipfs').replace(/\/$/, '')
+  const url = `${gatewayBaseUrl}/${outputCid}`
+  console.log(`[IPFS-DEBUG] Fetching URL: ${url}`)
+  const response = await fetch(url)
+  console.log(`[IPFS-DEBUG] Response status: ${response.status} ${response.statusText}`)
   if (!response.ok) {
-    throw new Error(`Failed to download encrypted output from IPFS: ${response.statusText}`)
+    throw new Error(`Failed to download encrypted output from IPFS: ${response.status} ${response.statusText} (CID=${outputCid}, len=${outputCid.length})`)
   }
 
   const packed = new Uint8Array(await response.arrayBuffer())
