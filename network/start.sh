@@ -42,7 +42,7 @@ BLF_STAKE_AMOUNT=1
 EOF
 }
 
-# Function to run a node's full lifecycle
+# Function to run a node's full lifecycle (sequential within node, parallel across nodes)
 run_node() {
     local node_dir=$1
     local node_name=$2
@@ -56,34 +56,43 @@ run_node() {
     
     # Step 1: Init (creates config.json + keystore from .env)
     echo "[Railway] $node_name: init"
-    blindference-node init || true
+    blindference-node init
+    
+    # Verify init succeeded
+    if [ ! -f "config.json" ]; then
+        echo "[Railway] ERROR: $node_name init failed - config.json not found"
+        return 1
+    fi
+    
+    # Small delay to ensure filesystem sync
+    sleep 1
     
     # Step 2: Attest with mock attestation
     echo "[Railway] $node_name: attest --mock"
-    blindference-node attest --mock || true
+    blindference-node attest --mock
     
-    # Step 3: Stake 1000 BLIND (only if not already staked)
+    # Step 3: Stake 1000 BLIND (skip if already staked)
     echo "[Railway] $node_name: checking stake status..."
-    STAKE_STATUS=$(blindference-node staking status 2>/dev/null || echo "0")
-    if echo "$STAKE_STATUS" | grep -q "staked.*0\|stake.*0\|not staked\|No stake"; then
+    STAKE_STATUS=$(blindference-node staking status 2>/dev/null || echo "staked: 0")
+    if echo "$STAKE_STATUS" | grep -iq "staked: 0\|stake: 0\|not staked\|no stake\|0 BLIND"; then
         echo "[Railway] $node_name: staking stake 1000"
-        blindference-node staking stake 1000 || true
+        yes "n" | blindference-node staking stake 1000 2>/dev/null || true
     else
         echo "[Railway] $node_name: already staked, skipping"
     fi
     
     # Step 4: Run the node daemon
     echo "[Railway] $node_name: run"
-    blindference-node run &
+    blindference-node run
 }
 
-# Start Node 1
+# Start Node 1 in background
 run_node "/app/nodes/one" "Node-1" "$NODE1_PRIVATE_KEY" &
 
-# Start Node 2
+# Start Node 2 in background
 run_node "/app/nodes/two" "Node-2" "$NODE2_PRIVATE_KEY" &
 
-# Start Node 3
+# Start Node 3 in background
 run_node "/app/nodes/three" "Node-3" "$NODE3_PRIVATE_KEY" &
 
 # Start Nginx in foreground (keeps container alive)
