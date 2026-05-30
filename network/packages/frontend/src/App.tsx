@@ -84,7 +84,7 @@ function Navbar() {
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
-      className="fixed top-0 left-0 right-0 z-50 h-24 flex items-center justify-center px-6 pointer-events-none"
+      className="fixed top-0 left-0 right-0 z-50 h-20 flex items-center justify-center px-6 pointer-events-none bg-gradient-to-b from-black/80 to-transparent"
     >
       <div className="w-full max-w-7xl flex items-center justify-between pointer-events-auto">
         {/* Logo */}
@@ -104,8 +104,8 @@ function Navbar() {
           </div>
         </Link>
 
-        {/* Navigation Pill — Centered */}
-        <div className="absolute left-1/2 -translate-x-1/2 flex items-center p-1.5 rounded-full bg-white/[0.03] backdrop-blur-[32px] border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.8)] gap-0.5">
+        {/* Navigation Pill — Centered (NullPay-style) */}
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center p-1 rounded-full bg-[#0a0a0a]/80 backdrop-blur-xl border border-white/[0.12] shadow-[0_8px_32px_0_rgba(0,0,0,0.6)]">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path + '/'))
             return (
@@ -114,18 +114,13 @@ function Navbar() {
                 to={item.path}
                 end={item.path === '/'}
                 className={({ isActive: active }) =>
-                  `relative px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-500 whitespace-nowrap ${
-                    active ? 'text-white' : 'text-white/40 hover:text-white'
+                  `relative px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap ${
+                    active 
+                      ? 'text-white bg-white/[0.08] border border-white/[0.08]' 
+                      : 'text-white/40 hover:text-white/70'
                   }`
                 }
               >
-                {isActive && (
-                  <motion.span
-                    layoutId="navbar-active-indicator"
-                    className="absolute inset-0 rounded-full bg-white/[0.08] border border-white/10 shadow-[inset_0_0_12px_rgba(255,255,255,0.05),0_0_20px_rgba(0,0,0,0.2)]"
-                    transition={{ type: "spring", bounce: 0.15, duration: 0.6 }}
-                  />
-                )}
                 <span className="relative z-10">{item.label}</span>
               </NavLink>
             )
@@ -138,17 +133,16 @@ function Navbar() {
             <>
               <Link
                 to="/whitepaper"
-                className="hidden md:flex items-center justify-center gap-2 bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 px-5 py-2.5 rounded-full backdrop-blur-[24px] transition-all duration-500 text-sm font-medium text-white/70 hover:text-white group"
+                className="hidden lg:flex items-center justify-center gap-2 px-5 py-2.5 rounded-full border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/[0.12] transition-all duration-300 text-sm font-medium text-white/60 hover:text-white/90"
               >
                 Read Whitepaper
-                <svg className="w-3.5 h-3.5 text-white/40 group-hover:text-white/70 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
               </Link>
               <Link
                 to="/app"
-                className="hidden md:flex items-center justify-center gap-2 bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 px-6 py-2.5 rounded-full backdrop-blur-[24px] transition-all duration-500 text-sm font-semibold text-white group shadow-[0_8px_32px_0_rgba(0,0,0,0.2)]"
+                className="hidden md:flex items-center justify-center gap-2 px-5 py-2.5 rounded-full border border-white/[0.08] bg-white/[0.05] hover:bg-white/[0.08] hover:border-white/[0.12] transition-all duration-300 text-sm font-semibold text-white/80 hover:text-white group"
               >
                 Launch App
-                <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                <svg className="w-4 h-4 text-white/50 group-hover:text-white transition-colors group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
               </Link>
             </>
           )}
