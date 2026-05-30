@@ -60,4 +60,4 @@ class TextInferenceResult(BaseModel):
     dispute_deadline: int | None = None
     leader_submission: LeaderSubmissionResponse | None = None
     verifier_verdicts: list[VerifierVerdictResponse] = Field(default_factory=list)
-    reject_reason: str | None = None
+    rejection_reason: str | None = None

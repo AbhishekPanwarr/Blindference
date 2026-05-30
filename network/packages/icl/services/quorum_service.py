@@ -1437,7 +1437,7 @@ class QuorumService:
                         "updated_at": datetime.now(timezone.utc),
                         "confirm_count": winning_count,
                         "reject_count": max(0, total_nodes - winning_count),
-                        "reject_reason": reject_reason,
+                        "rejection_reason": reject_reason,
                     }
                 },
             )
@@ -1717,7 +1717,7 @@ class QuorumService:
             dispute_deadline=dispute_deadline_unix,
             leader_submission=leader_submission,
             verifier_verdicts=verdicts,
-            reject_reason=request_document.get("reject_reason"),
+            rejection_reason=request_document.get("rejection_reason"),
         )
 
     def _required_text_confirmations(self, total_nodes: int) -> int:
