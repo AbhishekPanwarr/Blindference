@@ -15,15 +15,46 @@ until curl -s http://127.0.0.1:8000/health > /dev/null; do
 done
 echo "[Railway] ICL is ready!"
 
+# Function to generate .env for a node
+generate_node_env() {
+    local node_dir=$1
+    local private_key=$2
+    
+    cat > "$node_dir/.env" <<EOF
+BLF_PRIVATE_KEY=$private_key
+BLF_KEY_PASSWORD=${BLF_KEY_PASSWORD:-mock}
+BLF_ICL_ENDPOINT=http://127.0.0.1:8000
+BLF_RPC_URL=${BLF_RPC_URL:-https://arb-sepolia.g.alchemy.com/v2/demo}
+BLF_COFHE_ENDPOINT=${BLF_COFHE_ENDPOINT:-https://arb-sepolia.g.alchemy.com/v2/demo}
+BLF_COFHE_CHAIN_ID=421614
+BLF_INFERENCE_CONTRACT_ADDRESS=${BLF_INFERENCE_CONTRACT_ADDRESS:-0x98b08590D1CB28E6687eFea59A32BE8B16571C86}
+BLF_PROMPT_KEY_STORE_ADDRESS=${BLF_PROMPT_KEY_STORE_ADDRESS:-0x7120fAbdAD2FC5B05CD814A59457eB5fCd9Cfa7E}
+BLF_NODE_REGISTRY_ADDRESS=${BLF_NODE_REGISTRY_ADDRESS:-0x72C0Ead949Fd2C346598a30AF1A69c3c5Cb86082}
+GROQ_API_KEY=${GROQ_API_KEY:-}
+GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+BLF_IPFS_UPLOAD_JWT=${BLF_IPFS_UPLOAD_JWT:-}
+BLF_IPFS_GATEWAY=${BLF_IPFS_GATEWAY:-https://gateway.pinata.cloud/ipfs}
+BLF_COFHE_MODE=bridge
+BLF_SKIP_OUTPUT_KEY_STORAGE=false
+BLF_NETWORK=fhenix_testnet
+BLF_LOG_LEVEL=INFO
+BLF_STAKE_AMOUNT=1
+EOF
+}
+
 # Function to run a node's full lifecycle
 run_node() {
     local node_dir=$1
     local node_name=$2
+    local private_key=$3
+    
+    # Generate .env file
+    generate_node_env "$node_dir" "$private_key"
     
     cd "$node_dir"
     echo "[Railway] Starting $node_name lifecycle..."
     
-    # Step 1: Init (creates config.json from .env)
+    # Step 1: Init (creates config.json + keystore from .env)
     echo "[Railway] $node_name: init"
     blindference-node init || true
     
@@ -47,13 +78,13 @@ run_node() {
 }
 
 # Start Node 1
-run_node "/app/nodes/one" "Node-1" &
+run_node "/app/nodes/one" "Node-1" "$NODE1_PRIVATE_KEY" &
 
 # Start Node 2
-run_node "/app/nodes/two" "Node-2" &
+run_node "/app/nodes/two" "Node-2" "$NODE2_PRIVATE_KEY" &
 
 # Start Node 3
-run_node "/app/nodes/three" "Node-3" &
+run_node "/app/nodes/three" "Node-3" "$NODE3_PRIVATE_KEY" &
 
 # Start Nginx in foreground (keeps container alive)
 nginx -g 'daemon off;'

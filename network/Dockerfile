@@ -26,19 +26,8 @@ RUN pip install -r /app/icl/requirements.txt -r /app/payment/requirements.txt
 # Install blindference-node from PyPI
 RUN pip install blindference-node==0.3.4
 
-# Create isolated node directories and copy .env + keystores
+# Create isolated node directories (env + keystores generated at runtime)
 RUN mkdir -p /app/nodes/one /app/nodes/two /app/nodes/three
-
-COPY ./real/one/Blindference-node/.env /app/nodes/one/.env
-COPY ./real/one/Blindference-node/keystore.json /app/nodes/one/keystore.json
-COPY ./real/two/Blindference-node/.env /app/nodes/two/.env
-COPY ./real/two/Blindference-node/keystore.json /app/nodes/two/keystore.json
-COPY ./real/three/Blindference-node/.env /app/nodes/three/.env
-COPY ./real/three/Blindference-node/keystore.json /app/nodes/three/keystore.json
-
-# Update ICL endpoint in node .env files to use internal loopback
-RUN sed -i 's|http://0.0.0.0:8000|http://127.0.0.1:8000|g' /app/nodes/one/.env /app/nodes/two/.env /app/nodes/three/.env && \
-    sed -i 's|http://127.0.0.1:8001|http://127.0.0.1:8001|g' /app/nodes/one/.env /app/nodes/two/.env /app/nodes/three/.env
 
 # Copy Nginx config and startup script
 COPY nginx.conf /etc/nginx/nginx.conf
