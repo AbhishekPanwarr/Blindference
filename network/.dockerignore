@@ -79,3 +79,4 @@ protocol/
 # Docker (keep the main Dockerfile)
 !Dockerfile
 !nginx.conf
+!start.sh

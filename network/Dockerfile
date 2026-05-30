@@ -2,13 +2,22 @@ FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
 
+# Copy shared utilities first (needed by ICL)
+COPY ./packages/shared-py /app/shared-py
+RUN pip install /app/shared-py
+
+# Copy both services
 COPY ./packages/icl /app/icl
 COPY ./packages/payment /app/payment
 
+# Install dependencies for both services
 RUN pip install -r /app/icl/requirements.txt -r /app/payment/requirements.txt
 
+# Copy Nginx config and startup script
 COPY nginx.conf /etc/nginx/nginx.conf
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
 
 EXPOSE 80
 
-CMD ["/bin/bash", "-c", "uvicorn icl.main:app --host 127.0.0.1 --port 8000 --app-dir /app/icl & uvicorn payment.main:app --host 127.0.0.1 --port 8001 --app-dir /app/payment & nginx -g 'daemon off;'"]
+CMD ["/app/start.sh"]
