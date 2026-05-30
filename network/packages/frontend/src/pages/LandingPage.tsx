@@ -82,7 +82,7 @@ function HeroSection() {
         animate="show"
         className="pointer-events-none absolute inset-0 z-[1] overflow-hidden"
       >
-        <div className="absolute right-[-18rem] top-1/2 -translate-y-1/2 opacity-80 sm:right-[-12rem] md:right-[-12%] lg:right-[-8%] xl:right-[-4%]">
+        <div className="absolute right-[-12rem] top-1/2 -translate-y-1/2 opacity-80 sm:right-[-8rem] md:right-[-6%] lg:right-[-2%] xl:right-[2%]">
           <DottedGlobe className="w-[26rem] max-w-none sm:w-[30rem] md:w-[34rem] lg:w-[38rem] xl:w-[42rem]" />
         </div>
       </motion.div>
