@@ -31,9 +31,15 @@ run_node() {
     echo "[Railway] $node_name: attest --mock"
     blindference-node attest --mock || true
     
-    # Step 3: Stake 1000 BLIND
-    echo "[Railway] $node_name: staking stake 1000"
-    blindference-node staking stake 1000 || true
+    # Step 3: Stake 1000 BLIND (only if not already staked)
+    echo "[Railway] $node_name: checking stake status..."
+    STAKE_STATUS=$(blindference-node staking status 2>/dev/null || echo "0")
+    if echo "$STAKE_STATUS" | grep -q "staked.*0\|stake.*0\|not staked\|No stake"; then
+        echo "[Railway] $node_name: staking stake 1000"
+        blindference-node staking stake 1000 || true
+    else
+        echo "[Railway] $node_name: already staked, skipping"
+    fi
     
     # Step 4: Run the node daemon
     echo "[Railway] $node_name: run"
