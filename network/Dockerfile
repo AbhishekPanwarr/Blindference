@@ -11,6 +11,15 @@ COPY ./packages/icl /app/icl
 COPY ./packages/payment /app/payment
 COPY ./packages/contracts /app/contracts
 
+# Reconstruct Foundry out/ directory from tracked deployment ABIs
+# (out/ is gitignored; ICL expects out/ContractName.sol/ContractName.json)
+RUN mkdir -p /app/contracts/out && \
+    for f in /app/contracts/deployments/abis/*.json; do \
+      name=$(basename "$f" .json); \
+      mkdir -p "/app/contracts/out/${name}.sol"; \
+      cp "$f" "/app/contracts/out/${name}.sol/${name}.json"; \
+    done
+
 # Install dependencies for both services
 RUN pip install -r /app/icl/requirements.txt -r /app/payment/requirements.txt
 
