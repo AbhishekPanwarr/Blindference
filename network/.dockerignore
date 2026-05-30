@@ -1,0 +1,81 @@
+# Node / TypeScript
+node_modules/
+dist/
+build/
+coverage/
+.turbo/
+.vite/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.egg-info/
+
+# Solidity / Hardhat
+artifacts/
+cache/
+typechain-types/
+.cache/
+
+# Environment files
+.env
+.env.local
+.env.deployed
+.env.*
+.envrc
+.direnv/
+
+# Local secrets / certs
+secrets/
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.crt
+.blindference-cofhe/
+*.sqlite
+*.sqlite3
+*.db
+
+# Local runtime files
+*.pid
+*.pid.lock
+tmp/
+scripts/demo/logs/
+scripts/demo/pids/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Git
+.git/
+.gitignore
+
+# Docs
+docs/
+*.md
+
+# Protocol
+protocol/
+
+# Docker (keep the main Dockerfile)
+!Dockerfile
+!nginx.conf
