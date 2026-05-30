@@ -69,7 +69,7 @@ function AuroraBlobs() {
 /* ─── Hero ─── */
 function HeroSection() {
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+    <section className="relative flex min-h-[80vh] items-center justify-center overflow-hidden">
       {/* Background grid + aurora */}
       <HeroGrid />
       <AuroraBlobs />
@@ -145,17 +145,18 @@ function HeroSection() {
           >
             <Link
               to="/app"
-              className="btn-shimmer inline-flex items-center gap-2 bg-white text-black font-bold text-sm rounded-full px-8 py-3.5 transition-all hover:scale-[1.03] hover:shadow-[0_0_30px_rgba(255,255,255,0.25)]"
+              className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full bg-orange-500 px-8 py-3.5 text-sm font-bold text-white shadow-[0_4px_20px_rgba(249,115,22,0.3)] transition-all hover:scale-[1.03] hover:bg-orange-400 hover:shadow-[0_8px_30px_rgba(249,115,22,0.5)]"
             >
-              Launch App
-              <ArrowRight className="w-4 h-4" />
+              <span className="relative z-10">Launch App</span>
+              <ArrowRight className="relative z-10 w-4 h-4 transition-transform group-hover:translate-x-1" />
             </Link>
             <Link
               to="/docs"
-              className="inline-flex items-center gap-2 glass-panel glass-panel-hover text-orange-300 font-semibold text-sm rounded-full px-8 py-3.5 border border-white/10 transition-all hover:border-white/20"
+              className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full border border-white/10 bg-white/[0.03] px-8 py-3.5 text-sm font-semibold text-white/80 backdrop-blur-sm transition-all hover:border-orange-500/30 hover:text-white"
             >
-              Read Docs
-              <ArrowRight className="w-4 h-4" />
+              <span className="relative z-10">Read Docs</span>
+              <ArrowRight className="relative z-10 w-4 h-4 text-white/50 transition-all group-hover:text-white group-hover:translate-x-1" />
+              <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
             </Link>
           </motion.div>
 
