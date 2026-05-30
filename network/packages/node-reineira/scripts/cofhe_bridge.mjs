@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
+import readline from 'node:readline'
 
 installLocalStorageShim()
 
@@ -17,6 +18,9 @@ const [{ createCofheClient, createCofheConfig }, { Encryptable, FheTypes }, { ch
 const promptKeyStoreAbi = parseAbi([
   'function storeKey(bytes32 jobId, (uint256 ctHash, uint8 securityZone, uint8 utype, bytes signature) encHigh, (uint256 ctHash, uint8 securityZone, uint8 utype, bytes signature) encLow, address[] allowedNodes)',
 ])
+
+let cachedClient = null
+let cachedPayloadKey = null
 
 function installLocalStorageShim() {
   if (globalThis.localStorage && typeof globalThis.localStorage.setItem === 'function') {
@@ -59,24 +63,6 @@ function installLocalStorageShim() {
       writeStore({})
     },
   }
-}
-
-function parseJsonInput() {
-  return new Promise((resolve, reject) => {
-    let source = ''
-    process.stdin.setEncoding('utf8')
-    process.stdin.on('data', (chunk) => {
-      source += chunk
-    })
-    process.stdin.on('end', () => {
-      try {
-        resolve(JSON.parse(source || '{}'))
-      } catch (error) {
-        reject(error)
-      }
-    })
-    process.stdin.on('error', reject)
-  })
 }
 
 function resolveChains(chainId) {
@@ -126,30 +112,37 @@ function normalizePrivateKey(privateKey) {
   return `0x${normalized.toLowerCase()}`
 }
 
-async function createClient({ rpcUrl, privateKey, chainId }) {
-  const { cofheChain, viemChain } = resolveChains(chainId)
+async function getOrCreateClient(payload) {
+  const cacheKey = `${payload.rpcUrl}:${payload.chainId}:${payload.privateKey}`
+  if (cachedClient && cachedPayloadKey === cacheKey) {
+    return cachedClient
+  }
+
+  const { cofheChain, viemChain } = resolveChains(payload.chainId)
   const config = createCofheConfig({
     supportedChains: [cofheChain],
   })
   const client = createCofheClient(config)
-  const normalizedPrivateKey = normalizePrivateKey(privateKey)
+  const normalizedPrivateKey = normalizePrivateKey(payload.privateKey)
   const account = privateKeyToAccount(normalizedPrivateKey)
   const publicClient = createPublicClient({
     chain: viemChain,
-    transport: http(rpcUrl),
+    transport: http(payload.rpcUrl),
   })
   const walletClient = createWalletClient({
     account,
     chain: viemChain,
-    transport: http(rpcUrl),
+    transport: http(payload.rpcUrl),
   })
 
   await client.connect(publicClient, walletClient)
-  return { client, publicClient, walletClient, account }
+  cachedClient = { client, publicClient, walletClient, account }
+  cachedPayloadKey = cacheKey
+  return cachedClient
 }
 
 async function decryptForView(payload) {
-  const { client, publicClient, walletClient } = await createClient(payload)
+  const { client, publicClient, walletClient } = await getOrCreateClient(payload)
   if (!payload.permit) {
     throw new Error('Missing shared permit for decryption')
   }
@@ -182,7 +175,7 @@ async function decryptForView(payload) {
 }
 
 async function decryptPromptKey(payload) {
-  const { client, publicClient, walletClient, account } = await createClient(payload)
+  const { client, publicClient, walletClient, account } = await getOrCreateClient(payload)
   const permit = await client.permits.getOrCreateSelfPermit(undefined, account.address, {
     issuer: account.address,
     name: payload.permitName || 'Blindference Prompt Key Permit',
@@ -205,7 +198,7 @@ async function decryptPromptKey(payload) {
 }
 
 async function encryptUint128(payload) {
-  const { client } = await createClient(payload)
+  const { client } = await getOrCreateClient(payload)
   const values = Array.isArray(payload.values) ? payload.values : []
   const encrypted = await client
     .encryptInputs(values.map((value) => Encryptable.uint128(BigInt(value))))
@@ -222,7 +215,7 @@ async function encryptUint128(payload) {
 }
 
 async function createSharingPermit(payload) {
-  const { client, publicClient, walletClient, account } = await createClient(payload)
+  const { client, publicClient, walletClient, account } = await getOrCreateClient(payload)
   const permit = await client.permits.createSharing(
     {
       issuer: payload.issuer || account.address,
@@ -238,7 +231,7 @@ async function createSharingPermit(payload) {
 }
 
 async function storePromptKey(payload) {
-  const { publicClient, walletClient } = await createClient(payload)
+  const { publicClient, walletClient } = await getOrCreateClient(payload)
   const latestBlock = await publicClient.getBlock({ blockTag: 'latest' })
   const fallbackPriorityFeePerGas = 2_000_000n
   const maxPriorityFeePerGas = await publicClient
@@ -288,36 +281,67 @@ function toContractInput(input) {
   }
 }
 
-async function main() {
-  try {
-    const payload = await parseJsonInput()
-    let result
+async function processCommand(payload) {
+  let result
 
-    switch (payload.action) {
-      case 'decrypt_for_view':
-        result = await decryptForView(payload)
-        break
-      case 'create_sharing_permit':
-        result = await createSharingPermit(payload)
-        break
-      case 'decrypt_prompt_key':
-        result = await decryptPromptKey(payload)
-        break
-      case 'encrypt_uint128':
-        result = await encryptUint128(payload)
-        break
-      case 'store_prompt_key':
-        result = await storePromptKey(payload)
-        break
-      default:
-        throw new Error(`Unsupported action: ${payload.action}`)
+  switch (payload.action) {
+    case 'decrypt_for_view':
+      result = await decryptForView(payload)
+      break
+    case 'create_sharing_permit':
+      result = await createSharingPermit(payload)
+      break
+    case 'decrypt_prompt_key':
+      result = await decryptPromptKey(payload)
+      break
+    case 'encrypt_uint128':
+      result = await encryptUint128(payload)
+      break
+    case 'store_prompt_key':
+      result = await storePromptKey(payload)
+      break
+    default:
+      throw new Error(`Unsupported action: ${payload.action}`)
+  }
+
+  return result
+}
+
+async function main() {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    crlfDelay: Infinity,
+  })
+
+  for await (const line of rl) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+
+    let payload
+    try {
+      payload = JSON.parse(trimmed)
+    } catch (error) {
+      const response = { ok: false, error: `Invalid JSON: ${error.message}` }
+      process.stdout.write(`${JSON.stringify(response)}\n`)
+      continue
     }
 
-    process.stdout.write(`${JSON.stringify({ ok: true, ...result })}\n`)
-  } catch (error) {
-    process.stderr.write(`${error instanceof Error ? error.stack || error.message : String(error)}\n`)
-    process.stdout.write(`${JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) })}\n`)
-    process.exitCode = 1
+    try {
+      const result = await processCommand(payload)
+      const response = { ok: true, ...result }
+      if (payload._requestId) {
+        response._requestId = payload._requestId
+      }
+      process.stdout.write(`${JSON.stringify(response)}\n`)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      process.stderr.write(`${error instanceof Error ? error.stack || errorMessage : errorMessage}\n`)
+      const response = { ok: false, error: errorMessage }
+      if (payload._requestId) {
+        response._requestId = payload._requestId
+      }
+      process.stdout.write(`${JSON.stringify(response)}\n`)
+    }
   }
 }
 
