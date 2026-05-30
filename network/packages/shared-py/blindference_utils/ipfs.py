@@ -25,8 +25,16 @@ def _pinata_jwt() -> str:
     return jwt
 
 
-def _gateway_base_url() -> str:
-    return os.getenv("PINATA_GATEWAY_URL", "https://gateway.pinata.cloud/ipfs").rstrip("/")
+IPFS_GATEWAYS = [
+    os.getenv("PINATA_GATEWAY_URL", "https://ipfs.io/ipfs").rstrip("/"),
+    "https://ipfs.io/ipfs",
+    "https://gateway.pinata.cloud/ipfs",
+    "https://dweb.link/ipfs",
+]
+
+
+def _upload_gateway() -> str:
+    return os.getenv("PINATA_GATEWAY_URL", "https://ipfs.io/ipfs").rstrip("/")
 
 
 def upload_to_ipfs(data: bytes) -> str:
@@ -63,13 +71,40 @@ def upload_to_ipfs(data: bytes) -> str:
     if not cid:
         raise RuntimeError(f"IPFS upload failed: unexpected response {payload}")
 
+    logger.info("IPFS upload successful: cid=%s via Pinata", cid)
     return str(cid)
 
 
-def download_from_ipfs(cid: str) -> bytes:
-    response = requests.get(
-        f"{_gateway_base_url()}/{cid}",
-        timeout=60,
+def download_from_ipfs(cid: str, max_attempts: int = 3) -> bytes:
+    """Download *cid* from IPFS with multi-gateway retry.
+
+    Tries each gateway in ``IPFS_GATEWAYS`` up to *max_attempts* times
+    with exponential backoff, starting with the preferred gateway.
+    This handles propagation delays between pinning APIs and public
+    gateways in cloud environments like Railway.
+    """
+    import time
+
+    last_error: Exception | None = None
+    for attempt in range(max_attempts):
+        for gateway in IPFS_GATEWAYS:
+            url = f"{gateway}/{cid}"
+            try:
+                logger.debug("IPFS download attempt %d/%d via %s", attempt + 1, max_attempts, gateway)
+                response = requests.get(url, timeout=30)
+                if response.status_code == 200:
+                    logger.info("IPFS download success: cid=%s via %s (attempt %d)", cid, gateway, attempt + 1)
+                    return response.content
+                logger.warning("IPFS download non-200: cid=%s gateway=%s status=%s", cid, gateway, response.status_code)
+            except Exception as exc:
+                logger.warning("IPFS download error: cid=%s gateway=%s exc=%s", cid, gateway, exc)
+                last_error = exc
+        if attempt < max_attempts - 1:
+            sleep_secs = 2 ** attempt  # 1s, 2s, 4s
+            logger.info("IPFS download retrying in %ds (cid=%s)", sleep_secs, cid)
+            time.sleep(sleep_secs)
+
+    raise RuntimeError(
+        f"IPFS download failed after {max_attempts} attempts across {len(IPFS_GATEWAYS)} gateways (cid={cid}). "
+        f"Last error: {last_error}"
     )
-    response.raise_for_status()
-    return response.content

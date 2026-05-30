@@ -56,7 +56,7 @@ class RewardAccumulatorClient:
             self.web3_client.ensure_hex_prefix(work_ref),
         ).build_transaction({
             "from": self.web3_client.account.address,
-            "nonce": self.web3_client.w3.eth.get_transaction_count(self.web3_client.account.address),
+            "nonce": self.web3_client.w3.eth.get_transaction_count(self.web3_client.account.address, "pending"),
             "gas": 150_000,
             "gasPrice": int(self.web3_client.w3.eth.gas_price * 1.5),
         })

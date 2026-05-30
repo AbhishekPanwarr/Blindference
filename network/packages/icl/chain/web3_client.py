@@ -94,7 +94,7 @@ class Web3Client:
         value: int = 0,
     ) -> dict[str, Any]:
         signer = self.account if private_key is None else self.account_from_private_key(private_key)
-        nonce = self.w3.eth.get_transaction_count(signer.address)
+        nonce = self.w3.eth.get_transaction_count(signer.address, "pending")
         transaction = contract_function.build_transaction(
             {
                 "from": signer.address,

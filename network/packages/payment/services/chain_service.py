@@ -383,7 +383,7 @@ class ChainService:
                 leader_amount,
             ).build_transaction({
                 "from": self.web3_client.account.address,
-                "nonce": self.web3_client.w3.eth.get_transaction_count(self.web3_client.account.address),
+                "nonce": self.web3_client.w3.eth.get_transaction_count(self.web3_client.account.address, "pending"),
                 "gas": 100_000,
                 "gasPrice": int(self.web3_client.w3.eth.gas_price * 1.5),
             })
@@ -415,7 +415,7 @@ class ChainService:
                     verifier_amount,
                 ).build_transaction({
                     "from": self.web3_client.account.address,
-                    "nonce": self.web3_client.w3.eth.get_transaction_count(self.web3_client.account.address),
+                    "nonce": self.web3_client.w3.eth.get_transaction_count(self.web3_client.account.address, "pending"),
                     "gas": 100_000,
                     "gasPrice": int(self.web3_client.w3.eth.gas_price * 1.5),
                 })
@@ -489,7 +489,7 @@ class ChainService:
         try:
             tx = claimer.functions.claim(int(escrow_id), self.web3_client.ensure_hex_prefix(job_id)).build_transaction({
                 "from": self.web3_client.account.address,
-                "nonce": self.web3_client.w3.eth.get_transaction_count(self.web3_client.account.address),
+                "nonce": self.web3_client.w3.eth.get_transaction_count(self.web3_client.account.address, "pending"),
                 "gas": 300_000,
                 "gasPrice": int(self.web3_client.w3.eth.gas_price * 1.5),
             })
