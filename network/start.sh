@@ -2,11 +2,11 @@
 
 # Start ICL Service
 cd /app/icl
-PYTHONPATH=/app/icl:/app/shared-py uvicorn main:app --host 127.0.0.1 --port 8000 --no-access-log &
+PYTHONPATH=/app/icl:/app/shared-py uvicorn main:app --host 0.0.0.0 --port 8000 --no-access-log &
 
 # Start Payment Service
 cd /app/payment
-PYTHONPATH=/app/payment:/app/shared-py uvicorn main:app --host 127.0.0.1 --port 8001 --no-access-log &
+PYTHONPATH=/app/payment:/app/shared-py uvicorn main:app --host 0.0.0.0 --port 8001 --no-access-log &
 
 # Wait for ICL to be healthy before starting nodes
 echo "[Railway] Waiting for ICL to start..."
@@ -23,7 +23,7 @@ generate_node_env() {
     cat > "$node_dir/.env" <<EOF
 BLF_PRIVATE_KEY=$private_key
 BLF_KEY_PASSWORD=${BLF_KEY_PASSWORD:-mock}
-BLF_ICL_ENDPOINT=http://127.0.0.1:8000
+BLF_ICL_ENDPOINT=http://0.0.0.0:8000
 BLF_RPC_URL=${BLF_RPC_URL:-https://arb-sepolia.g.alchemy.com/v2/demo}
 BLF_COFHE_ENDPOINT=${BLF_COFHE_ENDPOINT:-https://arb-sepolia.g.alchemy.com/v2/demo}
 BLF_COFHE_CHAIN_ID=421614
