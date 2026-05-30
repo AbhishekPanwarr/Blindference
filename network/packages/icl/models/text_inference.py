@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from datetime import datetime
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -21,6 +24,31 @@ class QuorumCertificate(BaseModel):
     confidence: int
 
 
+class LeaderSubmissionResponse(BaseModel):
+    leader_address: str
+    risk_score: int | None = None
+    confidence: int | None = None
+    summary: str | None = None
+    provider: str | None = None
+    model: str | None = None
+    result_hash: str | None = None
+    submitted_at: datetime | None = None
+
+
+class VerifierVerdictResponse(BaseModel):
+    verifier_address: str
+    submitted: bool = False
+    accepted: bool | None = None
+    confidence: int | None = None
+    reason: str | None = None
+    risk_score: int | None = None
+    result_hash: str | None = None
+    provider: str | None = None
+    model: str | None = None
+    summary: str | None = None
+    updated_at: datetime | None = None
+
+
 class TextInferenceResult(BaseModel):
     job_id: str
     status: str
@@ -30,3 +58,6 @@ class TextInferenceResult(BaseModel):
     encrypted_output_key_low: str | None = None
     quorum: QuorumCertificate | None = None
     dispute_deadline: int | None = None
+    leader_submission: LeaderSubmissionResponse | None = None
+    verifier_verdicts: list[VerifierVerdictResponse] = Field(default_factory=list)
+    reject_reason: str | None = None

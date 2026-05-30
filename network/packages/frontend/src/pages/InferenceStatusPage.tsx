@@ -25,6 +25,7 @@ const EXECUTION_STEPS = [
 export function InferenceStatusPage() {
   const { requestId = '' } = useParams<{ requestId: string }>()
   const [isDisputeOpen, setIsDisputeOpen] = useState(false)
+  const [disputePrefill, setDisputePrefill] = useState<string | undefined>(undefined)
   const [timeLeft, setTimeLeft] = useState('')
   const [textAnswer, setTextAnswer] = useState<string | null>(null)
   const [textAnswerError, setTextAnswerError] = useState<string | null>(null)
@@ -303,7 +304,10 @@ export function InferenceStatusPage() {
                   </div>
                   <button
                     className="mt-2 w-full rounded-xl border border-error/30 bg-error/10 py-3.5 text-xs font-bold uppercase tracking-[0.2em] text-error transition-colors hover:bg-error/20"
-                    onClick={() => setIsDisputeOpen(true)}
+                    onClick={() => {
+                      setDisputePrefill(undefined)
+                      setIsDisputeOpen(true)
+                    }}
                     type="button"
                   >
                     FILE DISPUTE CLAIM
@@ -395,13 +399,68 @@ export function InferenceStatusPage() {
                     </p>
                   </div>
                 ) : status.status === 'REJECTED' ? (
-                  <div className="flex flex-col items-center justify-center text-center text-error">
-                    <AlertCircle className="mb-4 h-12 w-12" />
-                    <p className="text-sm font-medium leading-relaxed">
-                      Inference rejected by quorum.
-                      <br />
-                      <span className="text-white/50 font-normal">Mismatched execution fingerprints.</span>
-                    </p>
+                  <div className="flex flex-col items-start w-full space-y-4">
+                    {/* Rejection banner */}
+                    <div className="w-full rounded-xl border border-error/20 bg-error/10 p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <AlertCircle className="h-4 w-4 text-error" />
+                        <span className="text-sm font-semibold text-error">Quorum Rejected</span>
+                      </div>
+                      <p className="text-xs text-white/70">
+                        {status.failure_reason ?? 'Mismatched execution fingerprints.'}
+                      </p>
+                    </div>
+
+                    {/* Quorum breakdown */}
+                    {status.quorum.verifiers.length > 0 && (
+                      <div className="w-full">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-white/50 mb-2">
+                          Node Agreement
+                        </p>
+                        <QuorumVisualizer
+                          leader={status.quorum.leader ?? undefined}
+                          verifiers={status.quorum.verifiers}
+                          status={status.status}
+                        />
+                      </div>
+                    )}
+
+                    {/* Leader output preview (if available) */}
+                    {status.raw && 'leader_submission' in status.raw && status.raw.leader_submission?.summary && (
+                      <div className="w-full rounded-xl border border-orange-500/20 bg-orange-500/5 p-4">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-orange-400 mb-2">
+                          Leader Output
+                        </p>
+                        <p className="text-sm text-white/80 font-mono line-clamp-6">
+                          {status.raw.leader_submission.summary}
+                        </p>
+                        <p className="text-[10px] text-white/40 mt-1">
+                          Output CID: {status.raw.leader_submission.summary.slice(0, 20)}…
+                        </p>
+                      </div>
+                    )}
+
+                    {/* User override / feedback */}
+                    <div className="w-full rounded-xl border border-white/10 bg-white/5 p-4">
+                      <p className="text-xs text-white/70 mb-3">
+                        The leader produced an output, but the quorum rejected it.
+                        If you believe the output is actually correct, you can flag it for review.
+                      </p>
+                      <button
+                        onClick={() => {
+                          setDisputePrefill('I believe the leader output is correct and the quorum rejection was a false negative.')
+                          setIsDisputeOpen(true)
+                        }}
+                        className="w-full flex items-center justify-center gap-2 rounded-lg border border-orange-500/20 bg-orange-500/10 px-3 py-2 text-xs font-semibold text-orange-400 hover:bg-orange-500/20 transition-colors"
+                        type="button"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                        I Believe This Output Is Correct
+                      </button>
+                      <p className="text-[10px] text-white/40 text-center mt-1.5">
+                        Your feedback helps calibrate the consensus threshold.
+                      </p>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center w-full relative">
@@ -456,10 +515,15 @@ export function InferenceStatusPage() {
           requestId={requestId}
           developerAddress={status.developer_address}
           isOpen={isDisputeOpen}
-          onClose={() => setIsDisputeOpen(false)}
+          onClose={() => {
+            setIsDisputeOpen(false)
+            setDisputePrefill(undefined)
+          }}
           onSuccess={() => {
             setIsDisputeOpen(false)
+            setDisputePrefill(undefined)
           }}
+          prefilledReason={disputePrefill}
           taskId={status.task_id}
         />
       </div>
@@ -526,7 +590,10 @@ export function InferenceStatusPage() {
           {status.status === 'ACCEPTED' && status.coverage_id && (
             <div className="pt-3 border-t border-white/10">
               <button
-                onClick={() => setIsDisputeOpen(true)}
+                onClick={() => {
+                  setDisputePrefill(undefined)
+                  setIsDisputeOpen(true)
+                }}
                 className="w-full flex items-center justify-center gap-2 rounded-lg border border-error/20 bg-error/10 px-3 py-2 text-xs font-semibold text-error hover:bg-error/20 transition-colors"
                 type="button"
               >

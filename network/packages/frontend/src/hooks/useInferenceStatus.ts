@@ -201,6 +201,25 @@ function mapTextStatusToDemoStatus(
       ? 'REJECTED'
       : request.status
 
+  // Map text-mode verifier verdicts to the shared DemoStatus shape
+  const verifierVerdicts = (request.verifier_verdicts ?? []).map((v) => ({
+    address: v.verifier_address,
+    verdict: v.submitted
+      ? (v.accepted === true ? 'CONFIRM' as const : v.accepted === false ? 'REJECT' as const : null)
+      : null,
+    confidence: v.accepted ? 100 : 0,
+  }))
+
+  // Backfill any verifiers from quorum.assignment not yet in verdicts
+  const seenAddresses = new Set(verifierVerdicts.map((v) => v.address))
+  for (const address of request.quorum?.verifier_addresses ?? []) {
+    if (!seenAddresses.has(address)) {
+      verifierVerdicts.push({ address, verdict: null, confidence: 0 })
+    }
+  }
+
+  const leaderSubmission = request.leader_submission
+
   return {
     request_id: request.job_id || requestId,
     task_id: request.job_id || requestId,
@@ -213,15 +232,19 @@ function mapTextStatusToDemoStatus(
       encrypted_output_key_low: request.encrypted_output_key_low ?? undefined,
     },
     quorum: {
-      leader: null,
-      verifiers: (request.quorum?.verifier_addresses ?? []).map((address) => ({
-        address,
-        verdict: request.status === 'ACCEPTED' ? 'CONFIRM' : null,
-        confidence: request.quorum?.confidence ?? 0,
-      })),
+      leader: leaderSubmission
+        ? {
+            address: leaderSubmission.leader_address,
+            status: stage === 'ACCEPTED' ? 'COMPLETE' : 'EXECUTED',
+            reputationScore: undefined,
+            stake: undefined,
+          }
+        : null,
+      verifiers: verifierVerdicts,
       confirm_count: request.quorum?.confirmations ?? 0,
-      reject_count: 0,
+      reject_count: (request.verifier_verdicts ?? []).filter((v) => v.accepted === false).length,
     },
+    failure_reason: request.reject_reason ?? undefined,
     coverage_id: undefined,
     coverage_recommendation: undefined,
     result_commit_tx: undefined,

@@ -180,6 +180,22 @@ export type BackendTextInferenceStatus = {
     confidence: number
   } | null
   dispute_deadline?: number | null
+  reject_reason?: string | null
+  leader_submission?: {
+    leader_address: string
+    result_hash?: string | null
+    summary?: string | null
+    provider?: string | null
+    model?: string | null
+    confidence?: number | null
+  } | null
+  verifier_verdicts?: Array<{
+    verifier_address: string
+    submitted: boolean
+    accepted?: boolean | null
+    result_hash?: string | null
+    reason?: string | null
+  }>
 }
 
 export type BackendInferenceStatusResponse = BackendInferenceRequest | BackendTextInferenceStatus

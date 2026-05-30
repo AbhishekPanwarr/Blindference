@@ -1422,6 +1422,7 @@ class QuorumService:
             return await self._to_text_result(refreshed)
 
         if len(verifier_documents) >= len(assignment["verifier_addresses"]):
+            reject_reason = f"Quorum rejected: {winning_count} confirms vs {required_confirmations} required"
             await self.database[INFERENCE_REQUESTS].update_one(
                 {"request_id": request_id},
                 {
@@ -1430,6 +1431,7 @@ class QuorumService:
                         "updated_at": datetime.now(timezone.utc),
                         "confirm_count": winning_count,
                         "reject_count": max(0, total_nodes - winning_count),
+                        "reject_reason": reject_reason,
                     }
                 },
             )
@@ -1440,7 +1442,7 @@ class QuorumService:
                     status="rejected",
                     leader_address=assignment["leader_address"],
                     verifier_addresses=assignment["verifier_addresses"],
-                    error_reason=f"Quorum rejected: {winning_count} confirms vs {required_confirmations} required",
+                    error_reason=reject_reason,
                 )
             )
             refreshed = await self.database[INFERENCE_REQUESTS].find_one({"request_id": request_id})
@@ -1658,6 +1660,46 @@ class QuorumService:
                 confidence=int(request_document.get("aggregated_confidence") or 0),
             )
 
+        # Build leader submission from metadata (if any)
+        metadata = dict(request_document.get("metadata", {}))
+        raw_leader = metadata.get("text_leader_result")
+        leader_submission: LeaderSubmissionResponse | None = None
+        if isinstance(raw_leader, dict):
+            submitted_at = raw_leader.get("submitted_at")
+            leader_submission = LeaderSubmissionResponse(
+                leader_address=raw_leader.get("leader_address", assignment_document.get("leader_address", "")),
+                confidence=raw_leader.get("confidence"),
+                summary=raw_leader.get("output_cid"),  # For text mode, store output in summary field
+                provider=raw_leader.get("provider"),
+                model=raw_leader.get("model"),
+                result_hash=raw_leader.get("commitment_hash"),
+                submitted_at=datetime.fromisoformat(submitted_at) if isinstance(submitted_at, str) else None,
+            )
+
+        # Build verifier verdicts from DB
+        verdicts: list[VerifierVerdictResponse] = []
+        if status in ("REJECTED", "ACCEPTED", "DISPUTED"):
+            try:
+                verdict_cursor = self.database[VERIFIER_VERDICTS].find(
+                    {"request_id": request_document["request_id"]}
+                )
+                async for vd in verdict_cursor:
+                    vd.pop("id", None)
+                    verdicts.append(
+                        VerifierVerdictResponse(
+                            verifier_address=str(vd.get("verifier_address", "")),
+                            submitted=bool(vd.get("verifier_address")),
+                            accepted=vd.get("accepted"),
+                            confidence=vd.get("confidence"),
+                            reason=vd.get("reason"),
+                            result_hash=vd.get("result_hash"),
+                            provider=vd.get("provider"),
+                            model=vd.get("model"),
+                        )
+                    )
+            except Exception:
+                pass
+
         return TextInferenceResult(
             job_id=request_document["request_id"],
             status=status,
@@ -1667,6 +1709,9 @@ class QuorumService:
             encrypted_output_key_low=request_document.get("encrypted_output_key_low"),
             quorum=quorum,
             dispute_deadline=dispute_deadline_unix,
+            leader_submission=leader_submission,
+            verifier_verdicts=verdicts,
+            reject_reason=request_document.get("reject_reason"),
         )
 
     def _required_text_confirmations(self, total_nodes: int) -> int:

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Dialog } from '@headlessui/react'
 import { AlertCircle, X } from 'lucide-react'
 
@@ -12,6 +12,7 @@ interface DisputeFormProps {
   isOpen: boolean
   onClose: () => void
   onSuccess: () => void
+  prefilledReason?: string
 }
 
 export function DisputeForm({
@@ -22,10 +23,17 @@ export function DisputeForm({
   isOpen,
   onClose,
   onSuccess,
+  prefilledReason,
 }: DisputeFormProps) {
-  const [reason, setReason] = useState('')
+  const [reason, setReason] = useState(prefilledReason ?? '')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (prefilledReason) {
+      setReason(prefilledReason)
+    }
+  }, [prefilledReason])
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
