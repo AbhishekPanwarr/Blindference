@@ -49,12 +49,15 @@ class NodeSelector:
         # Randomly shuffle among top candidates for fairness while preserving quality.
         # A node in the top 2×(verifier_count+1) is eligible for any role.
         top_k = min(len(candidate_snapshots), 2 * (verifier_count + 1))
-        random.shuffle(candidate_snapshots[:top_k])
+        # Slice into a NEW list, shuffle that copy, and use it for selection.
+        # The original sorted list stays intact for ordered_candidates.
+        shuffled = candidate_snapshots[:top_k]
+        random.shuffle(shuffled)
 
-        leader = candidate_snapshots[0]["operator_address"]
+        leader = shuffled[0]["operator_address"]
         verifiers = [
             snapshot["operator_address"]
-            for snapshot in candidate_snapshots[1 : verifier_count + 1]
+            for snapshot in shuffled[1 : verifier_count + 1]
         ]
         ordered_candidates = [
             snapshot["operator_address"] for snapshot in candidate_snapshots
