@@ -173,6 +173,19 @@ async def submit_verifier_verdict(
         raise HTTPException(status_code=404, detail=str(error)) from error
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    except Exception as exc:
+        # Guard against duplicate-verdict PostgreSQL constraint violations.
+        # The ICL uses ``upsert=True`` but Supabase may still raise 23505
+        # when the same verifier submits twice in quick succession.
+        msg = str(exc)
+        if "23505" in msg or "duplicate key" in msg.lower() or "unique constraint" in msg.lower():
+            logger.info("Duplicate verdict from verifier=%s for request=%s — idempotent accept", payload.verifier_address, request_id)
+            return {
+                "status": "already_recorded",
+                "request_id": request_id,
+                "verifier_address": payload.verifier_address,
+            }
+        raise HTTPException(status_code=500, detail=f"Internal error: {msg}") from exc
 
 
 @router.get("/task/{task_id}", response_model=InferenceRequestResponse | TextInferenceResult)
