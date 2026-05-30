@@ -853,6 +853,10 @@ class QuorumService:
             raise ValueError("leader verdict must be CONFIRM or REJECT")
 
         metadata = dict(request_document.get("metadata", {}))
+        logger.info(
+            "[CID-TRACE] Leader result received: job_id=%s output_cid=%s cid_len=%d",
+            payload.job_id, payload.output_cid, len(payload.output_cid) if payload.output_cid else 0
+        )
         metadata["text_leader_result"] = {
             "leader_address": assignment["leader_address"],
             "output_cid": payload.output_cid,
@@ -929,6 +933,10 @@ class QuorumService:
 
         leader_address = self.chain_service.web3_client.checksum_address(assignment["leader_address"])
         now_iso = datetime.now(timezone.utc).isoformat()
+        logger.info(
+            "[CID-TRACE] Writing to DB: request_id=%s output_cid=%s cid_len=%d",
+            request_document["request_id"], payload.output_cid, len(payload.output_cid) if payload.output_cid else 0
+        )
         await self.database[INFERENCE_REQUESTS].update_one(
             {"request_id": request_document["request_id"]},
             {
@@ -1706,10 +1714,15 @@ class QuorumService:
             except Exception:
                 pass
 
+        db_output_cid = request_document.get("output_cid")
+        logger.info(
+            "[CID-TRACE] Returning status: request_id=%s db_output_cid=%s cid_len=%d",
+            request_document["request_id"], db_output_cid, len(db_output_cid) if db_output_cid else 0
+        )
         return TextInferenceResult(
             job_id=request_document["request_id"],
             status=status,
-            output_cid=request_document.get("output_cid"),
+            output_cid=db_output_cid,
             commitment_hash=request_document.get("commitment_hash"),
             encrypted_output_key_high=request_document.get("encrypted_output_key_high"),
             encrypted_output_key_low=request_document.get("encrypted_output_key_low"),
