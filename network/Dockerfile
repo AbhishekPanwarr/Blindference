@@ -11,6 +11,9 @@ COPY ./packages/icl /app/icl
 COPY ./packages/payment /app/payment
 COPY ./packages/contracts /app/contracts
 
+# Install npm dependencies for payment scripts (Reineira SDK, ts-node)
+RUN cd /app/payment && npm install
+
 # Reconstruct Foundry out/ directory from tracked deployment ABIs
 # (out/ is gitignored; ICL expects out/ContractName.sol/ContractName.json)
 RUN mkdir -p /app/contracts/out && \
