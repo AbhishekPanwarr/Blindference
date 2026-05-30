@@ -1143,6 +1143,17 @@ class QuorumService:
                     )
                 except Exception as exc:
                     logger.error("ResultRegistry write failed: %s", exc)
+
+            # Accrue rewards on-chain via RewardAccumulator
+            asyncio.create_task(
+                self._accrue_rewards(
+                    task_id=request_document["task_id"],
+                    escrow_id=escrow_id,
+                    leader_address=assignment["leader_address"],
+                    verifier_addresses=assignment["verifier_addresses"],
+                    result_hash=str(aggregation["result_hash"]),
+                )
+            )
         else:
             chain_result = await self.chain_service.finalize_execution(
                 task_id=request_document["task_id"],
@@ -1281,7 +1292,7 @@ class QuorumService:
                 )
             )
 
-        return await self.commit_request(
+        commit_response = await self.commit_request(
             request_id,
             InferenceCommitRequest(
                 risk_score=int(leader_submission["risk_score"]),
@@ -1293,6 +1304,19 @@ class QuorumService:
                 verifier_verdicts=normalized_verdicts,
             ),
         )
+
+        # Notify Payment Service so rewards are distributed for risk-mode jobs too
+        asyncio.create_task(
+            self._notify_payment_service(
+                job_id=request_document["task_id"],
+                status="success" if commit_response.accepted else "rejected",
+                leader_address=assignment["leader_address"],
+                verifier_addresses=assignment["verifier_addresses"],
+                result_hash=commit_response.result_hash,
+            )
+        )
+
+        return commit_response
 
     async def _attempt_finalize_text_request(self, job_id: str) -> TextInferenceResult | None:
         request_document = await self._get_request_by_id_or_task(job_id)
@@ -2026,3 +2050,70 @@ class QuorumService:
                 await asyncio.sleep(2 ** attempt)
 
         logger.error("Failed to notify Payment Service for job=%s after 3 attempts", job_id)
+
+    async def _accrue_rewards(
+        self,
+        *,
+        task_id: str,
+        escrow_id: int,
+        leader_address: str,
+        verifier_addresses: list[str],
+        result_hash: str,
+    ) -> None:
+        """Accrue on-chain rewards for leader and verifiers via RewardAccumulator.
+
+        Uses 1 BLIND total as the default accrual amount, split 60/20/20.
+        This is a best-effort background task; failures are logged but not fatal.
+        """
+        try:
+            if not await self.chain_service.reward_accumulator_ready():
+                logger.debug("RewardAccumulator not deployed — skipping accrual for %s", task_id)
+                return
+
+            cycle_epoch = await asyncio.to_thread(
+                self.chain_service.reputation_registry.current_cycle
+            )
+            total_wei = 1 * 10 ** 18
+            leader_amount = int(total_wei * 0.6)
+            verifier_amount = int(total_wei * 0.2)
+            work_ref = task_id if task_id.startswith("0x") else self.chain_service.web3_client.keccak_text(task_id)
+
+            # Leader (EXECUTOR = 0)
+            try:
+                leader_result = await asyncio.to_thread(
+                    self.chain_service.reward_accumulator.accrue,
+                    node_address=leader_address,
+                    cycle_epoch=cycle_epoch,
+                    escrow_id=escrow_id,
+                    role=0,
+                    amount_wei=leader_amount,
+                    work_ref=work_ref,
+                )
+                logger.info(
+                    "Reward accrued for leader=%s task=%s tx=%s status=%s",
+                    leader_address, task_id, leader_result.get("tx_hash"), leader_result.get("status"),
+                )
+            except Exception as exc:
+                logger.warning("Leader reward accrual failed for task=%s: %s", task_id, exc)
+
+            # Verifiers (CROSS_VERIFIER = 1)
+            for v_addr in verifier_addresses[:2]:
+                try:
+                    v_result = await asyncio.to_thread(
+                        self.chain_service.reward_accumulator.accrue,
+                        node_address=v_addr,
+                        cycle_epoch=cycle_epoch,
+                        escrow_id=escrow_id,
+                        role=1,
+                        amount_wei=verifier_amount,
+                        work_ref=work_ref,
+                    )
+                    logger.info(
+                        "Reward accrued for verifier=%s task=%s tx=%s status=%s",
+                        v_addr, task_id, v_result.get("tx_hash"), v_result.get("status"),
+                    )
+                except Exception as exc:
+                    logger.warning("Verifier reward accrual failed for task=%s verifier=%s: %s", task_id, v_addr, exc)
+
+        except Exception as exc:
+            logger.warning("Reward accrual task failed for task=%s: %s", task_id, exc)
