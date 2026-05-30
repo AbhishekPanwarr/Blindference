@@ -76,6 +76,27 @@ docs/
 # Protocol
 protocol/
 
+# Blindference node directories (keep .env and keystores for Railway deploy)
+!real/
+real/*/Blindference-node/.git/
+real/*/Blindference-node/node_modules/
+real/*/Blindference-node/__pycache__/
+real/*/Blindference-node/*.egg-info/
+real/*/Blindference-node/.venv/
+real/*/Blindference-node/venv/
+real/*/Blindference-node/.pytest_cache/
+real/*/Blindference-node/.mypy_cache/
+real/*/Blindference-node/.ruff_cache/
+real/*/Blindference-node/.coverage
+real/*/Blindference-node/htmlcov/
+real/*/Blindference-node/artifacts/
+real/*/Blindference-node/cache/
+real/*/Blindference-node/typechain-types/
+real/*/Blindference-node/dist/
+real/*/Blindference-node/build/
+real/*/Blindference-node/coverage/
+real/*/Blindference-node/docs/
+
 # Docker (keep the main Dockerfile)
 !Dockerfile
 !nginx.conf
