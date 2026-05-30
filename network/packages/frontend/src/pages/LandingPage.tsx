@@ -69,11 +69,9 @@ function AuroraBlobs() {
 /* ─── Hero ─── */
 function HeroSection() {
   return (
-    <section className="relative flex min-h-[80vh] items-center justify-center overflow-hidden">
-      {/* Background grid + aurora */}
+    <section className="relative flex min-h-[80vh] items-start md:items-center overflow-hidden">
+      {/* Background: Animated grid */}
       <HeroGrid />
-      <AuroraBlobs />
-      <Scanlines />
 
       {/* Globe — positioned to the right, NullPay-style */}
       <motion.div
@@ -87,107 +85,96 @@ function HeroSection() {
         </div>
       </motion.div>
 
-      <div className="relative z-10 w-full px-6 md:px-12 lg:px-24 pt-6 md:pt-36 pb-12 flex flex-col items-center text-center">
+      {/* Hero content */}
+      <div className="relative z-10 w-full px-6 md:px-12 lg:px-24 pt-6 md:pt-36 pb-12">
         <motion.div
           variants={staggerSlow}
           initial="hidden"
           animate="show"
-          className="max-w-3xl mx-auto"
+          className="mx-auto flex max-w-4xl flex-col items-center gap-10 md:gap-10"
         >
-          <motion.div variants={fadeInUp}>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 mb-8">
-              <Zap className="w-3.5 h-3.5 text-orange-400" />
-              <span className="text-xs font-medium text-orange-300 tracking-wide">
-                CoFHE-Powered Confidential AI
-              </span>
-            </div>
-          </motion.div>
-
-          <motion.h1
-            variants={fadeInUp}
-            className="text-[3.3rem] font-black leading-[0.92] tracking-[-0.06em] sm:text-[3.9rem] md:text-7xl lg:text-[5.2rem] xl:text-[5.5rem] mb-8"
-          >
-            <span className="block text-white">Confidential AI</span>
-            <span className="block mt-2">
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-500 to-orange-400 drop-shadow-[0_0_30px_rgba(249,115,22,0.3)]">
-                Inference,
-              </span>{' '}
-              <span
-                className="text-stroke-white"
-                style={{
-                  WebkitTextStroke: '1.5px rgba(255,255,255,0.12)',
-                  color: 'transparent',
-                }}
-              >
-                Verified.
-              </span>
-            </span>
-          </motion.h1>
-
-          <motion.p
-            variants={fadeInUp}
-            className="max-w-xl mx-auto text-lg md:text-xl font-light leading-relaxed tracking-wide text-white/40 mb-10"
-          >
-            Your prompts are encrypted with{' '}
-            <span className="text-white/80 font-medium border-b border-orange-500/30">
-              FHE
-            </span>
-            . Your answers are proven by{' '}
-            <span className="text-white/80 font-medium border-b border-orange-500/30">
-              quorum consensus
-            </span>{' '}
-            inside TEEs.
-          </motion.p>
-
-          <motion.div
-            variants={fadeInUp}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4"
-          >
-            <Link
-              to="/app"
-              className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full bg-orange-500 px-8 py-3.5 text-sm font-bold text-white shadow-[0_4px_20px_rgba(249,115,22,0.3)] transition-all hover:scale-[1.03] hover:bg-orange-400 hover:shadow-[0_8px_30px_rgba(249,115,22,0.5)]"
-            >
-              <span className="relative z-10">Launch App</span>
-              <ArrowRight className="relative z-10 w-4 h-4 transition-transform group-hover:translate-x-1" />
-            </Link>
-            <Link
-              to="/docs"
-              className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full border border-white/10 bg-white/[0.03] px-8 py-3.5 text-sm font-semibold text-white/80 backdrop-blur-sm transition-all hover:border-orange-500/30 hover:text-white"
-            >
-              <span className="relative z-10">Read Docs</span>
-              <ArrowRight className="relative z-10 w-4 h-4 text-white/50 transition-all group-hover:text-white group-hover:translate-x-1" />
-              <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-            </Link>
-          </motion.div>
-
-          {/* Trust badges — NullPay staggered TrustBar style */}
-          <motion.div
-            variants={fadeInUp}
-            className="mt-10 flex flex-wrap justify-center gap-3"
-          >
-            {[
-              '100% Private',
-              'ZK Native',
-              'FHE Protected',
-              'Quorum Verified',
-            ].map((label, i) => (
-              <motion.div
-                key={label}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{
-                  delay: 1 + i * 0.1,
-                  duration: 0.5,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
-                className="group relative flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] hover:border-orange-500/20 transition-all duration-500 backdrop-blur-xl cursor-default"
-              >
-                <span className="text-[10px] font-mono tracking-[0.25em] text-white/40 group-hover:text-white transition-colors uppercase font-bold">
-                  {label}
-                </span>
+          <div className="relative flex w-full justify-center overflow-visible">
+            <div className="relative z-20 flex max-w-4xl flex-col items-center text-center md:items-center md:text-center">
+              {/* Main headline */}
+              <motion.div variants={fadeInUp} className="relative z-20">
+                <h1 className="text-[3.3rem] font-black leading-[0.9] tracking-[-0.06em] sm:text-[3.9rem] md:text-7xl lg:text-[5rem] xl:text-[5.8rem]">
+                  <span className="block text-white">Confidential AI</span>
+                  <span className="block mt-1 md:mt-0">
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-500 to-orange-400 drop-shadow-[0_0_30px_rgba(249,115,22,0.3)]">Inference,</span>{' '}
+                    <span className="text-white/60">Verified.</span>
+                  </span>
+                </h1>
               </motion.div>
-            ))}
-          </motion.div>
+
+              <motion.p
+                variants={fadeInUp}
+                className="max-w-2xl pt-6 text-xl font-light leading-relaxed tracking-wide text-white/60 md:text-2xl lg:text-[1.35rem]"
+              >
+                Your prompts are encrypted with{' '}
+                <span className="text-white/90 font-medium border-b border-orange-500/30">
+                  FHE
+                </span>
+                . Your answers are proven by{' '}
+                <span className="text-white/90 font-medium border-b border-orange-500/30">
+                  quorum consensus
+                </span>{' '}
+                inside TEEs.
+              </motion.p>
+
+              {/* CTAs */}
+              <motion.div
+                variants={fadeInUp}
+                className="flex flex-col items-center justify-center gap-4 pt-6"
+              >
+                <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+                  <Link
+                    to="/app"
+                    className="group inline-flex min-w-[180px] items-center justify-center gap-2 rounded-full bg-orange-500 px-6 py-3 text-base font-semibold text-white shadow-[0_4px_20px_rgba(249,115,22,0.3)] transition-all hover:scale-[1.03] hover:bg-orange-400 hover:shadow-[0_8px_30px_rgba(249,115,22,0.5)]"
+                  >
+                    <span className="relative z-10">Launch App</span>
+                    <ArrowRight className="relative z-10 w-4 h-4 transition-transform group-hover:translate-x-1" />
+                  </Link>
+
+                  <Link
+                    to="/docs"
+                    className="group inline-flex min-w-[180px] items-center justify-center gap-2 rounded-full border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-base font-semibold text-white/70 transition-all hover:border-white/[0.2] hover:bg-white/[0.06] hover:text-white"
+                  >
+                    <span className="relative z-10">Documentation</span>
+                    <ArrowRight className="relative z-10 w-4 h-4 text-white/40 transition-colors group-hover:text-white" />
+                  </Link>
+                </div>
+              </motion.div>
+
+              {/* Trust badges */}
+              <motion.div
+                variants={fadeInUp}
+                className="mt-8 flex flex-wrap justify-center gap-3"
+              >
+                {[
+                  '100% Private',
+                  'ZK Native',
+                  'FHE Protected',
+                  'Quorum Verified',
+                ].map((label, i) => (
+                  <motion.div
+                    key={label}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{
+                      delay: 1 + i * 0.1,
+                      duration: 0.5,
+                      ease: [0.22, 1, 0.36, 1],
+                    }}
+                    className="group relative flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] hover:border-orange-500/20 transition-all duration-500 backdrop-blur-xl cursor-default"
+                  >
+                    <span className="text-[10px] font-mono tracking-[0.25em] text-white/50 group-hover:text-white/80 transition-colors uppercase font-bold">
+                      {label}
+                    </span>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </div>
+          </div>
         </motion.div>
       </div>
 

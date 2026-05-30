@@ -162,7 +162,7 @@ const AppLayout = () => {
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
       <GrainOverlay />
-      <BackgroundOrbs />
+      {!isLandingPage && <BackgroundOrbs />}
       <Navbar />
       <main className={`relative z-10 min-h-screen ${isLandingPage ? '' : 'pt-24 px-4 pb-12 container-custom'}`}>
         <AnimatePresence mode="wait">
