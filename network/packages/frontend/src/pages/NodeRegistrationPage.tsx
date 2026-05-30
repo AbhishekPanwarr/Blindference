@@ -16,6 +16,7 @@ import {
   Lock,
 } from 'lucide-react'
 import { GlassCard } from '../components/ui/GlassCard'
+import { SectionLabel } from '../components/effects/GlowDivider'
 
 const STEPS = [
   { id: 'overview', label: 'Overview', icon: Server },
@@ -68,7 +69,8 @@ export function NodeRegistrationPage() {
         <div className="max-w-3xl mx-auto">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-2xl font-semibold gradient-text font-heading mb-2">Run a Blindference Node</h1>
+            <SectionLabel>NODE REGISTRATION</SectionLabel>
+            <h1 className="text-2xl font-semibold gradient-text font-heading mb-2 mt-1">Run a Blindference Node</h1>
             <p className="text-sm text-white/50">
               Join the quorum network and earn fees for verifiable, confidential inference execution.
             </p>
@@ -113,7 +115,7 @@ export function NodeRegistrationPage() {
             >
               {step === 0 && (
                 <>
-                  <GlassCard className="p-6 space-y-4">
+                  <GlassCard className="gradient-accent-top p-6 space-y-4">
                     <h2 className="text-lg font-semibold text-white/90 font-heading flex items-center gap-2">
                       <Server className="w-5 h-5 text-white/50" />
                       What is a Blindference Node?
@@ -160,7 +162,7 @@ export function NodeRegistrationPage() {
 
               {step === 1 && (
                 <>
-                  <GlassCard className="p-6 space-y-4">
+                  <GlassCard className="gradient-accent-top p-6 space-y-4">
                     <h2 className="text-lg font-semibold text-white/90 font-heading flex items-center gap-2">
                       <Terminal className="w-5 h-5 text-white/50" />
                       Install the Node Package
@@ -178,7 +180,7 @@ pip install -e ".[dev]"
 blindference-node --version`} />
                   </GlassCard>
 
-                  <GlassCard className="p-6 space-y-4">
+                  <GlassCard className="gradient-accent-top p-6 space-y-4">
                     <h3 className="text-sm font-semibold text-white/90 font-heading">Docker (Alternative)</h3>
                     <CodeBlock code={`docker pull blindference/node:latest
 docker run -it --gpus all -e BLF_PRIVATE_KEY=<KEY> blindference/node:latest init --non-interactive`} />
@@ -188,7 +190,7 @@ docker run -it --gpus all -e BLF_PRIVATE_KEY=<KEY> blindference/node:latest init
 
               {step === 2 && (
                 <>
-                  <GlassCard className="p-6 space-y-4">
+                  <GlassCard className="gradient-accent-top p-6 space-y-4">
                     <h2 className="text-lg font-semibold text-white/90 font-heading flex items-center gap-2">
                       <Settings className="w-5 h-5 text-white/50" />
                       Initialize Your Node
@@ -204,7 +206,7 @@ blindference-node init
 BLF_PRIVATE_KEY=0x... BLF_KEY_PASSWORD=secret blindference-node init --non-interactive`} />
                   </GlassCard>
 
-                  <GlassCard className="p-6 space-y-4">
+                  <GlassCard className="gradient-accent-top p-6 space-y-4">
                     <h3 className="text-sm font-semibold text-white/90 font-heading">What init does</h3>
                     <ul className="space-y-2 text-sm text-white/50">
                       {[
@@ -226,7 +228,7 @@ BLF_PRIVATE_KEY=0x... BLF_KEY_PASSWORD=secret blindference-node init --non-inter
 
               {step === 3 && (
                 <>
-                  <GlassCard className="p-6 space-y-4">
+                  <GlassCard className="gradient-accent-top p-6 space-y-4">
                     <h2 className="text-lg font-semibold text-white/90 font-heading flex items-center gap-2">
                       <Lock className="w-5 h-5 text-white/50" />
                       Environment Configuration
@@ -274,7 +276,7 @@ BLF_STAKE_AMOUNT=0`} />
 
               {step === 4 && (
                 <>
-                  <GlassCard className="p-6 space-y-4">
+                  <GlassCard className="gradient-accent-top p-6 space-y-4">
                     <h2 className="text-lg font-semibold text-white/90 font-heading flex items-center gap-2">
                       <Wallet className="w-5 h-5 text-white/50" />
                       Stake BLIND Tokens
@@ -285,7 +287,7 @@ BLF_STAKE_AMOUNT=0`} />
                     </p>
                   </GlassCard>
 
-                  <GlassCard className="p-6 space-y-4">
+                  <GlassCard className="gradient-accent-top p-6 space-y-4">
                     <h3 className="text-sm font-semibold text-white/90 font-heading">Stake Commands</h3>
                     <CodeBlock code={`# Stake 1000 BLIND (minimum)
 blindference-node staking stake 1000
@@ -300,7 +302,7 @@ blindference-node staking unstake
 blindference-node staking withdraw`} />
                   </GlassCard>
 
-                  <GlassCard className="p-6 space-y-4">
+                  <GlassCard className="gradient-accent-top p-6 space-y-4">
                     <h3 className="text-sm font-semibold text-white/90 font-heading">Staking Economics</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                       {[
@@ -316,7 +318,7 @@ blindference-node staking withdraw`} />
                     </div>
                   </GlassCard>
 
-                  <GlassCard className="p-6 space-y-4">
+                  <GlassCard className="gradient-accent-top p-6 space-y-4">
                     <h3 className="text-sm font-semibold text-white/90 font-heading">Slashing Conditions</h3>
                     <ul className="space-y-2 text-xs text-white/50">
                       {[
@@ -337,7 +339,7 @@ blindference-node staking withdraw`} />
 
               {step === 5 && (
                 <>
-                  <GlassCard className="p-6 space-y-4">
+                  <GlassCard className="gradient-accent-top p-6 space-y-4">
                     <h2 className="text-lg font-semibold text-white/90 font-heading flex items-center gap-2">
                       <Play className="w-5 h-5 text-white/50" />
                       Run & Verify
@@ -356,7 +358,7 @@ curl http://localhost:8000/health
 blindference-node test-determinism`} />
                   </GlassCard>
 
-                  <GlassCard className="p-6 space-y-4">
+                  <GlassCard className="gradient-accent-top p-6 space-y-4">
                     <h3 className="text-sm font-semibold text-white/90 font-heading">Multi-Node Local Setup</h3>
                     <p className="text-xs text-white/50">
                       Run 3 nodes on one machine using <code className="text-white/90">BLF_CONFIG_DIR</code> isolation:
@@ -377,7 +379,7 @@ BLF_PRIVATE_KEY=0x377fb575b4f0c39f52e343865d24a4e358104719d6980b56060c80d28fb29f
 blindference-node init --non-interactive && blindference-node run`} />
                   </GlassCard>
 
-                  <GlassCard className="p-6 space-y-4">
+                  <GlassCard className="gradient-accent-top p-6 space-y-4">
                     <h3 className="text-sm font-semibold text-white/90 font-heading">Debug Checklist</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                       {[
