@@ -11,8 +11,8 @@ export const GlowDivider = memo(function GlowDivider() {
     return (
         <div className="relative w-full h-px overflow-visible my-16">
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-px bg-gradient-to-r from-transparent via-purple-500/60 to-transparent blur-[1px]" />
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-2 bg-purple-500/10 rounded-full blur-xl" />
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-px bg-gradient-to-r from-transparent via-violet-500/60 to-transparent blur-[1px]" />
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-2 bg-violet-500/10 rounded-full blur-xl" />
         </div>
     );
 });

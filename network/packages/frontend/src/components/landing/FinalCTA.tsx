@@ -14,7 +14,7 @@ export function FinalCTA() {
             width: "600px",
             height: "600px",
             background:
-              "radial-gradient(circle, rgba(168,85,247,0.08) 0%, rgba(59,130,246,0.03) 40%, transparent 70%)",
+              "radial-gradient(circle, rgba(139,92,246,0.08) 0%, rgba(139,92,246,0.03) 40%, transparent 70%)",
             filter: "blur(80px)",
           }}
         />

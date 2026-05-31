@@ -57,7 +57,7 @@ export default function HeroGrid() {
                 transition={{ duration: 30, ease: 'linear', repeat: Infinity }}
                 style={{
                     backgroundImage:
-                        'linear-gradient(to right, #A855F7 1px, transparent 1px), linear-gradient(to bottom, #6366F1 1px, transparent 1px)',
+                        'linear-gradient(to right, #8B5CF6 1px, transparent 1px), linear-gradient(to bottom, #8B5CF6 1px, transparent 1px)',
                     backgroundSize: '64px 64px',
                     maskImage: useMotionTemplate`radial-gradient(180px circle at ${mouseX}px ${mouseY}px, black 0%, transparent 100%)`,
                     WebkitMaskImage: useMotionTemplate`radial-gradient(180px circle at ${mouseX}px ${mouseY}px, black 0%, transparent 100%)`,
@@ -71,7 +71,7 @@ export default function HeroGrid() {
                 transition={{ duration: 30, ease: 'linear', repeat: Infinity }}
                 style={{
                     backgroundImage:
-                        'linear-gradient(to right, #A855F7 1px, transparent 1px), linear-gradient(to bottom, #6366F1 1px, transparent 1px)',
+                        'linear-gradient(to right, #8B5CF6 1px, transparent 1px), linear-gradient(to bottom, #8B5CF6 1px, transparent 1px)',
                     backgroundSize: '64px 64px',
                     maskImage: mobileGridMask,
                     WebkitMaskImage: mobileGridMask,

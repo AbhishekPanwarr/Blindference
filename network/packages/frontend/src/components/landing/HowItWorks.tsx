@@ -62,7 +62,7 @@ export default function HowItWorks() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
           {/* Connecting gradient line on desktop */}
-          <div className="hidden md:block absolute top-12 left-[16.67%] right-[16.67%] h-px bg-gradient-to-r from-purple-500/30 via-fuchsia-500/20 to-cyan-500/10" />
+          <div className="hidden md:block absolute top-12 left-[16.67%] right-[16.67%] h-px bg-gradient-to-r from-violet-500/30 via-violet-400/20 to-violet-500/10" />
 
           {steps.map((step, i) => (
             <motion.div

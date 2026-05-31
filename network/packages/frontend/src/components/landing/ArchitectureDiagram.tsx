@@ -116,7 +116,7 @@ function ConnectionPath({
   return (
     <motion.path
       d={pathD}
-      stroke="#A855F7"
+      stroke="#8B5CF6"
       strokeWidth={isActive ? 2.5 : 1.5}
       strokeDasharray="6 4"
       fill="none"
@@ -208,7 +208,7 @@ export default function ArchitectureDiagram() {
                 className="flex gap-4"
               >
                 <div className="mt-1.5 shrink-0">
-                  <div className="w-2.5 h-2.5 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.5)]" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-violet-500 shadow-[0_0_8px_rgba(139,92,246,0.5)]" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-brand-text mb-1 font-heading">
@@ -231,7 +231,7 @@ export default function ArchitectureDiagram() {
             className="relative w-full max-w-[720px] mx-auto aspect-[720/400] rounded-2xl border border-white/5 bg-white/[0.02] backdrop-blur-sm shadow-glass overflow-hidden"
           >
             {/* Decorative depth shadow */}
-            <div className="absolute -inset-4 bg-gradient-to-br from-purple-500/5 via-transparent to-cyan-500/5 blur-2xl pointer-events-none" />
+            <div className="absolute -inset-4 bg-gradient-to-br from-violet-500/5 via-transparent to-violet-500/5 blur-2xl pointer-events-none" />
 
             <svg
               viewBox="0 0 720 400"
@@ -259,7 +259,7 @@ export default function ArchitectureDiagram() {
                   x2="0"
                   y2="1"
                 >
-                  <stop offset="0%" stopColor="rgba(168,85,247,0.15)" />
+                  <stop offset="0%" stopColor="rgba(139,92,246,0.15)" />
                   <stop offset="100%" stopColor="transparent" />
                 </linearGradient>
               </defs>

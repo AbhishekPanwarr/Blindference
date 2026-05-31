@@ -34,7 +34,7 @@ function Scanlines() {
       className="absolute inset-0 z-[2] pointer-events-none opacity-[0.04]"
       style={{
         background:
-          'linear-gradient(to bottom, transparent 50%, rgba(139, 92, 246, 0.03) 51%, transparent 100%)',
+          'linear-gradient(to bottom, transparent 50%, rgba(249, 115, 22, 0.03) 51%, transparent 100%)',
         backgroundSize: '100% 4px',
       }}
     />
@@ -52,7 +52,7 @@ function AuroraBlobs() {
           scale: [1, 1.15, 0.9, 1],
         }}
         transition={{ duration: 20, ease: 'linear', repeat: Infinity }}
-        className="absolute top-[10%] left-[20%] w-[500px] h-[500px] rounded-full bg-violet-500/5 blur-[120px]"
+        className="absolute top-[10%] left-[20%] w-[500px] h-[500px] rounded-full bg-orange-500/5 blur-[120px]"
       />
       <motion.div
         animate={{
@@ -101,7 +101,7 @@ function HeroSection() {
                 <h1 className="text-[3.3rem] font-black leading-[0.9] tracking-[-0.06em] sm:text-[3.9rem] md:text-7xl lg:text-[5rem] xl:text-[5.8rem]">
                   <span className="block text-white">Confidential AI</span>
                   <span className="block mt-1 md:mt-0">
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 via-violet-500 via-purple-500 to-cyan-400 drop-shadow-[0_0_30px_rgba(139,92,246,0.3)]">Inference,</span>{' '}
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-300 via-violet-500 to-indigo-400 drop-shadow-[0_0_30px_rgba(139,92,246,0.3)]">Inference,</span>{' '}
                     <span className="text-white/60">Verified.</span>
                   </span>
                 </h1>

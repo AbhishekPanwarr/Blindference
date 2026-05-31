@@ -44,7 +44,7 @@ const partners = [
     render: () => (
       <div className="flex items-center gap-2">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="shrink-0">
-          <path d="M12 2L22 20H2L12 2Z" fill="#A855F7" />
+          <path d="M12 2L22 20H2L12 2Z" fill="#8B5CF6" />
           <path d="M12 8L16 16H8L12 8Z" fill="#000" />
         </svg>
         <span className="text-sm font-semibold tracking-wide">Arbitrum</span>
