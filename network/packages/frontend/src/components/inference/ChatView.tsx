@@ -9,6 +9,8 @@ import {
   User,
   Eye,
   Loader2,
+  AlertTriangle,
+  ThumbsUp,
 } from 'lucide-react'
 import { CopyButton } from '../ui/CopyButton'
 import { SectionLabel } from '../effects/GlowDivider'
@@ -23,6 +25,7 @@ export interface ChatEntry {
   encryptedOutputKeyHigh?: string
   encryptedOutputKeyLow?: string
   errorMsg?: string
+  leaderOutputPreview?: string
   metadata?: {
     model?: string
     receiptRoot?: string
@@ -44,6 +47,7 @@ interface ChatViewProps {
   entries: ChatEntry[]
   onSuggestionClick?: (text: string) => void
   onDecrypt?: (id: string) => void
+  onFeedback?: (requestId: string, rating: 'up' | 'down') => void
 }
 
 function ProofRow({ label, value, href }: { label: string; value?: string; href?: string }) {
@@ -156,7 +160,7 @@ function TypingDots() {
   )
 }
 
-export function ChatView({ entries, onSuggestionClick, onDecrypt }: ChatViewProps) {
+export function ChatView({ entries, onSuggestionClick, onDecrypt, onFeedback }: ChatViewProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -223,14 +227,52 @@ export function ChatView({ entries, onSuggestionClick, onDecrypt }: ChatViewProp
                   </button>
                 </div>
               ) : entry.role === 'assistant' && entry.status === 'error' ? (
-                <div className="text-sm text-error">{entry.errorMsg ?? 'Something went wrong.'}</div>
+                <div className="space-y-3">
+                  <div className="text-sm text-error">{entry.errorMsg ?? 'Something went wrong.'}</div>
+                  {entry.leaderOutputPreview && (
+                    <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400">Leader Output (Unverified)</span>
+                      </div>
+                      <p className="text-sm text-white/80 whitespace-pre-wrap">{entry.leaderOutputPreview}</p>
+                      <p className="text-[10px] text-white/40 mt-1.5">
+                        Disclaimer: quorum rejected this result. The leader may have produced a valid output that verifiers disagreed with.
+                      </p>
+                    </div>
+                  )}
+                  {entry.requestId && onFeedback && (
+                    <button
+                      onClick={() => onFeedback(entry.requestId!, 'up')}
+                      className="flex items-center gap-2 rounded-lg border border-violet-500/20 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-400 hover:bg-violet-500/20 transition-colors"
+                      type="button"
+                    >
+                      <ThumbsUp className="w-3.5 h-3.5" />
+                      Help us improve our consensus system
+                    </button>
+                  )}
+                </div>
               ) : (
-                <div className="whitespace-pre-wrap">{entry.content}</div>
+                <div className="space-y-3">
+                  <div className="whitespace-pre-wrap">{entry.content}</div>
+                  {entry.leaderOutputPreview && entry.status === 'done' && (
+                    <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-3 mt-2">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 text-violet-400" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-violet-400">Leader Output (Verified)</span>
+                      </div>
+                      <p className="text-sm text-white/80 whitespace-pre-wrap">{entry.leaderOutputPreview}</p>
+                      <p className="text-[10px] text-white/40 mt-1.5">
+                        Disclaimer: this output was produced by the leader node and verified by quorum consensus.
+                      </p>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
-            {/* On-chain proof only shown for completed (done) messages */}
-            {entry.role === 'assistant' && entry.status === 'done' && (
+            {/* On-chain proof shown for completed (done) and error (rejected) messages */}
+            {entry.role === 'assistant' && (entry.status === 'done' || entry.status === 'error') && (
               <UavpPanel metadata={entry.metadata} />
             )}
 

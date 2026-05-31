@@ -39,6 +39,8 @@ class JobRecord(BaseModel):
     amount_blind: str = "0"
     insurance_opt_in: bool = False
     insurance_premium_cusdc: str = "0"
+    payment_mode: Literal["credits", "escrow"] = "credits"
+    payment_currency: Literal["cusdc", "blind"] = "cusdc"
     escrow_id: int | None = None
     coverage_id: int | None = None
     status: Literal["PENDING_PAYMENT", "RUNNING", "COMPLETED", "FAILED", "REFUNDED"] = "PENDING_PAYMENT"

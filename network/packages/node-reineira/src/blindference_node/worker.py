@@ -196,13 +196,13 @@ class BlindferenceDemoWorker:
         if role == "leader":
             result = await process_text_task_as_leader(
                 request,
-                lambda prompt, model_name=None: run_text_inference(prompt, model_name=model_name, settings=self.settings),
+                lambda messages, model_name=None: run_text_inference(messages, model_name=model_name, settings=self.settings),
                 config,
             )
         else:
             result = await process_text_task_as_verifier(
                 request,
-                lambda prompt, model_name=None: run_text_inference(prompt, model_name=model_name, settings=self.settings),
+                lambda messages, model_name=None: run_text_inference(messages, model_name=model_name, settings=self.settings),
                 config,
             )
 

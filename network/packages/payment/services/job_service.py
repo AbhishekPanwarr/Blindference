@@ -153,6 +153,8 @@ class JobService:
             amount_blind=str(amount_blind),
             insurance_opt_in=payload.insurance_opt_in,
             insurance_premium_cusdc=str(insurance_premium_cusdc),
+            payment_mode=payload.payment_mode,
+            payment_currency=payload.payment_currency,
             escrow_id=escrow_id,
             coverage_id=coverage_id,
             status="RUNNING",
@@ -209,7 +211,7 @@ class JobService:
                     await asyncio.sleep(2 ** attempt)  # Exponential backoff
 
         if not icl_success:
-            # Mark job as failed and refund
+            # Mark job as failed and refund (credits mode only)
             await self.database[JOBS].update_one(
                 {"job_id": job_id},
                 {
@@ -276,16 +278,10 @@ class JobService:
             logger.warning("Job %s already finalized (status=%s), skipping", actual_job_id, job.get("status"))
             return {"job_id": actual_job_id, "status": job.get("status"), "note": "already_finalized"}
 
-        # Use the actual DB job_id (UUID) for updates — the ICL callback passes task_id
-        actual_job_id = job["job_id"]
-
-        if job.get("status") != "RUNNING":
-            logger.warning("Job %s already finalized (status=%s), skipping", actual_job_id, job.get("status"))
-            return {"job_id": actual_job_id, "status": job.get("status"), "note": "already_finalized"}
-
         user_address = job["user_address"]
         amount_cusdc = int(job.get("amount_cusdc", 0))
         amount_blind = int(job.get("amount_blind", 0))
+        payment_mode = job.get("payment_mode", "credits")
 
         now = datetime.now(timezone.utc)
 
@@ -363,8 +359,8 @@ class JobService:
             }
 
         else:  # timeout or rejected
-            # Refund credits
-            if amount_cusdc > 0 or amount_blind > 0:
+            # Refund credits only for credits mode (escrow funds are resolved on-chain)
+            if payment_mode == "credits" and (amount_cusdc > 0 or amount_blind > 0):
                 try:
                     await self.credit_service.refund(
                         user_address=user_address,

@@ -38,67 +38,6 @@ const models = [
   },
 ];
 
-const partners = [
-  {
-    name: 'Arbitrum',
-    render: () => (
-      <div className="flex items-center gap-2">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="shrink-0">
-          <path d="M12 2L22 20H2L12 2Z" fill="#8B5CF6" />
-          <path d="M12 8L16 16H8L12 8Z" fill="#000" />
-        </svg>
-        <span className="text-sm font-semibold tracking-wide">Arbitrum</span>
-      </div>
-    ),
-  },
-  {
-    name: 'Fhenix',
-    render: () => (
-      <span className="text-sm font-semibold tracking-wide">Fhenix</span>
-    ),
-  },
-  {
-    name: 'Reineira',
-    render: () => (
-      <span className="text-sm font-semibold tracking-wide">Reineira</span>
-    ),
-  },
-  {
-    name: 'Groq',
-    render: () => (
-      <span className="text-sm font-bold tracking-wide">Groq</span>
-    ),
-  },
-  {
-    name: 'Google',
-    render: () => (
-      <div className="flex items-center gap-2">
-        <svg width="20" height="20" viewBox="0 0 24 24" className="shrink-0">
-          <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2" />
-          <text
-            x="12"
-            y="16"
-            textAnchor="middle"
-            fill="currentColor"
-            fontSize="12"
-            fontWeight="bold"
-            fontFamily="sans-serif"
-          >
-            G
-          </text>
-        </svg>
-        <span className="text-sm font-semibold tracking-wide">Google</span>
-      </div>
-    ),
-  },
-  {
-    name: 'Pinata',
-    render: () => (
-      <span className="text-sm font-semibold tracking-wide">Pinata</span>
-    ),
-  },
-];
-
 export default function ModelShowcase() {
   return (
     <section className="relative py-32 px-6 overflow-hidden">
@@ -192,29 +131,7 @@ export default function ModelShowcase() {
           ))}
         </motion.div>
 
-        {/* Partner Logos */}
-        <motion.div
-          variants={fadeInUp}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: '-50px' }}
-          className="mt-24"
-        >
-          <p className="text-center text-xs uppercase tracking-[0.3em] text-brand-text-secondary/60 mb-10">
-            Trusted by leading infrastructure partners
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-12">
-            {partners.map((partner) => (
-              <motion.div
-                key={partner.name}
-                whileHover={{ scale: 1.05, opacity: 1 }}
-                className="text-brand-text-secondary/40 hover:text-brand-text transition-all duration-300 cursor-default"
-              >
-                <partner.render />
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
+
       </div>
     </section>
   );

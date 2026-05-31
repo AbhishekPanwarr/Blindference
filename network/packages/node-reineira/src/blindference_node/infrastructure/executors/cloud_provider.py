@@ -210,7 +210,7 @@ class CloudInferenceExecutor:
 
 
 async def run_text_inference(
-    prompt: str,
+    messages: list[dict[str, str]],
     model_name: str | None = None,
     *,
     settings: NodeSettings | None = None,
@@ -220,12 +220,12 @@ async def run_text_inference(
 
     resolved_model = model_name or _text_model_for_provider(settings.provider, settings)
     provider = _provider_for_text_model(resolved_model, settings)
-    logger.info("Text inference requested provider=%s model=%s", provider, resolved_model)
+    logger.info("Text inference requested provider=%s model=%s turns=%d", provider, resolved_model, len(messages))
 
     if provider == "groq":
-        content = await _run_text_inference_groq(prompt=prompt, model=resolved_model, settings=settings)
+        content = await _run_text_inference_groq(messages=messages, model=resolved_model, settings=settings)
     elif provider == "gemini":
-        content = await _run_text_inference_gemini(prompt=prompt, model=resolved_model, settings=settings)
+        content = await _run_text_inference_gemini(messages=messages, model=resolved_model, settings=settings)
     else:
         raise ValueError(
             f"Unsupported text inference provider '{provider}'. Expected one of: groq, gemini."
@@ -266,7 +266,7 @@ def _normalize_provider_model(model_name: str) -> str:
 
 async def _run_text_inference_groq(
     *,
-    prompt: str,
+    messages: list[dict[str, str]],
     model: str,
     settings: NodeSettings,
 ) -> str:
@@ -278,7 +278,7 @@ async def _run_text_inference_groq(
         "temperature": 0,
         "messages": [
             {"role": "system", "content": "You are a helpful assistant. Be concise and deterministic."},
-            {"role": "user", "content": prompt},
+            *messages,
         ],
     }
 
@@ -296,12 +296,23 @@ async def _run_text_inference_groq(
 
 async def _run_text_inference_gemini(
     *,
-    prompt: str,
+    messages: list[dict[str, str]],
     model: str,
     settings: NodeSettings,
 ) -> str:
     if not settings.gemini_api_key:
         raise ValueError("BLINDFERENCE_NODE_GEMINI_API_KEY is required for Gemini text inference")
+
+    system_text = "You are a helpful assistant. Be concise and deterministic."
+    contents: list[dict[str, Any]] = []
+    first_user = True
+    for msg in messages:
+        role = "user" if msg["role"] == "user" else "model"
+        text = msg["content"]
+        if first_user and role == "user":
+            text = f"{system_text}\n\n{text}"
+            first_user = False
+        contents.append({"role": role, "parts": [{"text": text}]})
 
     async with httpx.AsyncClient(timeout=60.0) as client:
         response = await client.post(
@@ -309,14 +320,7 @@ async def _run_text_inference_gemini(
             params={"key": settings.gemini_api_key},
             json={
                 "generationConfig": {"temperature": 0},
-                "contents": [
-                    {
-                        "parts": [
-                            {"text": "You are a helpful assistant. Be concise and deterministic."},
-                            {"text": prompt},
-                        ]
-                    }
-                ],
+                "contents": contents,
             },
         )
         response.raise_for_status()

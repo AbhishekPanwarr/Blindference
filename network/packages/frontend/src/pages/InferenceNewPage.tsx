@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi'
-import { Lock, ShieldAlert, ShieldCheck, Copy, Cpu, CheckCircle2, Loader2, ChevronDown, Send, MessageSquare, BarChart2 } from 'lucide-react'
+import { Lock, ShieldAlert, ShieldCheck, Copy, Cpu, CheckCircle2, Loader2, ChevronDown, ChevronUp, Send, MessageSquare, BarChart2, Activity } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Hex } from 'viem'
 import axios from 'axios'
 import { SectionLabel } from '../components/effects/GlowDivider'
 
-import { inferenceApi, jobApi } from '../api/inferenceApi'
+import { coverageApi, inferenceApi, jobApi } from '../api/inferenceApi'
 import { ChatView } from '../components/inference/ChatView'
 import { useCofheClient } from '../hooks/useCofheClient'
 import { useChat } from '../hooks/useChat'
@@ -177,10 +177,9 @@ function stepStatus(key: string, stage: string, requestId: string | null, jobSta
       break
     case 'REJECTED':
     case 'DISPUTED':
-      // Something went wrong — mark current step as error, previous as done
-      if (idx < reached) return 'done'
-      if (idx === reached) return 'error'
-      return 'pending'
+      // Quorum rejected the leader result — leader execution completed but consensus failed
+      reached = 3 // encrypt, icl, leader done; quorum is error
+      break
     default:
       reached = 0
   }
@@ -213,7 +212,7 @@ export function InferenceNewPage() {
   const { data: walletClient } = useWalletClient()
   const { client: cofheClient, isReady } = useCofheClient()
   const store = useInferenceStore()
-  const { messages, pushUserMessage, updateAssistantStatus, updateAssistantMetadata, failAssistantMessage, setActiveRequestId, status, decryptMessage } = useChat()
+  const { messages, pushUserMessage, updateAssistantStatus, updateAssistantMetadata, failAssistantMessage, setActiveRequestId, activeRequestId, status, decryptMessage } = useChat()
 
   const selectedModel = TEXT_MODEL_OPTIONS[selectedModelKey]
   const currentRiskModel = MODEL_BINDINGS[store.modelId]
@@ -223,6 +222,9 @@ export function InferenceNewPage() {
 
   const [chatStage, setChatStage] = useState<'idle' | 'encrypting' | 'uploading' | 'escrow' | 'submitting'>('idle')
   const isChatBusy = chatStage !== 'idle'
+
+  // Mobile execution trace toggle
+  const [showMobileTrace, setShowMobileTrace] = useState(false)
 
   // Payment mode state
   const [paymentMode, setPaymentMode] = useState<'escrow' | 'credits'>('credits')
@@ -240,6 +242,10 @@ export function InferenceNewPage() {
   const hasMessages = messages.length > 0
   const jobStatus = status?.status ?? null
   const latestRequestId = [...messages].reverse().find(m => m.role === 'assistant' && m.requestId)?.requestId ?? null
+
+  // Use activeRequestId when available so the execution trace tracks the
+  // currently submitted inference, not the previous completed one.
+  const traceRequestId = activeRequestId || latestRequestId || null
 
   // Auto-scroll
   useEffect(() => {
@@ -261,6 +267,19 @@ export function InferenceNewPage() {
     setPrompt(text)
   }, [])
 
+  const handleFeedback = useCallback(async (requestId: string, rating: 'up' | 'down') => {
+    try {
+      await coverageApi.submitFeedback(requestId, {
+        developer_address: address ?? '',
+        rating,
+        notes: rating === 'up' ? 'User believes the leader output is correct despite quorum rejection.' : undefined,
+      })
+      console.log(`[Blindference] Feedback submitted: ${rating} for ${requestId}`)
+    } catch (e: any) {
+      console.error('[Blindference] Feedback submission failed:', e)
+    }
+  }, [address])
+
   const handleChatSubmit = async () => {
     const normalizedPrompt = prompt.trim()
     if (!normalizedPrompt) { setError('Please enter a prompt first.'); return }
@@ -279,8 +298,17 @@ export function InferenceNewPage() {
       updateAssistantStatus(assistantId, 'encrypting')
       console.log('[Blindference] Encrypting prompt with AES-256-GCM…')
 
+      // Build conversation history from previous messages for multi-turn context
+      const conversation = messages
+        .filter(m => m.role === 'user' || (m.role === 'assistant' && m.status === 'done'))
+        .map(m => ({ role: m.role, content: m.content }))
+
+      const payloadObj = { conversation, prompt: normalizedPrompt }
+      const payloadString = JSON.stringify(payloadObj)
+      console.log(`[Blindference] Encrypting ${conversation.length} history turns + current prompt`)
+
       const promptKey = generateKey()
-      const encryptedPrompt = await encryptText(normalizedPrompt, promptKey)
+      const encryptedPrompt = await encryptText(payloadString, promptKey)
       const packedPrompt = packPayload(encryptedPrompt)
 
       const encryptedPromptKey = await encryptPromptKeyForTextRequest(cofheClient, promptKey)
@@ -434,6 +462,8 @@ export function InferenceNewPage() {
           prompt_key_store_status: 'stored_by_user',
           prompt_key_store_address: promptKeyStoreAddress,
           source: 'frontend',
+          conversation_history: conversation,
+          has_conversation_history: conversation.length > 0,
         },
       })
 
@@ -614,6 +644,138 @@ export function InferenceNewPage() {
     }
   }
 
+  // Shared execution trace content (used by sidebar + mobile panel)
+  const TraceContent = () => (
+    <>
+      <SectionLabel>EXECUTION TRACE</SectionLabel>
+      <div className="h-4" />
+      <div className="relative flex flex-col gap-0">
+        {TRACE_STEPS.map((step, i) => {
+          const traceAssistant = [...messages].reverse().find(m => m.role === 'assistant' && m.requestId === traceRequestId)
+          const decrypted = traceAssistant?.status === 'done' || false
+          const ss = stepStatus(step.key, chatStage, traceRequestId, jobStatus, decrypted)
+          const isLast = i === TRACE_STEPS.length - 1
+          return (
+            <div key={step.key} className="flex gap-3 relative">
+              {!isLast && <div className="absolute left-[7px] top-5 w-[2px] h-full bg-white/10" />}
+              <div className="relative z-10 mt-0.5 shrink-0">
+                {ss === 'done' ? (
+                  <div className="w-4 h-4 rounded-full bg-violet-500 flex items-center justify-center">
+                    <CheckCircle2 className="w-3 h-3 text-black" />
+                  </div>
+                ) : ss === 'active' ? (
+                  <motion.div
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.7, 1, 0.7] }}
+                    transition={{ repeat: Infinity, duration: 1.4 }}
+                    className="w-4 h-4 rounded-full bg-violet-500 glow-violet"
+                  />
+                ) : ss === 'error' ? (
+                  <div className="w-4 h-4 rounded-full bg-error/80 flex items-center justify-center">
+                    <div className="w-2 h-2 rounded-full bg-error" />
+                  </div>
+                ) : (
+                  <div className="w-4 h-4 rounded-full border border-white/10 glass-card" />
+                )}
+              </div>
+              <div className={`pb-7 ${ss === 'pending' ? 'opacity-40' : ''}`}>
+                <div className={`text-sm font-medium ${ss === 'done' ? 'text-white' : ss === 'active' ? 'text-white' : ss === 'error' ? 'text-error' : 'text-white/50'}`}>
+                  {step.label}
+                </div>
+                {(ss === 'active' || ss === 'done' || ss === 'error') && (
+                  <div className={`text-[11px] mt-0.5 font-mono ${ss === 'error' ? 'text-error/70' : 'text-white/30'}`}>{step.sub}</div>
+                )}
+                {ss === 'active' && traceRequestId && step.key === 'leader' && status?.quorum.leader && (
+                  <div className="mt-1.5 text-[10px] text-white/40 font-mono break-all">{status.quorum.leader.address.slice(0, 18)}...</div>
+                )}
+                {ss === 'active' && traceRequestId && step.key === 'quorum' && (
+                  <div className="mt-1.5 text-[10px] text-white/40">{(status?.quorum.confirm_count ?? 0)}/{(status?.quorum.verifiers.length ?? 2)} confirmed</div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      {traceRequestId && (
+        <div className="mt-auto pt-6 border-t border-white/10 space-y-4">
+          <div>
+            <div className="text-[10px] uppercase text-white/40 mb-1">Request ID</div>
+            <div className="font-mono text-[10px] text-white/50 break-all">{traceRequestId}</div>
+            {status?.status && (
+              <Badge variant={status.status === 'ACCEPTED' ? 'success' : 'default'} className="mt-3 gap-1.5 px-3 py-1 text-[10px] uppercase tracking-wide">
+                <div className={`w-1.5 h-1.5 rounded-full ${status.status === 'ACCEPTED' ? 'bg-violet-500' : 'animate-pulse bg-violet-500'}`} />
+                {status.status}
+              </Badge>
+            )}
+          </div>
+          {(() => {
+            const activeMsg = [...messages].reverse().find(m => m.role === 'assistant' && m.requestId === traceRequestId)
+            const md = activeMsg?.metadata
+            if (!md) return null
+            const items = [
+              { label: 'Task ID', value: md.taskId },
+              { label: 'StoreKey Tx', value: md.storeKeyTx, href: md.storeKeyTx ? `https://sepolia.arbiscan.io/tx/${md.storeKeyTx}` : undefined },
+              { label: 'Prompt CID', value: md.promptCID, href: md.promptCID ? `https://gateway.pinata.cloud/ipfs/${md.promptCID}` : undefined },
+              { label: 'Leader', value: md.leader },
+              { label: 'Verifiers', value: md.verifiers },
+              { label: 'Model', value: md.modelId },
+            ].filter(i => i.value)
+            if (items.length === 0) return null
+            return (
+              <div className="border-t border-white/10 pt-4">
+                <div className="text-[10px] uppercase text-white/40 mb-2 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3 h-3" />
+                  On-chain Proof
+                </div>
+                <AnimatePresence mode="popLayout">
+                  <motion.div
+                    key={traceRequestId}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.25 }}
+                    className="space-y-1"
+                  >
+                    {items.map((item, i) => (
+                      <motion.div
+                        key={item.label}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.25, delay: i * 0.06 }}
+                        className="flex items-center justify-between text-[10px] font-mono"
+                      >
+                        <span className="text-white/40 uppercase tracking-wider">{item.label}</span>
+                        <div className="flex items-center gap-1.5">
+                          {item.href ? (
+                            <a
+                              href={item.href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-violet-400 hover:text-violet-300 underline underline-offset-2"
+                            >
+                              {item.value!.slice(0, 18)}{item.value!.length > 18 ? '…' : ''}
+                            </a>
+                          ) : (
+                            <span className="text-white/50">{item.value!.slice(0, 18)}{item.value!.length > 18 ? '…' : ''}</span>
+                          )}
+                          <button
+                            onClick={() => navigator.clipboard.writeText(item.value!)}
+                            className="text-white/30 hover:text-white transition-colors p-0.5"
+                            title="Copy"
+                          >
+                            <Copy className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            )
+          })()}
+        </div>
+      )}
+    </>
+  )
+
   return (
     <div className="flex h-[calc(100vh-3.5rem)] bg-brand-bg">
       {/* Main content */}
@@ -692,7 +854,7 @@ export function InferenceNewPage() {
                 </AnimatePresence>
 
                 {/* Chat messages */}
-                <ChatView entries={messages} onSuggestionClick={handleSuggestionClick} onDecrypt={decryptMessage} />
+                <ChatView entries={messages} onSuggestionClick={handleSuggestionClick} onDecrypt={decryptMessage} onFeedback={handleFeedback} />
               </>
             ) : (
               /* Risk Scoring Mode */
@@ -1029,137 +1191,42 @@ export function InferenceNewPage() {
         )}
       </div>
 
+      {/* Mobile execution trace toggle + panel */}
+      {mode === 'chat' && (
+        <div className="xl:hidden">
+          <button
+            type="button"
+            onClick={() => setShowMobileTrace(v => !v)}
+            className="w-full flex items-center justify-center gap-2 py-2 text-[10px] font-semibold uppercase tracking-widest text-white/40 hover:text-white/60 border-t border-white/10 bg-brand-bg transition-colors"
+          >
+            <Activity className="w-3.5 h-3.5" />
+            Execution Trace
+            {showMobileTrace ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          </button>
+          <AnimatePresence>
+            {showMobileTrace && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="p-4 bg-brand-bg border-t border-white/10 max-h-[50vh] overflow-y-auto">
+                  <GlassCard variant="heavy" className="gradient-accent-top p-4" hoverEffect={false}>
+                    <TraceContent />
+                  </GlassCard>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+
       {/* RIGHT: Execution Trace sidebar */}
       <div className="hidden xl:flex w-80 shrink-0 flex-col p-4" data-tutorial="execution-trace">
         <GlassCard variant="heavy" className="gradient-accent-top flex-1 flex flex-col p-6 overflow-y-auto" hoverEffect={false}>
-          <SectionLabel>EXECUTION TRACE</SectionLabel>
-          <div className="h-4" />
-          <div className="relative flex flex-col gap-0">
-            {TRACE_STEPS.map((step, i) => {
-              const latestAssistant = [...messages].reverse().find(m => m.role === 'assistant' && m.requestId === latestRequestId)
-              const decrypted = latestAssistant?.status === 'done' || false
-              const ss = stepStatus(step.key, chatStage, latestRequestId, jobStatus, decrypted)
-              const isLast = i === TRACE_STEPS.length - 1
-              return (
-                <div key={step.key} className="flex gap-3 relative">
-                  {!isLast && <div className="absolute left-[7px] top-5 w-[2px] h-full bg-white/10" />}
-                  <div className="relative z-10 mt-0.5 shrink-0">
-                    {ss === 'done' ? (
-                      <div className="w-4 h-4 rounded-full bg-violet-500 flex items-center justify-center">
-                        <CheckCircle2 className="w-3 h-3 text-black" />
-                      </div>
-                    ) : ss === 'active' ? (
-                      <motion.div
-                        animate={{ scale: [1, 1.2, 1], opacity: [0.7, 1, 0.7] }}
-                        transition={{ repeat: Infinity, duration: 1.4 }}
-                        className="w-4 h-4 rounded-full bg-violet-500 glow-violet"
-                      />
-                    ) : ss === 'error' ? (
-                      <div className="w-4 h-4 rounded-full bg-error/80 flex items-center justify-center">
-                        <div className="w-2 h-2 rounded-full bg-error" />
-                      </div>
-                    ) : (
-                      <div className="w-4 h-4 rounded-full border border-white/10 glass-card" />
-                    )}
-                  </div>
-                  <div className={`pb-7 ${ss === 'pending' ? 'opacity-40' : ''}`}>
-                    <div className={`text-sm font-medium ${ss === 'done' ? 'text-white' : ss === 'active' ? 'text-white' : ss === 'error' ? 'text-error' : 'text-white/50'}`}>
-                      {step.label}
-                    </div>
-                    {(ss === 'active' || ss === 'done' || ss === 'error') && (
-                      <div className={`text-[11px] mt-0.5 font-mono ${ss === 'error' ? 'text-error/70' : 'text-white/30'}`}>{step.sub}</div>
-                    )}
-                    {ss === 'active' && latestRequestId && step.key === 'leader' && status?.quorum.leader && (
-                      <div className="mt-1.5 text-[10px] text-white/40 font-mono break-all">{status.quorum.leader.address.slice(0, 18)}...</div>
-                    )}
-                    {ss === 'active' && latestRequestId && step.key === 'quorum' && (
-                      <div className="mt-1.5 text-[10px] text-white/40">{(status?.quorum.confirm_count ?? 0)}/{(status?.quorum.verifiers.length ?? 2)} confirmed</div>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-          {latestRequestId && (
-            <div className="mt-auto pt-6 border-t border-white/10 space-y-4">
-              <div>
-                <div className="text-[10px] uppercase text-white/40 mb-1">Request ID</div>
-                <div className="font-mono text-[10px] text-white/50 break-all">{latestRequestId}</div>
-                {status?.status && (
-                  <Badge variant={status.status === 'ACCEPTED' ? 'success' : 'default'} className="mt-3 gap-1.5 px-3 py-1 text-[10px] uppercase tracking-wide">
-                    <div className={`w-1.5 h-1.5 rounded-full ${status.status === 'ACCEPTED' ? 'bg-violet-500' : 'animate-pulse bg-violet-500'}`} />
-                    {status.status}
-                  </Badge>
-                )}
-              </div>
-
-              {/* Active On-chain Proof panel for current inference */}
-              {(() => {
-                const activeMsg = [...messages].reverse().find(m => m.role === 'assistant' && m.requestId === latestRequestId)
-                const md = activeMsg?.metadata
-                if (!md) return null
-                const items = [
-                  { label: 'Task ID', value: md.taskId },
-                  { label: 'StoreKey Tx', value: md.storeKeyTx, href: md.storeKeyTx ? `https://sepolia.arbiscan.io/tx/${md.storeKeyTx}` : undefined },
-                  { label: 'Prompt CID', value: md.promptCID, href: md.promptCID ? `https://gateway.pinata.cloud/ipfs/${md.promptCID}` : undefined },
-                  { label: 'Leader', value: md.leader },
-                  { label: 'Verifiers', value: md.verifiers },
-                  { label: 'Model', value: md.modelId },
-                ].filter(i => i.value)
-                if (items.length === 0) return null
-                return (
-                  <div className="border-t border-white/10 pt-4">
-                    <div className="text-[10px] uppercase text-white/40 mb-2 flex items-center gap-1.5">
-                      <ShieldCheck className="w-3 h-3" />
-                      On-chain Proof
-                    </div>
-                    <AnimatePresence mode="popLayout">
-                      <motion.div
-                        key={latestRequestId}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.25 }}
-                        className="space-y-1"
-                      >
-                        {items.map((item, i) => (
-                          <motion.div
-                            key={item.label}
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.25, delay: i * 0.06 }}
-                            className="flex items-center justify-between text-[10px] font-mono"
-                          >
-                            <span className="text-white/40 uppercase tracking-wider">{item.label}</span>
-                            <div className="flex items-center gap-1.5">
-                              {item.href ? (
-                                <a
-                                  href={item.href}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-violet-400 hover:text-violet-300 underline underline-offset-2"
-                                >
-                                  {item.value!.slice(0, 18)}{item.value!.length > 18 ? '…' : ''}
-                                </a>
-                              ) : (
-                                <span className="text-white/50">{item.value!.slice(0, 18)}{item.value!.length > 18 ? '…' : ''}</span>
-                              )}
-                              <button
-                                onClick={() => navigator.clipboard.writeText(item.value!)}
-                                className="text-white/30 hover:text-white transition-colors p-0.5"
-                                title="Copy"
-                              >
-                                <Copy className="w-3 h-3" />
-                              </button>
-                            </div>
-                          </motion.div>
-                        ))}
-                      </motion.div>
-                    </AnimatePresence>
-                  </div>
-                )
-              })()}
-            </div>
-          )}
+          <TraceContent />
         </GlassCard>
       </div>
     </div>

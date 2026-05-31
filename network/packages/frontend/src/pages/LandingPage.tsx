@@ -270,35 +270,47 @@ function FeaturesSection() {
 
 /* ─── Partners ─── */
 function TechStackSection() {
-  const stack = [
-    { name: 'Arbitrum Sepolia', role: 'Settlement Layer' },
-    { name: 'Fhenix CoFHE', role: 'Encryption' },
-    { name: 'Groq / Gemini', role: 'Model APIs' },
-    { name: 'IPFS / Pinata', role: 'Storage' },
+  const partners = [
+    { name: 'Arbitrum', src: '/logos/arbitrum.svg' },
+    { name: 'Fhenix', src: '/logos/fhenix.svg' },
+    { name: 'Reineira', src: '/logos/reineira-logo.png' },
   ]
 
   return (
-    <section className="relative py-20 px-6">
-      <div className="max-w-4xl mx-auto text-center">
-        <SectionLabel>INFRASTRUCTURE</SectionLabel>
-
+    <section className="relative py-16 px-6">
+      <div className="max-w-6xl mx-auto">
         <motion.div
           variants={staggerSlow}
           initial="hidden"
           whileInView="show"
           viewport={{ once: true }}
-          className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 mt-8"
+          className="flex flex-wrap items-center justify-center gap-6 sm:gap-10"
         >
-          {stack.map((item) => (
-            <motion.div
-              key={item.name}
-              variants={fadeInScale}
-              className="flex flex-col items-center gap-2 px-4 py-3 rounded-xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-sm"
-            >
-              <span className="text-sm font-medium text-white/80">{item.name}</span>
-              <span className="text-[10px] text-white/30 uppercase tracking-wider">{item.role}</span>
-            </motion.div>
-          ))}
+          {/* Built with label */}
+          <motion.span
+            variants={fadeInScale}
+            className="text-[10px] uppercase tracking-[0.2em] text-white/30 font-medium whitespace-nowrap"
+          >
+            Built with
+          </motion.span>
+
+          {/* Logos row */}
+          <div className="flex items-center gap-6 sm:gap-10">
+            {partners.map((partner) => (
+              <motion.div
+                key={partner.name}
+                variants={fadeInScale}
+                className="flex items-center justify-center"
+              >
+                <img
+                  src={partner.src}
+                  alt={partner.name}
+                  className="h-7 sm:h-8 w-auto opacity-50 hover:opacity-100 transition-opacity duration-300 object-contain"
+                  loading="lazy"
+                />
+              </motion.div>
+            ))}
+          </div>
         </motion.div>
       </div>
     </section>

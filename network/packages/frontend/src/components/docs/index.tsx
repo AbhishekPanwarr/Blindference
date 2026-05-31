@@ -273,22 +273,24 @@ export function CodeBlock({ children, className, title }: CodeBlockProps) {
 
   return (
     <div className="my-6 overflow-hidden rounded-xl border border-white/[0.06] bg-[#08080a]">
-      <div className="flex items-center justify-between border-b border-white/[0.05] bg-white/[0.015] px-4 py-2">
-        <div className="flex items-center gap-3">
-          <div className="flex gap-1.5">
+      <div className="flex items-center justify-between border-b border-white/[0.05] bg-white/[0.015] px-3 py-1.5">
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1">
             <div className="h-[9px] w-[9px] rounded-full bg-[#ff5f57]" />
             <div className="h-[9px] w-[9px] rounded-full bg-[#febc2e]" />
             <div className="h-[9px] w-[9px] rounded-full bg-[#28c840]" />
           </div>
-          <span className="text-[11px] font-semibold text-gray-400 tracking-wide">
-            {title || ''}
-          </span>
+          {title && (
+            <span className="text-[11px] font-semibold text-gray-400 tracking-wide">
+              {title}
+            </span>
+          )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <span className="text-[10px] font-mono text-gray-600">{language}</span>
           <button
             onClick={handleCopy}
-            className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium transition-all ${
+            className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium transition-all ${
               copied
                 ? 'bg-emerald-500/10 text-emerald-400'
                 : 'bg-white/[0.04] text-gray-500 hover:bg-white/[0.08] hover:text-gray-300'

@@ -2,8 +2,8 @@ import { BrowserRouter, Link, NavLink, Outlet, Route, Routes, useLocation } from
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
 import { Toaster, ToastBar } from 'react-hot-toast'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, AlertCircle } from 'lucide-react'
-import { lazy, Suspense, useMemo } from 'react'
+import { Check, AlertCircle, Menu, X } from 'lucide-react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { GrainOverlay } from './components/effects/GrainOverlay'
 import { TutorialProvider, TutorialManager } from './components/tutorial'
 
@@ -60,6 +60,7 @@ const landingPaths = ['/', '/vision', '/architecture', '/whitepaper']
 function Navbar() {
   const location = useLocation()
   const isLanding = landingPaths.includes(location.pathname)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const landingNavItems = [
     { path: '/', label: 'Home' },
@@ -89,7 +90,7 @@ function Navbar() {
     >
       <div className="w-full max-w-7xl flex items-center justify-between pointer-events-auto">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-3 no-underline group/logo">
+        <Link to="/" className="flex items-center gap-3 no-underline group/logo z-10">
           <div className="relative h-9 w-auto shrink-0 overflow-hidden rounded-lg">
             <img
               src="/logos/bf-final-logo-2.png"
@@ -105,14 +106,14 @@ function Navbar() {
               }}
             />
           </div>
-          <div className="flex flex-col">
+          <div className="hidden sm:flex flex-col">
             <span className="text-xl font-bold text-white tracking-tight">Blindference</span>
             <span className="text-[10px] text-gray-400 uppercase tracking-[0.2em] font-medium">Confidential AI</span>
           </div>
         </Link>
 
-        {/* Navigation Pill — Centered (NullPay-style) */}
-        <div className="absolute left-1/2 -translate-x-1/2 flex items-center p-1 rounded-full bg-[#0a0a0a]/80 backdrop-blur-xl border border-white/[0.12] shadow-[0_8px_32px_0_rgba(0,0,0,0.6)]">
+        {/* Navigation Pill — Centered (NullPay-style). Hidden on mobile, scrollable on tablet. */}
+        <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 items-center p-1 rounded-full bg-[#0a0a0a]/80 backdrop-blur-xl border border-white/[0.12] shadow-[0_8px_32px_0_rgba(0,0,0,0.6)] max-w-[80vw] overflow-x-auto">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path + '/'))
             return (
@@ -120,6 +121,7 @@ function Navbar() {
                 key={item.path}
                 to={item.path}
                 end={item.path === '/'}
+                onClick={() => setMobileMenuOpen(false)}
                 className={({ isActive: active }) =>
                   `relative px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap ${
                     active 
@@ -135,20 +137,83 @@ function Navbar() {
         </div>
 
         {/* Actions — single CTA on landing */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 z-10">
           {isLanding ? (
-            <Link
-              to="/app"
-              className="hidden md:flex items-center justify-center gap-2 px-6 py-2.5 rounded-full border border-white/[0.1] bg-white/[0.05] hover:bg-white/[0.08] hover:border-white/[0.15] transition-all duration-300 text-sm font-semibold text-white/80 hover:text-white group"
-            >
-              Launch App
-              <svg className="w-4 h-4 text-white/50 group-hover:text-white transition-colors group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-            </Link>
+            <>
+              <Link
+                to="/app"
+                className="hidden md:flex items-center justify-center gap-2 px-6 py-2.5 rounded-full border border-white/[0.1] bg-white/[0.05] hover:bg-white/[0.08] hover:border-white/[0.15] transition-all duration-300 text-sm font-semibold text-white/80 hover:text-white group"
+              >
+                Launch App
+                <svg className="w-4 h-4 text-white/50 group-hover:text-white transition-colors group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+              </Link>
+              {/* Mobile hamburger (landing pages) */}
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(v => !v)}
+                className="flex md:hidden items-center justify-center w-10 h-10 rounded-full border border-white/10 bg-white/5 text-white/70 hover:text-white transition-colors"
+                aria-label="Toggle menu"
+              >
+                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </button>
+            </>
           ) : (
-            <WalletButton />
+            <>
+              <div className="hidden md:block">
+                <WalletButton />
+              </div>
+              {/* Mobile hamburger (app pages) */}
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(v => !v)}
+                className="flex md:hidden items-center justify-center w-10 h-10 rounded-full border border-white/10 bg-white/5 text-white/70 hover:text-white transition-colors"
+                aria-label="Toggle menu"
+              >
+                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </button>
+            </>
           )}
         </div>
       </div>
+
+      {/* Mobile dropdown menu */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.15 }}
+            className="absolute top-full left-0 right-0 mt-2 mx-4 rounded-xl border border-white/10 bg-[rgba(10,10,10,0.95)] backdrop-blur-xl shadow-2xl overflow-hidden md:hidden"
+          >
+            <div className="p-2 space-y-1">
+              {navItems.map((item) => {
+                const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path + '/'))
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    end={item.path === '/'}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center px-4 py-3 rounded-lg text-sm font-semibold transition-colors ${
+                      isActive
+                        ? 'text-white bg-white/[0.08]'
+                        : 'text-white/50 hover:text-white hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    {item.label}
+                  </NavLink>
+                )
+              })}
+            </div>
+            {!isLanding && (
+              <div className="p-3 border-t border-white/10">
+                <WalletButton />
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.nav>
   )
 }
