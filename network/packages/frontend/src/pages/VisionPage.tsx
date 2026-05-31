@@ -77,7 +77,7 @@ function RoadmapStep({
 }) {
   const statusColors = {
     completed: 'bg-green-500/20 text-green-400 border-green-500/30',
-    active: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+    active: 'bg-violet-500/20 text-violet-400 border-violet-500/30',
     upcoming: 'bg-white/5 text-white/30 border-white/10',
   }
 
@@ -98,11 +98,11 @@ function RoadmapStep({
         status === 'completed'
           ? 'bg-green-500/20 border-green-500/50'
           : status === 'active'
-          ? 'bg-orange-500/20 border-orange-500/50'
+          ? 'bg-violet-500/20 border-violet-500/50'
           : 'bg-white/5 border-white/20'
       }`}>
         {status === 'completed' && <CheckCircle2 className="w-3 h-3 text-green-400" />}
-        {status === 'active' && <Zap className="w-3 h-3 text-orange-400" />}
+        {status === 'active' && <Zap className="w-3 h-3 text-violet-400" />}
         {status === 'upcoming' && <div className="w-1.5 h-1.5 rounded-full bg-white/30" />}
       </div>
 
@@ -123,43 +123,43 @@ export default function VisionPage() {
       icon: Shield,
       title: 'Privacy-First AI',
       description: 'Your prompts, medical records, financial models — never exposed to any single party. AES-256-GCM + CoFHE threshold encryption ensures only the quorum can access your inputs, and even they only see fragments.',
-      accent: 'bg-orange-500/10',
+      accent: 'bg-violet-500/10',
     },
     {
       icon: Scale,
       title: 'Verifiable Compute',
       description: "Don't trust, verify. A quorum of 1 leader + 2 verifiers independently runs the same inference. Mismatches trigger automatic rejection. The result hash is committed on-chain for eternal auditability.",
-      accent: 'bg-blue-500/10',
+      accent: 'bg-violet-500/10',
     },
     {
       icon: Globe,
       title: 'Open Node Network',
       description: 'Anyone with a GPU-capable machine can join as a compute node. Attestation, staking, and slashing keep the network honest. No single corporation controls the inference layer.',
-      accent: 'bg-emerald-500/10',
+      accent: 'bg-violet-500/10',
     },
     {
       icon: Wallet,
       title: 'Economic Accountability',
       description: 'Bad outputs are financially penalized. Nodes stake BLIND tokens; 3 consecutive failures trigger automatic slashing. Insurance coverage protects users from hallucination risk with USDC-backed payouts.',
-      accent: 'bg-purple-500/10',
+      accent: 'bg-violet-500/10',
     },
     {
       icon: Cpu,
       title: 'Multi-Modal Inference',
       description: 'Text, structured financial data, images — any modality. Groq Llama 70B, Gemini 2.5 Flash, or local vLLM models. You choose the model, the network guarantees the privacy.',
-      accent: 'bg-cyan-500/10',
+      accent: 'bg-violet-500/10',
     },
     {
       icon: Code2,
       title: 'Developer SDK',
       description: "Integrate confidential inference into your application with @blindference/agent-sdk. Python SDK, REST API, and smart contract hooks — private AI as easy as Stripe.",
-      accent: 'bg-pink-500/10',
+      accent: 'bg-violet-500/10',
     },
     {
       icon: FlaskConical,
       title: 'The Research Frontier',
       description: 'Fully homomorphic inference is the north star. As FHE accelerators mature, we will migrate from threshold-decrypt + off-chain compute to pure on-chain FHE inference. Blindference is building the bridge.',
-      accent: 'bg-amber-500/10',
+      accent: 'bg-violet-500/10',
     },
   ]
 
@@ -172,7 +172,7 @@ export default function VisionPage() {
         <motion.div
           animate={{ x: [0, 100, -60, 0], y: [0, -60, 80, 0], scale: [1, 1.15, 0.9, 1] }}
           transition={{ duration: 20, ease: 'linear', repeat: Infinity }}
-          className="absolute top-[10%] left-[20%] w-[500px] h-[500px] rounded-full bg-orange-500/5 blur-[120px]"
+          className="absolute top-[10%] left-[20%] w-[500px] h-[500px] rounded-full bg-violet-500/5 blur-[120px]"
         />
         <motion.div
           animate={{ x: [0, -80, 40, 0], y: [0, 40, -60, 0], scale: [1, 0.85, 1.1, 1] }}
@@ -199,7 +199,7 @@ export default function VisionPage() {
                 className="text-4xl md:text-5xl lg:text-6xl font-bold mt-6 mb-6 tracking-tight"
               >
                 The Future of{' '}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-500 to-orange-400">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-300 via-violet-500 to-indigo-400">
                   Confidential AI
                 </span>
                 <br />
@@ -218,7 +218,7 @@ export default function VisionPage() {
               <motion.div variants={fadeInUp} className="mt-10 flex flex-wrap items-center justify-center gap-4">
                 <Link
                   to="/architecture"
-                  className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full bg-white/[0.03] border border-white/10 px-8 py-3.5 text-sm font-semibold text-white/80 backdrop-blur-sm transition-all hover:border-orange-500/30 hover:text-white"
+                  className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full bg-white/[0.03] border border-white/10 px-8 py-3.5 text-sm font-semibold text-white/80 backdrop-blur-sm transition-all hover:border-violet-500/30 hover:text-white"
                 >
                   <span className="relative z-10">Explore Architecture</span>
                   <ArrowRight className="relative z-10 w-4 h-4 text-white/50 transition-all group-hover:text-white group-hover:translate-x-1" />
@@ -348,7 +348,7 @@ export default function VisionPage() {
             <div className="flex flex-wrap items-center justify-center gap-4">
               <Link
                 to="/app"
-                className="inline-flex items-center gap-2 bg-orange-500 text-white font-bold text-sm rounded-full px-8 py-3.5 transition-all hover:scale-[1.03] hover:bg-orange-400 hover:shadow-[0_8px_30px_rgba(249,115,22,0.5)]"
+                className="inline-flex items-center gap-2 bg-violet-500 text-white font-bold text-sm rounded-full px-8 py-3.5 transition-all hover:scale-[1.03] hover:bg-violet-400 hover:shadow-[0_8px_30px_rgba(139,92,246,0.5)]"
               >
                 Launch App
                 <ArrowRight className="w-4 h-4" />
