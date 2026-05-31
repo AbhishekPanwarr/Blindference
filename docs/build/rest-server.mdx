@@ -8,7 +8,7 @@ The `blindference-agent start` command launches a local REST server, allowing an
 
 ## Starting the Server
 
-```bash Terminal
+```bash title="Terminal"
 blindference-agent start --port 3000
 ```
 
@@ -20,12 +20,12 @@ By default, the server listens on `http://localhost:3000`.
 
 Health check.
 
-```bash Terminal
+```bash title="Terminal"
 curl http://localhost:3000/health
 ```
 
 **Response:**
-```json
+```json title="JSON"
 { "status": "ok" }
 ```
 
@@ -33,12 +33,12 @@ curl http://localhost:3000/health
 
 Get credit balance for the configured wallet.
 
-```bash Terminal
+```bash title="Terminal"
 curl http://localhost:3000/balance
 ```
 
 **Response:**
-```json
+```json title="JSON"
 {
   "blind": "1000.0000",
   "cusdc": "50.0000",
@@ -50,7 +50,7 @@ curl http://localhost:3000/balance
 
 Submit an inference job.
 
-```bash Terminal
+```bash title="Terminal"
 curl -X POST http://localhost:3000/infer \
   -H "Content-Type: application/json" \
   -d '{
@@ -62,7 +62,7 @@ curl -X POST http://localhost:3000/infer \
 ```
 
 **Response:**
-```json
+```json title="JSON"
 {
   "jobId": "abc-123",
   "taskId": "task-456",
@@ -74,12 +74,12 @@ curl -X POST http://localhost:3000/infer \
 
 Check job status and retrieve result.
 
-```bash Terminal
+```bash title="Terminal"
 curl http://localhost:3000/status/abc-123
 ```
 
 **Response (COMPLETED):**
-```json
+```json title="JSON"
 {
   "jobId": "abc-123",
   "status": "COMPLETED",
@@ -90,7 +90,7 @@ curl http://localhost:3000/status/abc-123
 ```
 
 **Response (PENDING):**
-```json
+```json title="JSON"
 {
   "jobId": "abc-123",
   "status": "PENDING"
@@ -99,7 +99,7 @@ curl http://localhost:3000/status/abc-123
 
 ## Python Client Example
 
-```python Python
+```python title="Python"
 import requests
 import time
 
@@ -138,7 +138,7 @@ print(result['output'])  # "4"
 
 ## JavaScript/TypeScript Client Example
 
-```typescript TypeScript
+```typescript title="TypeScript"
 async function infer(prompt: string): Promise<string> {
   const response = await fetch('http://localhost:3000/infer', {
     method: 'POST',
@@ -167,7 +167,7 @@ infer('What is the capital of France?').then(console.log)
 
 ## Curl Quick Reference
 
-```bash Terminal
+```bash title="Terminal"
 # Health check
 curl http://localhost:3000/health
 
@@ -187,7 +187,7 @@ curl http://localhost:3000/status/abc-123
 
 By default, the server allows all origins (`*`). Configure specific origins via:
 
-```bash Terminal
+```bash title="Terminal"
 export BLF_CORS_ORIGINS=https://yourdomain.com,https://app.yourdomain.com
 blindference-agent start --port 3000
 ```

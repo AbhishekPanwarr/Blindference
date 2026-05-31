@@ -12,43 +12,72 @@ The `@abhieren/blindference-agent` SDK provides a complete end-to-end confidenti
 
 ## Agent SDK Data Flow
 
-**Your Machine → Network → Quorum**
+```mermaid
+flowchart LR
+    subgraph Your Machine
+        A[Agent CLI / SDK]
+        ENC[AES-256-GCM Encrypt]
+        COFHE[CoFHE Key Split]
+        DEC[AES Decrypt Result]
+    end
 
-1. Your prompt is AES-256-GCM encrypted locally
-2. The AES key is split and CoFHE-encrypted
-3. Encrypted blob is uploaded to IPFS
-4. Job is submitted to Payment Service
-5. ICL selects 1 Leader + 2 Verifiers
-6. Nodes decrypt, run inference, submit hashes
-7. 2/3 consensus required for acceptance
-8. Result is encrypted and returned to you
-9. You decrypt locally — plaintext never touches a server
+    subgraph Network
+        PS[Payment Service]
+        ICL[ICL Coordinator]
+        IPFS[IPFS Storage]
+    end
+
+    subgraph Quorum
+        L[Leader Node]
+        V1[Verifier 1]
+        V2[Verifier 2]
+    end
+
+    A --> ENC
+    ENC --> COFHE
+    COFHE --> PS
+    ENC --> IPFS
+    PS --> ICL
+    ICL --> L
+    ICL --> V1
+    ICL --> V2
+    L --> IPFS
+    V1 --> IPFS
+    V2 --> IPFS
+    L --> PS
+    V1 --> PS
+    V2 --> PS
+    PS --> DEC
+```
 
 ## Step-by-Step Flow
 
-**1. Local Encryption**
-Your prompt is encrypted with AES-256-GCM using an ephemeral key generated on your machine. The ciphertext is uploaded to IPFS.
-
-**2. Key Split and CoFHE**
-The AES key is split into two halves. Each half is encrypted with Fhenix CoFHE (Fully Homomorphic Encryption) and stored on-chain in the PromptKeyStore contract.
-
-**3. Job Submission**
-The Agent SDK submits the encrypted job to the Payment Service, which creates an on-chain escrow and forwards the request to the ICL (Inference Coordination Layer).
-
-**4. Quorum Selection**
-The ICL selects 1 Leader + 2 Verifiers from the pool of attested nodes. Nodes must have valid attestations, minimum stake, and support the requested model.
-
-**5. Node Execution**
-Each node decrypts its assigned key half via CoFHE ACL, downloads the encrypted prompt from IPFS, reconstructs the AES key, and runs inference via Groq or Gemini.
-
-**6. Consensus Verification**
-The Leader submits a result hash. Verifiers independently re-run inference and submit match/no-match verdicts. 2/3 match = ACCEPTED.
-
-**7. Result Delivery**
-The encrypted result is uploaded to IPFS with a new AES key. The output key halves are stored in PromptKeyStore with user-only ACL.
-
-**8. Local Decryption**
-The Agent SDK polls for completion, downloads the encrypted result from IPFS, decrypts the output key via CoFHE threshold decryption, and AES-decrypts the final plaintext.
+<Steps>
+  <Step title="Local Encryption" icon="lock">
+    Your prompt is encrypted with AES-256-GCM using an ephemeral key generated on your machine. The ciphertext is uploaded to IPFS.
+  </Step>
+  <Step title="Key Split and CoFHE" icon="key">
+    The AES key is split into two halves. Each half is encrypted with Fhenix CoFHE (Fully Homomorphic Encryption) and stored on-chain in the PromptKeyStore contract.
+  </Step>
+  <Step title="Job Submission" icon="send">
+    The Agent SDK submits the encrypted job to the Payment Service, which creates an on-chain escrow and forwards the request to the ICL (Inference Coordination Layer).
+  </Step>
+  <Step title="Quorum Selection" icon="users">
+    The ICL selects 1 Leader + 2 Verifiers from the pool of attested nodes. Nodes must have valid attestations, minimum stake, and support the requested model.
+  </Step>
+  <Step title="Node Execution" icon="cpu">
+    Each node decrypts its assigned key half via CoFHE ACL, downloads the encrypted prompt from IPFS, reconstructs the AES key, and runs inference via Groq or Gemini.
+  </Step>
+  <Step title="Consensus Verification" icon="scale">
+    The Leader submits a result hash. Verifiers independently re-run inference and submit match/no-match verdicts. 2/3 match = ACCEPTED.
+  </Step>
+  <Step title="Result Delivery" icon="download">
+    The encrypted result is uploaded to IPFS with a new AES key. The output key halves are stored in PromptKeyStore with user-only ACL.
+  </Step>
+  <Step title="Local Decryption" icon="eye">
+    The Agent SDK polls for completion, downloads the encrypted result from IPFS, decrypts the output key via CoFHE threshold decryption, and AES-decrypts the final plaintext.
+  </Step>
+</Steps>
 
 ## Key Properties
 
@@ -115,7 +144,17 @@ The Agent SDK polls for completion, downloads the encrypted result from IPFS, de
 
 ## Next Steps
 
-- [Quickstart](quickstart) — Run your first confidential inference in 5 minutes
-- [CLI Reference](cli-reference) — All commands and options
-- [SDK API](sdk-api) — Programmatic usage with TypeScript
-- [Configuration](configuration) — Environment variables and advanced options
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="quickstart">
+    Run your first confidential inference in 5 minutes
+  </Card>
+  <Card title="CLI Reference" icon="terminal" href="cli-reference">
+    All commands and options
+  </Card>
+  <Card title="SDK API" icon="code" href="sdk-api">
+    Programmatic usage with TypeScript
+  </Card>
+  <Card title="Configuration" icon="gear" href="configuration">
+    Environment variables and advanced options
+  </Card>
+</CardGroup>

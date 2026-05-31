@@ -34,7 +34,7 @@ All configuration is via environment variables prefixed with `BLF_`.
 
 Create a `.env` file in your working directory:
 
-```bash .env
+```bash title="Terminal"
 # Required
 BLF_PRIVATE_KEY=0xYOUR_PRIVATE_KEY_HERE
 BLF_PAYMENT_URL=https://payment.blindference.xyz
@@ -56,7 +56,7 @@ BLF_GAS_MULTIPLIER=1.2
 
 Any CLI flag overrides the corresponding environment variable:
 
-```bash Terminal
+```bash title="Terminal"
 # Environment variable
 export BLF_PAYMENT_URL=https://payment.blindference.xyz
 
@@ -99,7 +99,7 @@ If all gateways fail, the SDK throws an error after the configured timeout.
 
 For advanced use cases, you can pass a custom CoFHE configuration object:
 
-```typescript TypeScript
+```typescript title="TypeScript"
 const agent = new BlindferenceAgent({
   privateKey: process.env.BLF_PRIVATE_KEY!,
   paymentServiceUrl: 'https://payment.blindference.xyz',

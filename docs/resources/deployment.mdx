@@ -11,7 +11,7 @@ description: 'Deploy your Blindference-powered application'
 
 1. **Push your frontend to GitHub**
 
-```bash
+```bash title="Terminal"
 cd network/packages/frontend
 git init
 git add .
@@ -47,14 +47,14 @@ Click "Deploy". Vercel will build and deploy automatically.
 
 1. **Build locally first**
 
-```bash
+```bash title="Terminal"
 cd network/packages/frontend
 npm run build
 ```
 
 2. **Deploy**
 
-```bash
+```bash title="Terminal"
 npx netlify-cli deploy --prod --dir=dist
 ```
 
@@ -64,7 +64,7 @@ Or connect GitHub repo to Netlify for auto-deploys.
 
 ### Heroku
 
-```bash
+```bash title="Terminal"
 cd network/packages/icl
 heroku create blindference-icl
 heroku config:set USE_MONGO=true
@@ -74,7 +74,7 @@ git push heroku main
 
 ### Railway
 
-```bash
+```bash title="Terminal"
 cd network/packages/icl
 railway init
 railway up
@@ -82,7 +82,7 @@ railway up
 
 ### VPS (DigitalOcean, AWS, etc.)
 
-```bash
+```bash title="Terminal"
 # 1. Setup server
 ssh root@your-server
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
@@ -124,7 +124,7 @@ systemctl start blindference-icl
 
 ### Docker
 
-```bash
+```bash title="Terminal"
 cd Blindference-node
 docker build -t blindference-node .
 
@@ -139,7 +139,7 @@ docker run -d \
 
 ### Kubernetes
 
-```yaml
+```yaml title="YAML"
 # deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -178,7 +178,7 @@ spec:
 
 ### Deploy Core Contracts
 
-```bash
+```bash title="Terminal"
 cd network/packages/contracts
 source .env
 
@@ -193,7 +193,7 @@ forge script script/DeployCore.s.sol:DeployCore \
 
 After deploying contracts, update your frontend `.env`:
 
-```bash
+```bash title="Terminal"
 VITE_PROMPT_KEY_STORE_ADDRESS=0xYourNewPromptKeyStore
 VITE_RESULT_REGISTRY_ADDRESS=0xYourNewResultRegistry
 ```

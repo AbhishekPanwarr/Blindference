@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../utils/helpers';
-import { ChevronDown, Zap, AlertTriangle, Info, Lightbulb } from 'lucide-react';
+import { ChevronDown, Zap, AlertTriangle, Info, Lightbulb, Check, Copy } from 'lucide-react';
 
 // ─── Card / CardGroup ───
 
@@ -268,23 +268,39 @@ export function CodeBlock({ children, className, title }: CodeBlockProps) {
   const handleCopy = () => {
     navigator.clipboard.writeText(code);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), 1800);
   };
 
   return (
-    <div className="my-6 rounded-2xl bg-[#0a0a0a] border border-white/[0.08] overflow-hidden">
-      {title && (
-        <div className="flex items-center justify-between px-4 py-2 border-b border-white/[0.08] bg-white/[0.02]">
-          <span className="text-xs text-white/40 font-mono">{title}</span>
+    <div className="my-6 overflow-hidden rounded-xl border border-white/[0.06] bg-[#08080a]">
+      <div className="flex items-center justify-between border-b border-white/[0.05] bg-white/[0.015] px-4 py-2">
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1.5">
+            <div className="h-[9px] w-[9px] rounded-full bg-[#ff5f57]" />
+            <div className="h-[9px] w-[9px] rounded-full bg-[#febc2e]" />
+            <div className="h-[9px] w-[9px] rounded-full bg-[#28c840]" />
+          </div>
+          <span className="text-[11px] font-semibold text-gray-400 tracking-wide">
+            {title || ''}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-mono text-gray-600">{language}</span>
           <button
             onClick={handleCopy}
-            className="text-xs text-white/40 hover:text-white transition-colors"
+            className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium transition-all ${
+              copied
+                ? 'bg-emerald-500/10 text-emerald-400'
+                : 'bg-white/[0.04] text-gray-500 hover:bg-white/[0.08] hover:text-gray-300'
+            }`}
+            aria-label="Copy code"
           >
-            {copied ? 'Copied!' : 'Copy'}
+            {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+            {copied ? 'Copied' : 'Copy'}
           </button>
         </div>
-      )}
-      <div className="overflow-x-auto">
+      </div>
+      <div className="relative">
         <SyntaxHighlighter
           language={language}
           style={vscDarkPlus}
@@ -293,7 +309,7 @@ export function CodeBlock({ children, className, title }: CodeBlockProps) {
             padding: '1rem 1.25rem',
             background: 'transparent',
             fontSize: '13px',
-            lineHeight: '1.6',
+            lineHeight: '1.7',
           }}
         >
           {code}

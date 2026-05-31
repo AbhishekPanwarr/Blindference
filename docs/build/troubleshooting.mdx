@@ -10,7 +10,7 @@ icon: "wrench"
 
 **Solution:** Create a `.env` file in your working directory:
 
-```bash Terminal
+```bash title="Terminal"
 cat > .env << 'EOF'
 BLF_PRIVATE_KEY=0xYOUR_PRIVATE_KEY
 BLF_PAYMENT_URL=https://payment.blindference.xyz
@@ -20,7 +20,7 @@ EOF
 
 Or export directly:
 
-```bash Terminal
+```bash title="Terminal"
 export BLF_PRIVATE_KEY=0xYOUR_PRIVATE_KEY
 ```
 
@@ -32,7 +32,7 @@ export BLF_PRIVATE_KEY=0xYOUR_PRIVATE_KEY
 
 **Solution:**
 
-```bash Terminal
+```bash title="Terminal"
 export BLF_PAYMENT_URL=https://payment.blindference.xyz
 ```
 
@@ -45,13 +45,13 @@ export BLF_PAYMENT_URL=https://payment.blindference.xyz
 1. Get BLIND tokens from the [faucet](https://blindference.xyz/faucet)
 2. Purchase a credit package:
 
-```bash Terminal
+```bash title="Terminal"
 blindference-agent buy-package --id starter
 ```
 
 Check your balance:
 
-```bash Terminal
+```bash title="Terminal"
 blindference-agent balance
 ```
 
@@ -66,7 +66,7 @@ blindference-agent balance
 
 Debug mode:
 
-```bash Terminal
+```bash title="Terminal"
 BLF_LOG_LEVEL=debug blindference-agent infer --prompt "test"
 ```
 
@@ -76,7 +76,7 @@ BLF_LOG_LEVEL=debug blindference-agent infer --prompt "test"
 
 **Solution:** Set a real Alchemy or Infura URL:
 
-```bash Terminal
+```bash title="Terminal"
 export BLF_RPC_URL='https://arb-sepolia.g.alchemy.com/v2/YOUR_REAL_KEY'
 export BLF_COFHE_URL='https://arb-sepolia.g.alchemy.com/v2/YOUR_REAL_KEY'
 ```
@@ -91,19 +91,19 @@ Get a free key at [dashboard.alchemy.com](https://dashboard.alchemy.com/apps).
 
 1. Check if the job is still processing:
 
-```bash Terminal
+```bash title="Terminal"
 curl https://payment.blindference.xyz/v1/jobs/YOUR_JOB_ID
 ```
 
 2. Check if quorum nodes are active:
 
-```bash Terminal
+```bash title="Terminal"
 curl https://icl.blindference.xyz/health
 ```
 
 3. Increase polling timeout:
 
-```bash Terminal
+```bash title="Terminal"
 export BLF_MAX_POLL_ATTEMPTS=200
 export BLF_POLL_INTERVAL_MS=5000
 ```
@@ -119,7 +119,7 @@ export BLF_POLL_INTERVAL_MS=5000
 - The SDK automatically tries multiple gateways: `ipfs.io` → `pinata.cloud` → `dweb.link`
 - Configure a custom gateway:
 
-```bash Terminal
+```bash title="Terminal"
 export BLF_IPFS_GATEWAY=https://gateway.pinata.cloud/ipfs
 ```
 
@@ -141,7 +141,7 @@ export BLF_IPFS_GATEWAY=https://gateway.pinata.cloud/ipfs
 
 **Solution:**
 
-```bash Terminal
+```bash title="Terminal"
 # Use npx (no install needed)
 npx @abhieren/blindference-agent infer --prompt "Hello"
 
@@ -161,13 +161,13 @@ npm install -g @abhieren/blindference-agent
 
 **Solution:**
 
-```bash Terminal
+```bash title="Terminal"
 npm install @abhieren/blindference-agent
 ```
 
 Or if using globally:
 
-```bash Terminal
+```bash title="Terminal"
 npm install -g @abhieren/blindference-agent
 ```
 
@@ -177,14 +177,14 @@ npm install -g @abhieren/blindference-agent
 
 **Solution:** Configure allowed origins:
 
-```bash Terminal
+```bash title="Terminal"
 export BLF_CORS_ORIGINS=https://yourdomain.com,https://app.yourdomain.com
 blindference-agent start --port 3000
 ```
 
 For development only:
 
-```bash Terminal
+```bash title="Terminal"
 export BLF_CORS_ORIGINS=*
 ```
 
@@ -192,7 +192,7 @@ export BLF_CORS_ORIGINS=*
 
 Enable verbose logging for all commands:
 
-```bash Terminal
+```bash title="Terminal"
 BLF_LOG_LEVEL=debug blindference-agent infer --prompt "test"
 ```
 

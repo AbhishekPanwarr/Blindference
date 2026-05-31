@@ -10,7 +10,7 @@ The `blindference-agent` CLI provides commands for inference, balance checks, cr
 
 Submit a confidential inference job.
 
-```bash Terminal
+```bash title="Terminal"
 blindference-agent infer --prompt "Your prompt here" [options]
 ```
 
@@ -29,7 +29,7 @@ blindference-agent infer --prompt "Your prompt here" [options]
 
 ### Example
 
-```bash Terminal
+```bash title="Terminal"
 blindference-agent infer \
   --prompt "Explain quantum computing in simple terms" \
   --model groq:llama-3.3-70b-versatile \
@@ -53,7 +53,7 @@ Quantum computing uses quantum bits (qubits) that can exist in multiple states s
 
 Check your credit balances.
 
-```bash Terminal
+```bash title="Terminal"
 blindference-agent balance [options]
 ```
 
@@ -75,7 +75,7 @@ Credit Packages: starter (10 calls), pro (100 calls)
 
 Purchase a credit package.
 
-```bash Terminal
+```bash title="Terminal"
 blindference-agent buy-package --id <package-id> [options]
 ```
 
@@ -97,7 +97,7 @@ blindference-agent buy-package --id <package-id> [options]
 
 ### Example
 
-```bash Terminal
+```bash title="Terminal"
 blindference-agent buy-package --id starter
 ```
 
@@ -105,7 +105,7 @@ blindference-agent buy-package --id starter
 
 Start the local REST server for language-agnostic integration.
 
-```bash Terminal
+```bash title="Terminal"
 blindference-agent start [options]
 ```
 
@@ -129,13 +129,13 @@ blindference-agent start [options]
 
 ### Example
 
-```bash Terminal
+```bash title="Terminal"
 blindference-agent start --port 3000
 ```
 
 Then call from any language:
 
-```bash Terminal
+```bash title="Terminal"
 curl -X POST http://localhost:3000/infer \
   -H "Content-Type: application/json" \
   -d '{"prompt": "What is 2+2?"}'
@@ -145,7 +145,7 @@ curl -X POST http://localhost:3000/infer \
 
 All CLI commands read from environment variables prefixed with `BLF_`:
 
-```bash Terminal
+```bash title="Terminal"
 export BLF_PRIVATE_KEY=0xYOUR_KEY
 export BLF_PAYMENT_URL=https://payment.blindference.xyz
 export BLF_ICL_URL=https://icl.blindference.xyz

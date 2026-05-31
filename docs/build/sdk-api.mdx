@@ -8,7 +8,7 @@ The `BlindferenceAgent` class is the core SDK for building confidential AI agent
 
 ## Constructor
 
-```typescript TypeScript
+```typescript title="TypeScript"
 import { BlindferenceAgent } from '@abhieren/blindference-agent'
 
 const agent = new BlindferenceAgent({
@@ -43,7 +43,7 @@ const agent = new BlindferenceAgent({
 
 Initialize the CoFHE client. Required before calling `infer()`.
 
-```typescript TypeScript
+```typescript title="TypeScript"
 await agent.initCofhe()
 ```
 
@@ -55,7 +55,7 @@ await agent.initCofhe()
 
 Submit an encrypted inference job and wait for the result.
 
-```typescript TypeScript
+```typescript title="TypeScript"
 const result = await agent.infer({
   prompt: 'What is the capital of France?',
   modelId: 'groq:llama-3.3-70b-versatile',
@@ -75,7 +75,7 @@ const result = await agent.infer({
 
 #### Returns
 
-```typescript TypeScript
+```typescript title="TypeScript"
 interface InferenceResult {
   jobId: string          // Unique job identifier
   taskId: string         // ICL task identifier
@@ -90,7 +90,7 @@ interface InferenceResult {
 
 Get credit balance for the configured wallet.
 
-```typescript TypeScript
+```typescript title="TypeScript"
 const balance = await agent.getBalance()
 // or specify an address:
 const balance = await agent.getBalance('0x...')
@@ -98,7 +98,7 @@ const balance = await agent.getBalance('0x...')
 
 #### Returns
 
-```typescript TypeScript
+```typescript title="TypeScript"
 interface CreditBalance {
   blind: string      // BLIND token balance
   cusdc: string      // cUSDC credit balance
@@ -110,13 +110,13 @@ interface CreditBalance {
 
 List available credit packages.
 
-```typescript TypeScript
+```typescript title="TypeScript"
 const packages = await agent.getPackages()
 ```
 
 #### Returns
 
-```typescript TypeScript
+```typescript title="TypeScript"
 interface CreditPackage {
   id: string
   name: string
@@ -130,13 +130,13 @@ interface CreditPackage {
 
 Purchase a credit package.
 
-```typescript TypeScript
+```typescript title="TypeScript"
 const result = await agent.purchasePackage('starter')
 ```
 
 #### Returns
 
-```typescript TypeScript
+```typescript title="TypeScript"
 interface PurchaseResult {
   success: boolean
   txHash?: string
@@ -146,7 +146,7 @@ interface PurchaseResult {
 
 ## Full Example
 
-```typescript TypeScript
+```typescript title="TypeScript"
 import { BlindferenceAgent } from '@abhieren/blindference-agent'
 
 async function main() {
@@ -178,7 +178,7 @@ main().catch(console.error)
 
 The SDK throws typed errors for common failure modes:
 
-```typescript TypeScript
+```typescript title="TypeScript"
 try {
   const result = await agent.infer({ prompt: 'Hello' })
 } catch (error) {
@@ -198,7 +198,7 @@ try {
 
 Configure a custom IPFS gateway for faster downloads:
 
-```typescript TypeScript
+```typescript title="TypeScript"
 const agent = new BlindferenceAgent({
   privateKey: process.env.BLF_PRIVATE_KEY!,
   paymentServiceUrl: 'https://payment.blindference.xyz',

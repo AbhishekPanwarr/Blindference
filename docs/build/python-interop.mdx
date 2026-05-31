@@ -10,7 +10,7 @@ The Agent SDK is a Node.js/TypeScript package, but Python applications can inter
 
 Call the CLI directly from Python:
 
-```python Python
+```python title="Python"
 import subprocess
 import json
 
@@ -41,7 +41,7 @@ print(answer)  # "Paris"
 
 ### Checking Balance
 
-```python Python
+```python title="Python"
 import subprocess
 import json
 
@@ -60,7 +60,7 @@ print(f"BLIND: {balance['blind']}, cUSDC: {balance['cusdc']}")
 
 ### Buying Credits
 
-```python Python
+```python title="Python"
 import subprocess
 
 def buy_package(package_id: str):
@@ -77,13 +77,13 @@ buy_package("starter")
 
 Start the REST server and use HTTP requests from Python:
 
-```bash Terminal
+```bash title="Terminal"
 blindference-agent start --port 3000
 ```
 
 Then in Python:
 
-```python Python
+```python title="Python"
 import requests
 import time
 
@@ -163,7 +163,7 @@ print(f"BLIND: {balance['blind']}, cUSDC: {balance['cusdc']}")
 
 If your project uses both Python and Node.js, you can create a TypeScript microservice:
 
-```typescript TypeScript
+```typescript title="TypeScript"
 // server.ts
 import express from 'express'
 import { BlindferenceAgent } from '@abhieren/blindference-agent'

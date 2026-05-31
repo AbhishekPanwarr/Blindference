@@ -24,13 +24,13 @@ Get your first confidential AI inference running in under 5 minutes with the `@a
 
 Install the Agent SDK globally to use the CLI from anywhere:
 
-```bash Terminal
+```bash title="Terminal"
 npm install -g @abhieren/blindference-agent
 ```
 
 Verify the installation:
 
-```bash Terminal
+```bash title="Terminal"
 blindference-agent --version
 ```
 
@@ -38,7 +38,7 @@ blindference-agent --version
 
 Create a `.env` file in your working directory:
 
-```bash Terminal
+```bash title="Terminal"
 cat > .env << 'EOF'
 # REQUIRED: Your Arbitrum Sepolia wallet private key
 BLF_PRIVATE_KEY=0xYOUR_PRIVATE_KEY_HERE
@@ -64,7 +64,7 @@ EOF
 
 Purchase inference credits with your BLIND tokens:
 
-```bash Terminal
+```bash title="Terminal"
 blindference-agent buy-package --id starter
 ```
 
@@ -80,7 +80,7 @@ Available packages:
 
 Submit your first confidential inference job:
 
-```bash Terminal
+```bash title="Terminal"
 blindference-agent infer --prompt "What is the capital of France?"
 ```
 
@@ -106,13 +106,13 @@ Paris
 
 For language-agnostic integration, start the local REST server:
 
-```bash Terminal
+```bash title="Terminal"
 blindference-agent start --port 3000
 ```
 
 Now call from any language:
 
-```bash Terminal
+```bash title="Terminal"
 curl -X POST http://localhost:3000/infer \
   -H "Content-Type: application/json" \
   -d '{"prompt": "What is 2+2?"}'
@@ -122,7 +122,7 @@ curl -X POST http://localhost:3000/infer \
 
 Import the SDK in your TypeScript or JavaScript project:
 
-```typescript TypeScript
+```typescript title="TypeScript"
 import { BlindferenceAgent } from '@abhieren/blindference-agent'
 
 const agent = new BlindferenceAgent({
@@ -150,13 +150,13 @@ if (result.status === 'COMPLETED') {
 
 Check the status via the Payment Service API:
 
-```bash Terminal
+```bash title="Terminal"
 curl -s "https://payment.blindference.xyz/v1/jobs/YOUR_JOB_ID"
 ```
 
 Or check if quorum nodes are active:
 
-```bash Terminal
+```bash title="Terminal"
 curl https://icl.blindference.xyz/health
 ```
 
