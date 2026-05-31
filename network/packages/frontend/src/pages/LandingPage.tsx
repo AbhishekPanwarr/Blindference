@@ -16,6 +16,7 @@ import DottedGlobe from '../components/globe/DottedGlobe'
 import HowItWorks from '../components/landing/HowItWorks'
 import PrivacyMarquee from '../components/landing/PrivacyMarquee'
 import AnimatedBanner from '../components/landing/AnimatedBanner'
+import PromoCard from '../components/landing/PromoCard'
 import ArchitectureDiagram from '../components/landing/ArchitectureDiagram'
 import ModelShowcase from '../components/landing/ModelShowcase'
 import { PrivacyComparison } from '../components/landing/PrivacyComparison'
@@ -447,6 +448,8 @@ export default function LandingPage() {
         <GlowDivider />
 
         <FeaturesSection />
+
+        <PromoCard />
 
         <GlowDivider />
 
