@@ -91,18 +91,18 @@ function Navbar() {
         {/* Logo — Branded hover swap */}
         <Link to="/" className="flex items-center gap-3 no-underline group/logo">
           <div className="relative w-10 h-10 shrink-0">
-            {/* Default: black/white logo */}
+            {/* Default: colorful gradient logo */}
             <img
-              src="/logos/bf-black.png"
+              src="/logos/bf-logo-2.png"
               alt="Blindference"
               className="absolute inset-0 w-full h-full object-cover rounded-xl transition-opacity duration-300 group-hover/logo:opacity-0"
               draggable={false}
             />
-            {/* Hover: colorful gradient logo */}
+            {/* Hover: black/white logo */}
             <img
-              src="/logos/bf-app-logo.png"
+              src="/logos/bf-black.png"
               alt="Blindference"
-              className="absolute inset-0 w-full h-full object-cover rounded-xl transition-opacity duration-300 opacity-0 group-hover/logo:opacity-100 scale-[1.35]"
+              className="absolute inset-0 w-full h-full object-cover rounded-xl transition-opacity duration-300 opacity-0 group-hover/logo:opacity-100 scale-[1.15]"
               draggable={false}
             />
           </div>
