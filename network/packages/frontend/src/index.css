@@ -244,7 +244,7 @@ body::after {
 
 .btn-primary {
   background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%);
-  color: black;
+  color: white;
   border: none;
   border-radius: 12px;
   padding: 12px 24px;

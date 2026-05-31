@@ -929,11 +929,11 @@ export function InferenceNewPage() {
                       type="button"
                       onClick={handleChatSubmit}
                       disabled={isChatBusy || !isReady || !address || !prompt.trim()}
-                      className="btn-primary flex items-center justify-center w-10 h-10 rounded-full p-0 disabled:opacity-40 disabled:cursor-not-allowed relative overflow-hidden"
+                      className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500 text-white shadow-[0_4px_20px_rgba(139,92,246,0.3)] hover:shadow-[0_8px_30px_rgba(139,92,246,0.5)] transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:scale-[1.03]"
                       data-tutorial="send-button"
                     >
-                      {isChatBusy ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : (
-                        <Send className="w-5 h-5 text-white" strokeWidth={2.5} />
+                      {isChatBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+                        <Send className="w-5 h-5" strokeWidth={2.5} />
                       )}
                     </button>
                   </div>
