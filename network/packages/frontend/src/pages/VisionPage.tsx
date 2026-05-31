@@ -152,7 +152,7 @@ export default function VisionPage() {
     {
       icon: Code2,
       title: 'Developer SDK',
-      description: "Integrate confidential inference into your application with @blindference/agent-sdk. Python SDK, REST API, and smart contract hooks — private AI as easy as Stripe.",
+      description: "Integrate confidential inference into your application with @abhieren/blindference-agent. TypeScript SDK, CLI, REST API, and smart contract hooks — private AI as easy as Stripe.",
       accent: 'bg-violet-500/10',
     },
     {
@@ -210,9 +210,7 @@ export default function VisionPage() {
                 variants={fadeInUp}
                 className="text-lg md:text-xl text-white/40 max-w-2xl mx-auto leading-relaxed"
               >
-                Blindference isn't just a tool; it's a vision for a world where
-                AI inference on sensitive data is private by default, provably
-                verifiable, and economically accountable.
+                Blindference enables a world where AI inference on sensitive data is private by default, provably verifiable, and economically accountable — complete by design, not aspiration.
               </motion.p>
 
               <motion.div variants={fadeInUp} className="mt-10 flex flex-wrap items-center justify-center gap-4">
@@ -306,21 +304,21 @@ export default function VisionPage() {
                 delay={0.15}
               />
               <RoadmapStep
-                phase="Q3 2025"
+                phase="Q3 2026"
                 title="Audit & Insurance"
                 description="Third-party security audit of smart contracts. Launching parametric insurance product with on-chain dispute resolution. Integrating additional model providers (Claude, local fine-tuned models)."
                 status="upcoming"
                 delay={0.3}
               />
               <RoadmapStep
-                phase="Q4 2025"
+                phase="Q4 2026"
                 title="Mainnet Deployment"
                 description="Migrating from Sepolia testnet to Arbitrum mainnet. Enabling real BLIND token economics with slashing and rewards. Opening node registration to public operators with minimum stake requirements."
                 status="upcoming"
                 delay={0.45}
               />
               <RoadmapStep
-                phase="2026+"
+                phase="2027+"
                 title="Pure FHE Inference"
                 description="As hardware FHE accelerators mature, migrating from threshold-decrypt + off-chain compute to fully homomorphic on-chain inference. The holy grail: encrypted inputs, encrypted computation, encrypted outputs — verifiable by math alone."
                 status="upcoming"

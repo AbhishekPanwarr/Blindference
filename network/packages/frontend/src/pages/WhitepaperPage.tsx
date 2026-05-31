@@ -120,9 +120,9 @@ export default function WhitepaperPage() {
               </motion.p>
 
               <motion.div variants={fadeInUp} className="mt-8 flex flex-wrap items-center gap-4">
-                <span className="text-xs text-white/30 font-mono">Version 1.0</span>
+                <span className="text-xs text-white/30 font-mono">Version 1.1</span>
                 <span className="text-xs text-white/20">|</span>
-                <span className="text-xs text-white/30 font-mono">June 2025</span>
+                <span className="text-xs text-white/30 font-mono">June 2026</span>
                 <span className="text-xs text-white/20">|</span>
                 <Link to="/architecture" className="text-xs text-violet-400/60 hover:text-violet-400 transition-colors flex items-center gap-1">
                   <ExternalLink className="w-3 h-3" />

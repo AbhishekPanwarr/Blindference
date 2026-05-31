@@ -27,7 +27,7 @@
   ],
   "topbarCtaButton": {
     "name": "GitHub",
-    "url": "https://github.com/baync180705/blindference"
+    "url": "https://github.com/AbhishekPanwarr/Blindference-Agent"
   },
   "tabs": [
     {
@@ -92,24 +92,18 @@
         "pages": [
           "build/introduction",
           "build/quickstart",
+          "build/installation",
           "build/architecture",
+          "build/cli-reference",
+          "build/sdk-api",
+          "build/rest-server",
+          "build/configuration",
+          "build/python-interop",
           "build/cofhe-encryption",
           "build/contracts",
-          "build/deployment",
           "build/examples/risk-scoring",
-          "build/examples/text-inference"
-        ]
-      },
-      {
-        "group": "Agent SDK",
-        "pages": [
-          "build/agent-sdk/installation",
-          "build/agent-sdk/cli-reference",
-          "build/agent-sdk/sdk-api",
-          "build/agent-sdk/rest-server",
-          "build/agent-sdk/configuration",
-          "build/agent-sdk/python-interop",
-          "build/agent-sdk/troubleshooting"
+          "build/examples/text-inference",
+          "build/troubleshooting"
         ]
       },
       {
@@ -124,6 +118,7 @@
         "pages": [
           "resources/changelog",
           "resources/contract-addresses",
+          "resources/deployment",
           "resources/faq",
           "resources/troubleshooting"
         ]
@@ -131,9 +126,8 @@
     ]
   },
   "footerSocials": {
-    "twitter": "https://twitter.com/blindference",
-    "github": "https://github.com/baync180705/blindference",
-    "discord": "https://discord.gg/blindference"
+    "github": "https://github.com/AbhishekPanwarr/Blindference-Agent",
+    "telegram": "https://t.me/abhieren"
   },
   "feedback": {
     "thumbsRating": true,

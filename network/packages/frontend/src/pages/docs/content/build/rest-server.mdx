@@ -1,0 +1,193 @@
+---
+title: "REST Server"
+description: "Language-agnostic HTTP API via the blindference-agent server"
+icon: "globe"
+---
+
+The `blindference-agent start` command launches a local REST server, allowing any programming language to interact with the Blindference network.
+
+## Starting the Server
+
+```bash Terminal
+blindference-agent start --port 3000
+```
+
+By default, the server listens on `http://localhost:3000`.
+
+## Endpoints
+
+### GET /health
+
+Health check.
+
+```bash Terminal
+curl http://localhost:3000/health
+```
+
+**Response:**
+```json
+{ "status": "ok" }
+```
+
+### GET /balance
+
+Get credit balance for the configured wallet.
+
+```bash Terminal
+curl http://localhost:3000/balance
+```
+
+**Response:**
+```json
+{
+  "blind": "1000.0000",
+  "cusdc": "50.0000",
+  "packages": ["starter", "pro"]
+}
+```
+
+### POST /infer
+
+Submit an inference job.
+
+```bash Terminal
+curl -X POST http://localhost:3000/infer \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "What is the capital of France?",
+    "modelId": "groq:llama-3.3-70b-versatile",
+    "currency": "BLIND",
+    "insurance": false
+  }'
+```
+
+**Response:**
+```json
+{
+  "jobId": "abc-123",
+  "taskId": "task-456",
+  "status": "PENDING"
+}
+```
+
+### GET /status/:jobId
+
+Check job status and retrieve result.
+
+```bash Terminal
+curl http://localhost:3000/status/abc-123
+```
+
+**Response (COMPLETED):**
+```json
+{
+  "jobId": "abc-123",
+  "status": "COMPLETED",
+  "output": "Paris",
+  "outputCid": "Qm...",
+  "commitmentHash": "0x..."
+}
+```
+
+**Response (PENDING):**
+```json
+{
+  "jobId": "abc-123",
+  "status": "PENDING"
+}
+```
+
+## Python Client Example
+
+```python Python
+import requests
+import time
+
+class BlindferenceClient:
+    def __init__(self, base_url='http://localhost:3000'):
+        self.base_url = base_url
+    
+    def infer(self, prompt, model_id='groq:llama-3.3-70b-versatile'):
+        response = requests.post(f'{self.base_url}/infer', json={
+            'prompt': prompt,
+            'modelId': model_id
+        })
+        return response.json()
+    
+    def get_status(self, job_id):
+        response = requests.get(f'{self.base_url}/status/{job_id}')
+        return response.json()
+    
+    def infer_and_wait(self, prompt, model_id='groq:llama-3.3-70b-versatile', timeout=180):
+        result = self.infer(prompt, model_id)
+        job_id = result['jobId']
+        
+        for _ in range(timeout // 3):
+            status = self.get_status(job_id)
+            if status['status'] in ['COMPLETED', 'FAILED', 'REJECTED']:
+                return status
+            time.sleep(3)
+        
+        raise TimeoutError(f"Job {job_id} did not complete within {timeout}s")
+
+# Usage
+client = BlindferenceClient()
+result = client.infer_and_wait('What is 2+2?')
+print(result['output'])  # "4"
+```
+
+## JavaScript/TypeScript Client Example
+
+```typescript TypeScript
+async function infer(prompt: string): Promise<string> {
+  const response = await fetch('http://localhost:3000/infer', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, modelId: 'groq:llama-3.3-70b-versatile' })
+  })
+  const { jobId } = await response.json()
+  
+  // Poll for completion
+  while (true) {
+    const statusRes = await fetch(`http://localhost:3000/status/${jobId}`)
+    const status = await statusRes.json()
+    
+    if (status.status === 'COMPLETED') {
+      return status.output
+    } else if (status.status === 'FAILED' || status.status === 'REJECTED') {
+      throw new Error(`Job ${status.status}: ${jobId}`)
+    }
+    
+    await new Promise(r => setTimeout(r, 3000))
+  }
+}
+
+infer('What is the capital of France?').then(console.log)
+```
+
+## Curl Quick Reference
+
+```bash Terminal
+# Health check
+curl http://localhost:3000/health
+
+# Get balance
+curl http://localhost:3000/balance
+
+# Submit job
+curl -X POST http://localhost:3000/infer \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Hello world"}'
+
+# Check status
+curl http://localhost:3000/status/abc-123
+```
+
+## CORS
+
+By default, the server allows all origins (`*`). Configure specific origins via:
+
+```bash Terminal
+export BLF_CORS_ORIGINS=https://yourdomain.com,https://app.yourdomain.com
+blindference-agent start --port 3000
+```

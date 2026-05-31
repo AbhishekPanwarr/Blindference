@@ -386,7 +386,7 @@ function Footer() {
             </h4>
             <div className="space-y-2">
               <a
-                href="https://github.com"
+                href="https://github.com/AbhishekPanwarr/Blindference-Agent"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block text-sm text-brand-text-secondary hover:text-brand-text transition-colors"
@@ -394,20 +394,12 @@ function Footer() {
                 GitHub
               </a>
               <a
-                href="https://x.com"
+                href="https://t.me/abhieren"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block text-sm text-brand-text-secondary hover:text-brand-text transition-colors"
               >
-                X / Twitter
-              </a>
-              <a
-                href="https://discord.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block text-sm text-brand-text-secondary hover:text-brand-text transition-colors"
-              >
-                Discord
+                Telegram
               </a>
             </div>
           </div>
@@ -418,7 +410,7 @@ function Footer() {
             &copy; 2025 Blindference Labs. All rights reserved.
           </p>
           <p className="text-xs text-brand-text-secondary/60">
-            Built with love for privacy.
+            Confidential AI inference, verified by quorum, settled on-chain.
           </p>
         </div>
       </div>
@@ -440,9 +432,9 @@ export default function LandingPage() {
         <section className="relative py-10 px-6">
           <div className="max-w-4xl mx-auto flex items-center justify-center gap-12 md:gap-20">
             {[
-              { value: '50K+', label: 'Encrypted Requests' },
-              { value: '120+', label: 'Active Nodes' },
-              { value: '99.9%', label: 'Uptime SLA' },
+              { value: '100+', label: 'Encrypted Requests' },
+              { value: '10+', label: 'Active Nodes' },
+              { value: 'Testnet', label: 'Live on Arbitrum Sepolia' },
             ].map((stat) => (
               <div key={stat.label} className="text-center">
                 <div className="text-3xl md:text-4xl font-bold text-white tracking-tight">

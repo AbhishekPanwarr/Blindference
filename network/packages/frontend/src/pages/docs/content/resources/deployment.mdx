@@ -1,0 +1,231 @@
+
+# Deployment Guide
+
+## Frontend Deployment
+
+### Vercel (Recommended)
+
+1. **Push your frontend to GitHub**
+
+```bash
+cd network/packages/frontend
+git init
+git add .
+git commit -m "Initial frontend"
+git push origin main
+```
+
+2. **Connect to Vercel**
+
+- Go to [vercel.com](https://vercel.com)
+- Import your GitHub repository
+- Set root directory to `network/packages/frontend`
+- Framework preset: Vite
+
+3. **Environment Variables**
+
+Add these in Vercel dashboard:
+
+```
+VITE_ICL_BASE_URL=https://icl.blindference.xyz
+VITE_ARBITRUM_SEPOLIA_RPC_URL=https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY
+VITE_CHAIN_ID=421614
+VITE_WALLET_CONNECT_PROJECT_ID=your_project_id
+VITE_PROMPT_KEY_STORE_ADDRESS=0x1E22dD12f448B15f1Ca8560fB6B4463834FaAf73
+VITE_IPFS_GATEWAY_URL=https://gateway.pinata.cloud/ipfs
+```
+
+4. **Deploy**
+
+Click "Deploy". Vercel will build and deploy automatically.
+
+### Netlify
+
+1. **Build locally first**
+
+```bash
+cd network/packages/frontend
+npm run build
+```
+
+2. **Deploy**
+
+```bash
+npx netlify-cli deploy --prod --dir=dist
+```
+
+Or connect GitHub repo to Netlify for auto-deploys.
+
+## ICL Deployment
+
+### Heroku
+
+```bash
+cd network/packages/icl
+heroku create blindference-icl
+heroku config:set USE_MONGO=true
+heroku config:set MONGO_URI=mongodb+srv://...
+git push heroku main
+```
+
+### Railway
+
+```bash
+cd network/packages/icl
+railway init
+railway up
+```
+
+### VPS (DigitalOcean, AWS, etc.)
+
+```bash
+# 1. Setup server
+ssh root@your-server
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt-get install -y nodejs python3-pip
+
+# 2. Clone and setup
+git clone https://github.com/your-org/blindference.git
+cd blindference/network/packages/icl
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# 3. Environment
+cp .env.example .env
+# Edit .env with production values
+
+# 4. Start with systemd
+cat > /etc/systemd/system/blindference-icl.service << 'EOF'
+[Unit]
+Description=Blindference ICL
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/blindference/network/packages/icl
+Environment=PATH=/opt/blindference/network/packages/icl/venv/bin
+ExecStart=/opt/blindference/network/packages/icl/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl enable blindference-icl
+systemctl start blindference-icl
+```
+
+## Node Deployment
+
+### Docker
+
+```bash
+cd Blindference-node
+docker build -t blindference-node .
+
+# Run
+docker run -d \
+  --name blindference-node \
+  -e BLF_KEY_PASSWORD=secure_password \
+  -e BLF_ICL_ENDPOINT=https://icl.blindference.xyz \
+  -v /host/config:/root/.blindference \
+  blindference-node
+```
+
+### Kubernetes
+
+```yaml
+# deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blindference-node
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: blindference-node
+  template:
+    metadata:
+      labels:
+        app: blindference-node
+    spec:
+      containers:
+      - name: node
+        image: blindference-node:latest
+        env:
+        - name: BLF_KEY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: node-secrets
+              key: password
+        - name: BLF_ICL_ENDPOINT
+          value: "https://icl.blindference.xyz"
+```
+
+## Contract Deployment
+
+### Prerequisites
+
+- Foundry (`forge`) installed
+- Arbitrum Sepolia RPC endpoint
+- Deployer private key with Sepolia ETH
+
+### Deploy Core Contracts
+
+```bash
+cd network/packages/contracts
+source .env
+
+forge script script/DeployCore.s.sol:DeployCore \
+  --rpc-url $ARB_SEPOLIA_RPC \
+  --broadcast \
+  --verify \
+  --etherscan-api-key $ARBISCAN_API_KEY
+```
+
+### Update Frontend Env
+
+After deploying contracts, update your frontend `.env`:
+
+```bash
+VITE_PROMPT_KEY_STORE_ADDRESS=0xYourNewPromptKeyStore
+VITE_RESULT_REGISTRY_ADDRESS=0xYourNewResultRegistry
+```
+
+## Production Checklist
+
+- [ ] Frontend deployed with HTTPS
+- [ ] ICL deployed with HTTPS and rate limiting
+- [ ] MongoDB Atlas with IP allowlisting
+- [ ] Contracts verified on Arbiscan
+- [ ] Environment variables in secret manager (not repo)
+- [ ] Alchemy/Infura dedicated API keys (not shared)
+- [ ] Pinata JWT rotated and secured
+- [ ] Node operators registered and attested
+- [ ] DNS configured (e.g., `app.yourdomain.com`)
+- [ ] SSL certificates valid
+- [ ] Monitoring alerts configured
+- [ ] Backup strategy for ICL database
+
+## Scaling
+
+### Frontend
+
+- Use CDN for static assets (Vercel/Netlify handle this)
+- Enable caching for IPFS gateway responses
+- Implement request debouncing for quorum preview
+
+### ICL
+
+- Horizontal scaling: Run multiple ICL instances behind a load balancer
+- Database: Use MongoDB Atlas with replica sets
+- Caching: Redis for quorum previews and node status
+- Rate limiting: Per-IP and per-address limits
+
+### Nodes
+
+- Run multiple nodes per provider (different wallets)
+- Use GPU for local inference (faster, cheaper)
+- Monitor and auto-restart on failure

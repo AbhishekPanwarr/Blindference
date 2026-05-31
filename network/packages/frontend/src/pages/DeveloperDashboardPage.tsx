@@ -23,9 +23,9 @@ import { motion } from 'framer-motion'
 import { fadeInUp, staggerSlow } from '../lib/animations'
 import { SectionLabel } from '../components/effects/GlowDivider'
 
-const INSTALL_SNIPPET = `npm install @blindference/agent-sdk`
+const INSTALL_SNIPPET = `npm install @abhieren/blindference-agent`
 
-const USAGE_SNIPPET = `import { BlindferenceAgent } from '@blindference/agent-sdk'
+const USAGE_SNIPPET = `import { BlindferenceAgent } from '@abhieren/blindference-agent'
 
 const agent = new BlindferenceAgent({
   privateKey: process.env.BLINDFERENCE_PRIVATE_KEY,
@@ -190,7 +190,7 @@ export function DeveloperDashboardPage() {
                 Read Docs
                 <ArrowRight className="w-4 h-4" />
               </Button>
-              <Button variant="outline" onClick={() => window.open('https://github.com/baync180705/blindference/tree/main/network/packages/agent-sdk', '_blank', 'noopener,noreferrer')}>
+              <Button variant="outline" onClick={() => window.open('https://github.com/AbhishekPanwarr/Blindference-Agent', '_blank', 'noopener,noreferrer')}>
                 <Code2 className="w-4 h-4" />
                 View on GitHub
               </Button>

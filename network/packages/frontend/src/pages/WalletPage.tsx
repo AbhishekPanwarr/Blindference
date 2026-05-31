@@ -330,7 +330,7 @@ export function WalletPage() {
           <ContactCard
             icon={Code}
             title="Building Agents?"
-            text="Questions about the @blindference/agent-sdk integration."
+            text="Questions about the @abhieren/blindference-agent integration."
             mailto="mailto:agents@blindference.xyz?subject=Agent%20SDK%20Support"
             buttonText="Contact Dev Team"
           />

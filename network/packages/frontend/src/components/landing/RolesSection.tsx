@@ -18,9 +18,9 @@ const roles = [
     icon: Code,
     title: "Build with Agents",
     description:
-      "Use the @blindference/agent-sdk TypeScript library to integrate confidential inference into your own dApps, trading bots, or governance agents. Pre-funded credit wallets handle payments automatically.",
+      "Use the @abhieren/blindference-agent TypeScript library to integrate confidential inference into your own dApps, trading bots, or governance agents. Pre-funded credit wallets handle payments automatically.",
     stats: [
-      "npm install @blindference/agent-sdk",
+      "npm install @abhieren/blindference-agent",
       "20% discount with BLIND",
       "Full CoFHE encryption",
     ],

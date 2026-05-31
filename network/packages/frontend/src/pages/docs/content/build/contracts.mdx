@@ -1,0 +1,233 @@
+
+# Smart Contracts
+
+## Overview
+
+Blindference uses a suite of smart contracts on Arbitrum Sepolia for:
+
+<CardGroup cols={3}>
+  <Card title="Key Storage" icon="lock">
+    CoFHE-encrypted AES key halves for text inference
+  </Card>
+  <Card title="Attestation" icon="shield">
+    Node identity and tier verification
+  </Card>
+  <Card title="Commitments" icon="file-check">
+    On-chain evidence of quorum execution
+  </Card>
+  <Card title="Settlements" icon="coins">
+    Automatic payouts for disputed results
+  </Card>
+  <Card title="Reputation" icon="star">
+    Scoring system for node operators
+  </Card>
+  <Card title="Rewards" icon="trending-up">
+    Reward distribution and claim management
+  </Card>
+</CardGroup>
+
+## Contract Addresses (Arbitrum Sepolia)
+
+### Core Protocol
+
+| Contract | Address | Purpose |
+|----------|---------|---------|
+| `PromptKeyStore` | `0x1E22dD12f448B15f1Ca8560fB6B4463834FaAf73` | Stores CoFHE-encrypted AES key halves |
+| `ResultRegistry` | `0xCebd831eCd00915E299b8Ef2666cAbf942dc7150` | On-chain result commitment |
+| `NodeAttestationRegistry` | `0xB54e019e9717a8Ed4746bA9d7F1A3F83cf0a35E0` | Operator attestation |
+| `ExecutionCommitmentRegistry` | `0xcd45aefE9a16772528fa30B7d47958a95e83440C` | Task dispatch tracking |
+| `ReputationRegistry` | `0xdaDb4D46D231d3fe6D3754E0861c8bCD36aF0604` | Operator scoring |
+| `AgentConfigRegistry` | `0x85aE035d6a94c006B5d0808cAdF47F5c22536996` | Model configuration |
+| `RewardAccumulator` | `0xFa25Fb53eF8dAc88E4f43bB7558Cf3930Bf3e817` | Reward distribution |
+
+### Demo Vertical
+
+| Contract | Address | Purpose |
+|----------|---------|---------|
+| `BlindferenceInputVault` | `0x8dD7B2A9B69C76A69d33B2DF46426Cbe657a902b` | FHE input validation |
+| `BlindferenceAttestor` | `0x957CEb3F3E77bF91A001ef9FB2cEeB40A860FD79` | Custom attestation |
+| `BlindferenceUnderwriter` | `0xC7D3706Ca2a42d739429Aec1b452051dA5Eb68f0` | Insurance underwriter |
+| `BlindferenceAgent` | `0x43132afC4F163C244f7b66Adafee32F6B904994c` | Agent configuration |
+| `MockPriceOracle` | `0x5B01c9CcCe3E00DE92d3d76b312f2b9b2Db41e94` | Demo price feed |
+| `InferenceGate` | `0xF3014a79985f83898912cAe2676226310A546905` | Access control |
+
+## Key Contracts for Builders
+
+<Accordion title="PromptKeyStore">
+  The most important contract for agent developers. Stores CoFHE-encrypted AES key halves.
+
+  #### storeKey()
+
+  Stores CoFHE-encrypted key halves on-chain.
+
+  ```solidity title="PromptKeyStore.storeKey()"
+  function storeKey(
+      uint256 kpHighHandle,  // CoFHE ciphertext handle for high 128 bits
+      uint256 kpLowHandle    // CoFHE ciphertext handle for low 128 bits
+  ) external returns (uint256 keyId);
+  ```
+
+  **Usage**:
+  - Called by user wallet (frontend)
+  - Grants ACL to the calling address
+  - Returns a unique `keyId` for later retrieval
+
+  #### getKey()
+
+  Retrieves stored key handles.
+
+  ```solidity title="PromptKeyStore.getKey()"
+  function getKey(uint256 keyId) external view returns (uint256 kpHighHandle, uint256 kpLowHandle);
+  ```
+
+  #### decryptForView()
+
+  Decrypts a stored handle using a sharing permit.
+
+  ```solidity title="PromptKeyStore.decryptForView()"
+  function decryptForView(uint256 handle) external view returns (uint256 plaintext);
+  ```
+
+  <Info>
+    This is a view function that calls the CoFHE threshold network. Requires a valid sharing permit for the caller.
+  </Info>
+</Accordion>
+
+<Accordion title="ResultRegistry">
+  Records accepted and rejected inference outcomes.
+
+  #### commitResult()
+
+  Commits an accepted inference result.
+
+  ```solidity title="ResultRegistry.commitResult()"
+  function commitResult(
+      bytes32 taskId,
+      bytes32 resultHash,
+      address leader,
+      address[] calldata verifiers,
+      bool accepted
+  ) external;
+  ```
+
+  #### getResult()
+
+  Retrieves a committed result.
+
+  ```solidity title="ResultRegistry.getResult()"
+  function getResult(bytes32 taskId) external view returns (
+      bytes32 resultHash,
+      address leader,
+      bool accepted,
+      uint256 timestamp
+  );
+  ```
+</Accordion>
+
+<Accordion title="ExecutionCommitmentRegistry">
+  Tracks task dispatch and deadlines.
+
+  #### dispatch()
+
+  Dispatches a task to a leader and verifier.
+
+  ```solidity title="ExecutionCommitmentRegistry.dispatch()"
+  function dispatch(
+      bytes32 invocationId,
+      uint256 escrowId,
+      bytes32 agentId,
+      address executor,
+      address crossVerifier,
+      uint256 commitDeadline,
+      uint256 revealDeadline
+  ) external;
+  ```
+</Accordion>
+
+<Accordion title="ReputationRegistry">
+  Tracks operator performance.
+
+  #### reputationOf()
+
+  Returns an operator's reputation score.
+
+  ```solidity title="ReputationRegistry.reputationOf()"
+  function reputationOf(address operator) external view returns (
+      uint256 score,
+      uint256 tasksAccepted,
+      uint256 tasksRejected,
+      uint256 totalSlash
+  );
+  ```
+</Accordion>
+
+## ABI Files
+
+ABIs for all contracts are available in:
+
+```
+network/packages/contracts/deployments/abis/
+```
+
+Example: Loading PromptKeyStore ABI
+
+```typescript title="Load contract ABI"
+import PromptKeyStoreABI from './abis/PromptKeyStore.json';
+
+const contract = new ethers.Contract(
+  '0x1E22dD12f448B15f1Ca8560fB6B4463834FaAf73',
+  PromptKeyStoreABI,
+  signer
+);
+```
+
+## Interaction Patterns
+
+### Pattern 1: Store and Retrieve Key
+
+```typescript title="Store and retrieve key"
+// 1. User stores key
+const tx = await promptKeyStore.storeKey(kpHighHandle, kpLowHandle);
+const receipt = await tx.wait();
+
+// 2. ICL reads stored handles
+const [high, low] = await promptKeyStore.getKey(keyId);
+
+// 3. Node decrypts with permit
+const decrypted = await promptKeyStore.decryptForView(high)
+  .withPermit(nodePermit);
+```
+
+### Pattern 2: Verify Result
+
+```typescript title="Verify committed result"
+// Check if a result was committed
+const result = await resultRegistry.getResult(taskId);
+if (result.accepted) {
+  console.log(`Result accepted by leader ${result.leader}`);
+}
+```
+
+### Pattern 3: Check Node Reputation
+
+```typescript title="Check node reputation"
+const rep = await reputationRegistry.reputationOf(nodeAddress);
+console.log(`Score: ${rep.score}, Accepted: ${rep.tasksAccepted}`);
+```
+
+## Deployment
+
+To deploy your own instance (for testing):
+
+```bash title="Deploy PromptKeyStore"
+cd network/packages/contracts
+source .env
+
+forge script script/DeployPromptKeyStore.s.sol:DeployPromptKeyStore \
+  --rpc-url $ARB_SEPOLIA_RPC \
+  --broadcast \
+  --verify \
+  --etherscan-api-key $ARBISCAN_API_KEY
+```
+
+See [DEPLOYMENT.md](../DEPLOYMENT.md) for full deployment details.
