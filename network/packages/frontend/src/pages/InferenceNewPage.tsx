@@ -929,10 +929,14 @@ export function InferenceNewPage() {
                       type="button"
                       onClick={handleChatSubmit}
                       disabled={isChatBusy || !isReady || !address || !prompt.trim()}
-                      className="btn-primary flex items-center justify-center w-10 h-10 rounded-full p-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="btn-primary flex items-center justify-center w-10 h-10 rounded-full p-0 disabled:opacity-40 disabled:cursor-not-allowed relative overflow-hidden"
                       data-tutorial="send-button"
                     >
-                      {isChatBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                      {isChatBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+                        <div className="flex items-center justify-center">
+                          <img src="/logos/bf-app-logo.png" alt="B" className="w-4 h-4 object-contain opacity-90" />
+                        </div>
+                      )}
                     </button>
                   </div>
                 </div>
