@@ -50,8 +50,8 @@ const row2 = [...cards].reverse();
 
 function getSourceColor(source: string) {
   switch (source) {
-      case "TechCrunch":
-      return "bg-violet-500";
+    case "TechCrunch":
+      return "bg-orange-500";
     case "Wired":
       return "bg-blue-500";
     case "The Guardian":
