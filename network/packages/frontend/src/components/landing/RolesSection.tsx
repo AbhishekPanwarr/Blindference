@@ -11,7 +11,7 @@ const roles = [
       "Install the blindference-node package, stake 1000 BLIND, and earn rewards for every verified inference your machine processes. No plaintext ever touches your disk.",
     stats: ["Earn BLIND per job", "60% leader / 20% per verifier", "72h dispute window"],
     cta: "Join as a Node",
-    href: "/node-registration",
+    href: "/nodes",
     variant: "outline" as const,
   },
   {

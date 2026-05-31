@@ -79,12 +79,13 @@ export function HistoryPage() {
               key={item.id}
               to={item.requestId ? `/inference/${item.requestId}` : '/'}
               className={`block p-4 flex items-center gap-4 glass-card-hover transition-colors ${i !== 0 ? 'border-t border-white/10' : ''}`}
+              
             >
-              <div className="w-10 h-10 rounded-full bg-[rgba(10,10,10,0.6)] border border-white/10 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-full bg-[rgba(10,10,10,0.6)] border border-white/10 flex items-center justify-center shrink-0" >
                 <StatusIcon status={item.status} />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1" >
                   <h3 className="text-sm font-semibold text-white/90 truncate">{item.title}</h3>
                   <Badge variant="secondary" className="flex items-center gap-1">
                     <Lock className="w-3 h-3" /> {item.mode === 'risk' ? 'RISK' : 'PRIVATE'}

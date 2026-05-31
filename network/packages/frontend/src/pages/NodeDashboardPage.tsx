@@ -352,7 +352,7 @@ export function NodeDashboardPage() {
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <Server className="w-8 h-8 text-white/20 mb-3" />
                   <p className="text-sm text-white/40 mb-2">No jobs processed yet. Start your node to begin earning.</p>
-                  <a href="/node-registration" className="text-xs text-orange-400 hover:text-orange-300 transition-colors">
+                  <a href="/nodes" className="text-xs text-orange-400 hover:text-orange-300 transition-colors">
                     Go to Node Registration →
                   </a>
                 </div>

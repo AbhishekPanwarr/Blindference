@@ -354,7 +354,7 @@ export default function VisionPage() {
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <Link
-                to="/node-registration"
+                to="/nodes"
                 className="inline-flex items-center gap-2 bg-white/[0.03] border border-white/10 text-white/80 font-semibold text-sm rounded-full px-8 py-3.5 transition-all hover:border-white/20 hover:text-white"
               >
                 <Server className="w-4 h-4" />

@@ -150,6 +150,7 @@ export function CreateEscrowPage() {
           onClick={handleCreate}
           disabled={loading || !address}
           className="w-full rounded-lg btn-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+         
         >
           {loading ? (
             <>

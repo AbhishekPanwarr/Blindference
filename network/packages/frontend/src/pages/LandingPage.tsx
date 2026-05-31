@@ -360,13 +360,13 @@ function Footer() {
             </h4>
             <div className="space-y-2">
               <Link
-                to="/node-registration"
+                to="/nodes"
                 className="block text-sm text-brand-text-secondary hover:text-brand-text transition-colors"
               >
                 Run a Node
               </Link>
               <Link
-                to="/node-dashboard"
+                to="/nodes"
                 className="block text-sm text-brand-text-secondary hover:text-brand-text transition-colors"
               >
                 Dashboard
@@ -431,26 +431,6 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-brand-bg text-brand-text relative overflow-hidden">
       <GrainOverlay />
-
-      {/* Nav */}
-      <nav className="relative z-50 flex items-center justify-between px-6 sm:px-10 py-5">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-brand-primary text-white font-extrabold text-sm flex items-center justify-center glow-primary">
-            B
-          </div>
-          <span className="font-semibold text-sm tracking-[0.2em] text-brand-text font-heading">
-            BLINDFERENCE
-          </span>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link
-            to="/app"
-            className="inline-flex items-center gap-2 bg-white text-black font-bold text-xs rounded-full px-5 py-2.5 transition-all hover:scale-[1.03] hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
-          >
-            Launch App
-          </Link>
-        </div>
-      </nav>
 
       <main className="relative z-10">
         <HeroSection />

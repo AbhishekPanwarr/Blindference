@@ -48,7 +48,7 @@ export function QuorumVisualizer({ leader, verifiers, status }: QuorumVisualizer
             </div>
             <span className="font-mono text-xs text-white/50 flex items-center gap-2">
                {truncateAddress(leader.address)}
-               {leader.stake && <span className="opacity-60">• Stake: {leader.stake} GNK</span>}
+               {leader.stake && <span className="opacity-60">• Stake: {leader.stake} BLIND</span>}
             </span>
           </div>
           <StatusBadge status={leader.status} />
@@ -67,7 +67,7 @@ export function QuorumVisualizer({ leader, verifiers, status }: QuorumVisualizer
             </div>
             <span className="font-mono text-xs text-white/50 flex items-center gap-2">
                {truncateAddress(v.address)}
-               {v.stake && <span className="opacity-60">• Stake: {v.stake} GNK</span>}
+               {v.stake && <span className="opacity-60">• Stake: {v.stake} BLIND</span>}
             </span>
           </div>
           {v.verdict === 'CONFIRM' ? (

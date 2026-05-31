@@ -25,6 +25,7 @@ import { GlassCard } from '../components/ui/GlassCard'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 
+
 const TEXT_MODEL_OPTIONS = {
   groq_llama_70b: {
     id: 'groq:llama-3.3-70b-versatile',
@@ -623,7 +624,7 @@ export function InferenceNewPage() {
           <div className="mx-auto max-w-2xl px-6 py-8">
 
             {/* Mode toggle pills */}
-            <div className="flex items-center justify-center gap-2 mb-6">
+            <div className="flex items-center justify-center gap-2 mb-6" data-tutorial="mode-toggle">
               <button
                 type="button"
                 onClick={() => setMode('chat')}
@@ -795,7 +796,7 @@ export function InferenceNewPage() {
                       Estimated Fee
                     </span>
                     <div className="text-2xl font-mono text-white mt-1">
-                      {totalDisplay}.00 <span className="text-white/50 text-lg">GNK</span>
+                      {totalDisplay}.00 <span className="text-white/50 text-lg">BLIND</span>
                     </div>
                   </div>
 
@@ -846,7 +847,7 @@ export function InferenceNewPage() {
               </AnimatePresence>
 
               {/* Big rounded-3xl input */}
-              <div className="rounded-3xl border border-white/10 glass-card backdrop-blur-md relative focus-within:border-orange-500/40 focus-within:shadow-[0_0_20px_rgba(249,115,22,0.1)] transition-all">
+              <div className="rounded-3xl border border-white/10 glass-card backdrop-blur-md relative focus-within:border-orange-500/40 focus-within:shadow-[0_0_20px_rgba(249,115,22,0.1)] transition-all" data-tutorial="prompt-input">
                 <textarea
                   rows={3}
                   className="w-full resize-none bg-transparent px-5 pt-4 pb-12 text-sm leading-relaxed text-white placeholder:text-white/30 focus:outline-none"
@@ -862,19 +863,19 @@ export function InferenceNewPage() {
                   }}
                 />
 
-                {/* Bottom row inside input */}
+                {/* ── Row 1: Model picker + Send ── */}
                 <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between">
                   {/* Model picker pill */}
-                  <div className="relative" ref={modelRef}>
+                  <div className="relative" ref={modelRef} data-tutorial="model-picker">
                     <button
                       type="button"
                       onClick={() => setShowModelPicker((v) => !v)}
                       disabled={isChatBusy}
-                      className="flex items-center gap-1.5 rounded-full border border-white/10 glass-card px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-white/5 transition-colors disabled:opacity-50"
+                      className="flex items-center gap-2 rounded-full border border-white/10 glass-card px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/5 transition-colors disabled:opacity-50"
                     >
-                      <Cpu className="w-3 h-3 text-white/50" />
+                      <Cpu className="w-3.5 h-3.5 text-white/50" />
                       {selectedModel.label}
-                      <ChevronDown className={`w-3 h-3 text-white/50 transition-transform ${showModelPicker ? 'rotate-180' : ''}`} />
+                      <ChevronDown className={`w-3.5 h-3.5 text-white/50 transition-transform ${showModelPicker ? 'rotate-180' : ''}`} />
                     </button>
                     <AnimatePresence>
                       {showModelPicker && (
@@ -906,101 +907,119 @@ export function InferenceNewPage() {
                     </AnimatePresence>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    {/* Payment mode toggle */}
-                    <div className="flex items-center gap-1 rounded-full border border-white/10 glass-card px-2 py-1">
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMode('credits')}
-                        className={`rounded px-2 py-0.5 text-[10px] font-semibold transition-colors ${
-                          paymentMode === 'credits'
-                            ? 'bg-orange-500 text-white'
-                            : 'text-white/50 hover:text-white'
-                        }`}
-                      >
-                        Credits
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMode('escrow')}
-                        className={`rounded px-2 py-0.5 text-[10px] font-semibold transition-colors ${
-                          paymentMode === 'escrow'
-                            ? 'bg-orange-500 text-white'
-                            : 'text-white/50 hover:text-white'
-                        }`}
-                      >
-                        Escrow
-                      </button>
-                    </div>
-                    {paymentMode === 'credits' && (
-                      <div className="flex items-center gap-1 rounded-full border border-white/10 glass-card px-2 py-1">
-                        <button
-                          type="button"
-                          onClick={() => setPaymentCurrency('cusdc')}
-                          className={`rounded px-2 py-0.5 text-[10px] font-semibold transition-colors ${
-                            paymentCurrency === 'cusdc'
-                              ? 'bg-orange-500/20 text-orange-400'
-                              : 'text-white/50 hover:text-white'
-                          }`}
-                        >
-                          cUSDC
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPaymentCurrency('blind')}
-                          className={`rounded px-2 py-0.5 text-[10px] font-semibold transition-colors ${
-                            paymentCurrency === 'blind'
-                              ? 'bg-orange-500/20 text-orange-400'
-                              : 'text-white/50 hover:text-white'
-                          }`}
-                        >
-                          BLIND -20%
-                        </button>
-                      </div>
-                    )}
-                    {paymentMode === 'credits' && (
-                      <label className="flex items-center gap-1.5 rounded-full border border-white/10 glass-card px-2 py-1 cursor-pointer hover:border-white/20 transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={insuranceOptIn}
-                          onChange={(e) => setInsuranceOptIn(e.target.checked)}
-                          className="w-3 h-3 rounded border-white/10 bg-[rgba(10,10,10,0.6)] text-orange-500 focus:ring-orange-500/20"
-                        />
-                        <span className="text-[10px] text-white/50 font-medium">
-                          Insure +2%
-                        </span>
-                      </label>
-                    )}
-                    <span className="text-[10px] text-white/50 font-mono">
-                      {paymentMode === 'credits' 
-                        ? `${(Number(jobPriceDisplay) * (1 + (insuranceOptIn ? 0.02 : 0))).toFixed(3)} ${paymentCurrency.toUpperCase()}` 
-                        : `${(jobPriceCusdc / 1e6).toFixed(3)} USDC (escrow)`}
-                    </span>
+                  {/* Right: status + send */}
+                  <div className="flex items-center gap-3">
                     <AnimatePresence>
                       {isChatBusy && (
                         <motion.span
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
-                          className="flex items-center gap-1.5 text-[11px] text-white/50"
+                          className="flex items-center gap-1.5 text-xs text-white/50"
                         >
-                          <Loader2 className="w-3 h-3 animate-spin text-orange-500" />
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-orange-500" />
                           {chatStage === 'encrypting' ? 'Sealing...' : chatStage === 'uploading' ? 'Uploading...' : chatStage === 'escrow' ? 'Escrow...' : 'Dispatching...'}
                         </motion.span>
                       )}
                     </AnimatePresence>
-                    <span className="flex items-center gap-1 text-[11px] text-white/30">
-                      <Lock className="w-3 h-3" /> Private
+                    <span className="flex items-center gap-1 text-xs text-white/30">
+                      <Lock className="w-3.5 h-3.5" /> Private
                     </span>
                     <button
                       type="button"
                       onClick={handleChatSubmit}
                       disabled={isChatBusy || !isReady || !address || !prompt.trim()}
-                      className="btn-primary flex items-center justify-center w-9 h-9 rounded-full p-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="btn-primary flex items-center justify-center w-10 h-10 rounded-full p-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                      data-tutorial="send-button"
                     >
                       {isChatBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowUp className="w-4 h-4" />}
                     </button>
                   </div>
+                </div>
+              </div>
+
+              {/* ── Row 2: Payment config bar ── */}
+              <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-3">
+                {/* Payment mode toggle */}
+                <div className="flex items-center rounded-full border border-white/10 glass-card p-1" data-tutorial="payment-mode">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMode('credits')}
+                    className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                      paymentMode === 'credits'
+                        ? 'bg-orange-500 text-white'
+                        : 'text-white/50 hover:text-white'
+                    }`}
+                  >
+                    Credits
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMode('escrow')}
+                    className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                      paymentMode === 'escrow'
+                        ? 'bg-orange-500 text-white'
+                        : 'text-white/50 hover:text-white'
+                    }`}
+                  >
+                    Escrow
+                  </button>
+                </div>
+
+                {/* Currency toggle (credits mode only) */}
+                {paymentMode === 'credits' && (
+                  <div className="flex items-center rounded-full border border-white/10 glass-card p-1" data-tutorial="currency-toggle">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentCurrency('cusdc')}
+                      className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                        paymentCurrency === 'cusdc'
+                          ? 'bg-orange-500/20 text-orange-400'
+                          : 'text-white/50 hover:text-white'
+                      }`}
+                    >
+                      cUSDC
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentCurrency('blind')}
+                      className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                        paymentCurrency === 'blind'
+                          ? 'bg-orange-500/20 text-orange-400'
+                          : 'text-white/50 hover:text-white'
+                      }`}
+                    >
+                      BLIND
+                      <span className="ml-1 text-[10px] opacity-70">-20%</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Insure checkbox (credits mode only) */}
+                {paymentMode === 'credits' && (
+                  <label className="flex items-center gap-2 rounded-full border border-white/10 glass-card px-3 py-1.5 cursor-pointer hover:border-white/20 transition-colors" data-tutorial="insurance-toggle">
+                    <input
+                      type="checkbox"
+                      checked={insuranceOptIn}
+                      onChange={(e) => setInsuranceOptIn(e.target.checked)}
+                      className="w-3.5 h-3.5 rounded border-white/10 bg-[rgba(10,10,10,0.6)] text-orange-500 focus:ring-orange-500/20"
+                    />
+                    <span className="text-xs text-white/60 font-medium">
+                      Insure +2%
+                    </span>
+                  </label>
+                )}
+
+                {/* Fee estimate */}
+                <div className="ml-auto flex items-center gap-2" data-tutorial="fee-display">
+                  <span className="text-[10px] uppercase tracking-wider text-white/40 font-medium">
+                    Est. Fee
+                  </span>
+                  <span className="text-sm font-mono text-white/80">
+                    {paymentMode === 'credits'
+                      ? `${(Number(jobPriceDisplay) * (1 + (insuranceOptIn ? 0.02 : 0))).toFixed(3)} ${paymentCurrency.toUpperCase()}`
+                      : `${(jobPriceCusdc / 1e6).toFixed(3)} USDC`}
+                  </span>
                 </div>
               </div>
             </div>
@@ -1009,7 +1028,7 @@ export function InferenceNewPage() {
       </div>
 
       {/* RIGHT: Execution Trace sidebar */}
-      <div className="hidden xl:flex w-80 shrink-0 flex-col p-4">
+      <div className="hidden xl:flex w-80 shrink-0 flex-col p-4" data-tutorial="execution-trace">
         <GlassCard variant="heavy" className="gradient-accent-top flex-1 flex flex-col p-6 overflow-y-auto" hoverEffect={false}>
           <SectionLabel>EXECUTION TRACE</SectionLabel>
           <div className="h-4" />

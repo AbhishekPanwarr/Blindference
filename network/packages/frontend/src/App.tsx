@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Check, AlertCircle } from 'lucide-react'
 import { lazy, Suspense, useMemo } from 'react'
 import { GrainOverlay } from './components/effects/GrainOverlay'
+import { TutorialProvider, TutorialManager } from './components/tutorial'
 
 import { InferenceNewPage } from './pages/InferenceNewPage'
 import { InferenceStatusPage } from './pages/InferenceStatusPage'
@@ -14,6 +15,7 @@ import { SettingsPage } from './pages/SettingsPage'
 import { BuyCreditsPage } from './pages/BuyCreditsPage'
 import { CreateEscrowPage } from './pages/CreateEscrowPage'
 import { NodeDashboardPage } from './pages/NodeDashboardPage'
+import { NodesPage } from './pages/NodesPage'
 import { WalletPage } from './pages/WalletPage'
 import { DeveloperDashboardPage } from './pages/DeveloperDashboardPage'
 import LandingPage from './pages/LandingPage'
@@ -71,8 +73,7 @@ function Navbar() {
     { path: '/wallet', label: 'Wallet' },
     { path: '/buy-credits', label: 'Credits' },
     { path: '/create-escrow', label: 'Escrow' },
-    { path: '/node-dashboard', label: 'Nodes' },
-    { path: '/node-registration', label: 'Join' },
+    { path: '/nodes', label: 'Nodes' },
     { path: '/developer-dashboard', label: 'Developer' },
     { path: '/settings', label: 'Settings' },
   ]
@@ -87,10 +88,23 @@ function Navbar() {
       className="fixed top-0 left-0 right-0 z-50 h-20 flex items-center justify-center px-6 pointer-events-none"
     >
       <div className="w-full max-w-7xl flex items-center justify-between pointer-events-auto">
-        {/* Logo — NullPay-style static */}
-        <Link to="/" className="flex items-center gap-3 no-underline">
-          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.15)]">
-            <div className="w-4 h-4 border-2 border-black rotate-45" />
+        {/* Logo — Branded hover swap */}
+        <Link to="/" className="flex items-center gap-3 no-underline group/logo">
+          <div className="relative w-10 h-10 shrink-0">
+            {/* Default: black/white logo */}
+            <img
+              src="/logos/bf-black.png"
+              alt="Blindference"
+              className="absolute inset-0 w-full h-full object-cover rounded-xl transition-opacity duration-300 group-hover/logo:opacity-0"
+              draggable={false}
+            />
+            {/* Hover: colorful gradient logo */}
+            <img
+              src="/logos/bf-app-logo.png"
+              alt="Blindference"
+              className="absolute inset-0 w-full h-full object-cover rounded-xl transition-opacity duration-300 opacity-0 group-hover/logo:opacity-100 scale-[1.35]"
+              draggable={false}
+            />
           </div>
           <div className="flex flex-col">
             <span className="text-xl font-bold text-white tracking-tight">Blindference</span>
@@ -160,6 +174,10 @@ const RouteFallback = () => (
 const AppLayout = () => {
   const location = useLocation()
   const isLandingPage = location.pathname === '/' || location.pathname === '/vision' || location.pathname === '/architecture' || location.pathname === '/whitepaper'
+
+  // Only inference page has tutorial
+  const tutorialPageId = location.pathname === '/app' ? 'app' : null
+
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
       <GrainOverlay />
@@ -178,6 +196,7 @@ const AppLayout = () => {
           </motion.div>
         </AnimatePresence>
       </main>
+      {tutorialPageId && <TutorialManager pageId={tutorialPageId} />}
     </div>
   )
 }
@@ -246,8 +265,7 @@ function App() {
           <Route element={<WalletPage />} path="wallet" />
           <Route element={<BuyCreditsPage />} path="buy-credits" />
           <Route element={<CreateEscrowPage />} path="create-escrow" />
-          <Route element={<NodeRegistrationPage />} path="node-registration" />
-          <Route element={<NodeDashboardPage />} path="node-dashboard" />
+          <Route element={<NodesPage />} path="nodes" />
           <Route element={<DeveloperDashboardPage />} path="developer-dashboard" />
           <Route element={<SettingsPage />} path="settings" />
           <Route element={
@@ -262,7 +280,9 @@ function App() {
 
   return (
     <BrowserRouter>
-      {appContent}
+      <TutorialProvider>
+        {appContent}
+      </TutorialProvider>
     </BrowserRouter>
   )
 }

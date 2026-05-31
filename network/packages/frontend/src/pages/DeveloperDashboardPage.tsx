@@ -117,6 +117,7 @@ export function DeveloperDashboardPage() {
           animate="visible"
           variants={staggerSlow}
           className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8"
+         
         >
           <motion.div variants={fadeInUp}>
             <GlassCard className="p-5">
@@ -204,6 +205,7 @@ export function DeveloperDashboardPage() {
         animate="visible"
         variants={staggerSlow}
         className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+       
       >
         <motion.div variants={fadeInUp}>
           <GlassCard className="p-6">

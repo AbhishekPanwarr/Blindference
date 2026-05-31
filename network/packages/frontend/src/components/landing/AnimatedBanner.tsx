@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
 
+const easePremium: [number, number, number, number] = [0.22, 1, 0.36, 1]
+
 export default function AnimatedBanner() {
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -11,117 +13,100 @@ export default function AnimatedBanner() {
     offset: ['start end', 'end end'],
   })
 
-  const scale = useTransform(scrollYProgress, [0, 0.6], [0.92, 1])
-  const opacity = useTransform(scrollYProgress, [0, 0.5], [0.4, 1])
-  const domeY = useTransform(scrollYProgress, [0, 0.8], ['30%', '0%'])
+  const scale = useTransform(scrollYProgress, [0, 0.6], [0.88, 1])
+  const opacity = useTransform(scrollYProgress, [0, 0.5], [0, 1])
+  const domeY = useTransform(scrollYProgress, [0, 0.8], ['40%', '0%'])
 
   return (
-    <section className="relative py-24 px-6" ref={containerRef}>
-      <motion.div
-        style={{ scale, opacity }}
-        className="relative mx-auto max-w-6xl overflow-hidden rounded-[2.5rem] shadow-2xl"
-      >
-        {/* Background container */}
-        <div className="relative aspect-[16/9] w-full bg-[#0c0c0e]">
-          {/* Subtle grid lines */}
+    <section ref={containerRef} className="relative z-20 overflow-hidden px-4 py-16 md:px-8 lg:px-16">
+      <div className="mx-auto max-w-6xl">
+        <motion.div
+          style={{ scale, opacity }}
+          className="relative min-h-[420px] overflow-hidden rounded-[2.5rem] border border-white/[0.04] bg-[#0c0c0e] shadow-2xl"
+        >
+          {/* Subtle vertical grid lines */}
           <div
-            className="absolute inset-0 opacity-[0.04]"
+            className="absolute inset-0 opacity-[0.05]"
             style={{
-              backgroundImage:
-                'linear-gradient(rgba(255,255,255,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.2) 1px, transparent 1px)',
-              backgroundSize: '80px 80px',
+              backgroundImage: 'linear-gradient(to right, white 1px, transparent 1px)',
+              backgroundSize: '8% 100%',
             }}
           />
 
-          {/* Scanline overlay */}
-          <div
-            className="absolute inset-0 pointer-events-none opacity-[0.03]"
-            style={{
-              background:
-                'linear-gradient(to bottom, transparent 50%, rgba(249, 115, 22, 0.02) 51%, transparent 100%)',
-              backgroundSize: '100% 3px',
-            }}
-          />
+          {/* Top shimmer line */}
+          <div className="absolute left-1/2 top-0 h-px w-4/5 -translate-x-1/2 bg-gradient-to-r from-transparent via-orange-500/20 to-transparent" />
 
-          {/* Orange dome / glow */}
-          <motion.div
-            style={{ y: domeY }}
-            className="absolute inset-x-0 bottom-0 flex items-end justify-center pointer-events-none"
-          >
-            {/* Multiple overlapping gradient layers for depth */}
-            {/* Layer 1: deep base glow */}
-            <div
-              className="absolute bottom-[-20%] left-1/2 -translate-x-1/2 w-[140%] h-[80%] rounded-t-[100%]"
-              style={{
-                background:
-                  'radial-gradient(ellipse at 50% 100%, rgba(249,115,22,0.35) 0%, rgba(249,115,22,0.12) 40%, transparent 70%)',
-                filter: 'blur(40px)',
-              }}
-            />
-
-            {/* Layer 2: mid dome */}
-            <div
-              className="absolute bottom-[-10%] left-1/2 -translate-x-1/2 w-[110%] aspect-[2/1] rounded-t-[100%]"
-              style={{
-                background:
-                  'linear-gradient(to top, rgba(249,115,22,0.55) 0%, rgba(251,146,60,0.35) 30%, rgba(253,186,116,0.15) 60%, transparent 100%)',
-                filter: 'blur(24px)',
-              }}
-            />
-
-            {/* Layer 3: bright core */}
-            <div
-              className="absolute bottom-[-5%] left-1/2 -translate-x-1/2 w-[90%] aspect-[2.2/1] rounded-t-[100%]"
-              style={{
-                background:
-                  'linear-gradient(to top, rgba(249,115,22,0.7) 0%, rgba(251,146,60,0.45) 25%, rgba(253,186,116,0.2) 55%, transparent 100%)',
-                filter: 'blur(16px)',
-              }}
-            />
-
-            {/* Layer 4: hot center strip */}
-            <div
-              className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[60%] h-[35%] rounded-t-[100%]"
-              style={{
-                background:
-                  'linear-gradient(to top, rgba(255,160,60,0.5) 0%, rgba(249,115,22,0.3) 40%, transparent 100%)',
-                filter: 'blur(12px)',
-              }}
-            />
-          </motion.div>
+          {/* Orange dome glow — fills the card like NullPay */}
+          <div className="pointer-events-none absolute bottom-0 left-0 right-0 top-[42%] overflow-hidden rounded-b-[2.5rem]">
+            <motion.div style={{ y: domeY }} className="relative h-full w-full">
+              <motion.div
+                animate={{ scale: [1, 1.05, 1], rotate: [-0.5, 0.5, -0.5] }}
+                transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
+                className="absolute left-1/2 top-0 aspect-[2/1] w-[160%] -translate-x-1/2 rounded-t-[100%] md:w-[130%]"
+                style={{
+                  background: 'linear-gradient(90deg, #fb923c 0%, #f97316 50%, #9a3412 100%)',
+                  filter: 'blur(16px)',
+                  boxShadow: '0 -20px 80px rgba(249, 115, 22, 0.25)',
+                }}
+              />
+              <motion.div
+                animate={{ scale: [1, 1.02, 1], rotate: [-0.3, 0.3, -0.3] }}
+                transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
+                className="absolute left-1/2 top-[4%] aspect-[2/1] w-[158%] -translate-x-1/2 rounded-t-[100%] md:w-[128%]"
+                style={{
+                  background: 'linear-gradient(90deg, #fdba74 0%, #f97316 50%, #c2410c 100%)',
+                }}
+              />
+            </motion.div>
+          </div>
 
           {/* Content overlay */}
-          <div className="relative z-10 flex h-full flex-col items-center justify-center px-8 text-center">
-            <h2 className="max-w-4xl text-3xl font-black leading-tight tracking-tight text-white sm:text-4xl md:text-5xl lg:text-[3.5rem]">
+          <div className="relative z-10 flex min-h-[420px] flex-col items-center justify-center px-6 py-10 text-center sm:px-10 lg:px-16">
+            <motion.h2
+              initial={{ opacity: 0, y: 15 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-50px' }}
+              transition={{ duration: 0.8, delay: 0.2, ease: easePremium }}
+              className="mx-auto max-w-4xl text-center text-4xl font-medium leading-[1.05] tracking-tight text-white md:text-5xl lg:text-[3.7rem]"
+            >
               CoFHE Encryption in Action
-            </h2>
+            </motion.h2>
 
-            <p className="mt-5 max-w-2xl text-sm font-light leading-relaxed tracking-wide text-white/50 sm:text-base md:text-lg">
+            <motion.p
+              initial={{ opacity: 0, y: 15 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-50px' }}
+              transition={{ duration: 0.8, delay: 0.28, ease: easePremium }}
+              className="mx-auto mt-5 max-w-2xl text-center text-base font-medium leading-7 text-white/70 md:text-lg"
+            >
               Every prompt is sealed before it leaves your browser. The quorum
               decrypts inside TEEs. The result is proven on-chain.
-            </p>
+            </motion.p>
 
-            <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row">
-              {/* Primary CTA */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              whileInView={{ opacity: 1, scale: 1, y: 0 }}
+              viewport={{ once: true, margin: '-50px' }}
+              transition={{ duration: 0.8, delay: 0.36, ease: easePremium }}
+              className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center"
+            >
               <Link
                 to="/app"
-                className="group inline-flex items-center gap-2 rounded-full bg-white px-7 py-3 text-sm font-bold text-black transition-all hover:scale-[1.03] hover:shadow-[0_0_30px_rgba(255,255,255,0.25)]"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-3.5 text-sm font-semibold text-black shadow-[0_0_30px_rgba(249,115,22,0.3)] transition-all duration-300 hover:scale-105 hover:bg-orange-50"
               >
                 Explore Product
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                <ArrowRight className="h-4 w-4" />
               </Link>
-
-              {/* Secondary CTA — glass outline */}
               <Link
                 to="/docs"
-                className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.03] px-7 py-3 text-sm font-semibold text-white/80 backdrop-blur-[24px] transition-all hover:border-white/30 hover:bg-white/[0.06] hover:text-white"
+                className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/[0.04] px-8 py-3.5 text-sm font-semibold text-white/85 backdrop-blur-xl transition-all duration-300 hover:border-orange-400/25 hover:bg-white/[0.08] hover:text-white"
               >
                 Developer Portal
               </Link>
-            </div>
+            </motion.div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </section>
   )
 }

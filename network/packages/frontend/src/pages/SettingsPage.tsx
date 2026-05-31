@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAccount, useDisconnect, useConnect } from 'wagmi'
-import { LogOut, Wallet, Lock, Unlock, Globe, Trash2, CheckCircle, Copy, Shield, Cpu } from 'lucide-react'
+import { LogOut, Wallet, Lock, Unlock, Globe, Trash2, CheckCircle, Copy, Shield, Cpu, HelpCircle, RotateCcw } from 'lucide-react'
+import { useTutorialContext } from '../components/tutorial'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Badge } from '../components/ui/Badge'
 import { SectionLabel } from '../components/effects/GlowDivider'
@@ -166,6 +167,9 @@ export function SettingsPage() {
         </div>
       </GlassCard>
 
+      {/* Tutorial Settings */}
+      <TutorialSettings />
+
       {/* Storage */}
       <GlassCard className="p-5 space-y-4">
         <h2 className="text-sm font-heading font-semibold text-white/90 flex items-center gap-2">
@@ -190,5 +194,61 @@ export function SettingsPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+function TutorialSettings() {
+  const { enabled, inferenceSeen, setEnabled, resetTutorial } = useTutorialContext()
+  const [resetting, setResetting] = useState(false)
+
+  const handleReset = () => {
+    resetTutorial()
+    setResetting(true)
+    setTimeout(() => setResetting(false), 2000)
+  }
+
+  return (
+    <GlassCard className="p-5 space-y-4">
+      <h2 className="text-sm font-heading font-semibold text-white/90 flex items-center gap-2">
+        <HelpCircle className="w-4 h-4 text-white/50" />
+        Inference Tutorial
+      </h2>
+
+      <div className="flex items-center justify-between p-3 rounded-lg border border-white/10 bg-[rgba(10,10,10,0.6)]">
+        <div>
+          <div className="text-sm font-medium text-white/90">Show inference tutorial</div>
+          <div className="text-xs text-white/50 mt-0.5">
+            {enabled
+              ? 'A guided walkthrough will show on your next visit to the Inference page.'
+              : 'Tutorial is disabled. Turn on to see it again.'}
+          </div>
+        </div>
+        <button
+          onClick={() => setEnabled(!enabled)}
+          className={enabled ? 'relative inline-flex h-6 w-11 items-center rounded-full transition-colors bg-orange-500' : 'relative inline-flex h-6 w-11 items-center rounded-full transition-colors bg-[rgba(10,10,10,0.6)]'}
+        >
+          <span
+            className={enabled ? 'inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-6' : 'inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1'}
+          />
+        </button>
+      </div>
+
+      <div className="p-3 rounded-lg border border-white/10 bg-[rgba(10,10,10,0.6)] space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-white/50">Status</span>
+          <span className={inferenceSeen ? 'text-xs font-mono text-white/70' : 'text-xs font-mono text-orange-400'}>
+            {inferenceSeen ? 'Seen ✓' : 'Not seen'}
+          </span>
+        </div>
+      </div>
+
+      <button
+        onClick={handleReset}
+        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-white/10 bg-[rgba(10,10,10,0.6)] text-xs font-medium text-white/50 hover:bg-orange-500/10 hover:text-white/80 transition-all"
+      >
+        <RotateCcw className="w-3.5 h-3.5" />
+        {resetting ? 'Reset ✓' : 'Replay Tutorial'}
+      </button>
+    </GlassCard>
   )
 }

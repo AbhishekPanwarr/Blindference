@@ -7,9 +7,9 @@ import { DepositModal } from './DepositModal'
 function formatCusdc(wei: string): string {
   try {
     const n = BigInt(wei)
-    return (Number(n) / 1e6).toFixed(2)
+    return (Number(n) / 1e6).toFixed(6)
   } catch {
-    return "0.00"
+    return "0.000000"
   }
 }
 

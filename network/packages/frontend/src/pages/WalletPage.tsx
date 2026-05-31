@@ -152,6 +152,7 @@ export function WalletPage() {
         animate="show"
         variants={fadeInUp}
         className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12"
+       
       >
         {/* cUSDC Balance Card */}
         <GlassCard className="gradient-accent-top p-8 relative overflow-hidden">
@@ -253,6 +254,7 @@ export function WalletPage() {
         animate="show"
         variants={fadeInUp}
         className="mb-12"
+       
       >
         <div className="flex items-center justify-between mb-6">
           <SectionLabel text="TRANSACTION HISTORY" />
