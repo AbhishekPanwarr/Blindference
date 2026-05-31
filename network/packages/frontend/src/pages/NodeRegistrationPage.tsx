@@ -25,7 +25,7 @@ function AuroraBlobs() {
           scale: [1, 1.15, 0.9, 1],
         }}
         transition={{ duration: 25, ease: 'linear', repeat: Infinity }}
-        className="absolute top-[15%] left-[10%] w-[50vw] h-[50vw] rounded-full bg-orange-500/[0.03] blur-[120px]"
+        className="absolute top-[15%] left-[10%] w-[50vw] h-[50vw] rounded-full bg-violet-500/[0.03] blur-[120px]"
       />
       <motion.div
         animate={{
@@ -34,7 +34,7 @@ function AuroraBlobs() {
           scale: [1, 0.85, 1.1, 1],
         }}
         transition={{ duration: 30, ease: 'linear', repeat: Infinity }}
-        className="absolute bottom-[10%] right-[5%] w-[40vw] h-[40vw] rounded-full bg-orange-600/[0.02] blur-[140px]"
+        className="absolute bottom-[10%] right-[5%] w-[40vw] h-[40vw] rounded-full bg-indigo-500/[0.02] blur-[140px]"
       />
       <motion.div
         animate={{
@@ -134,7 +134,7 @@ function PremiumButton({
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className={`${className} border border-white/15 bg-white/[0.04] text-white/80 hover:border-orange-400/25 hover:bg-white/[0.08] hover:text-white`}
+        className={`${className} border border-white/15 bg-white/[0.04] text-white/80 hover:border-violet-400/25 hover:bg-white/[0.08] hover:text-white`}
       >
         {content}
         <ArrowUpRight className="w-4 h-4 relative z-10 text-white/50 group-hover:text-white transition-colors" />
@@ -145,7 +145,7 @@ function PremiumButton({
   return (
     <Link
       to={href}
-      className={`${className} bg-white text-black hover:bg-orange-50 shadow-[0_4px_20px_rgba(249,115,22,0.3)] hover:shadow-[0_8px_30px_rgba(249,115,22,0.5)]`}
+      className={`${className} bg-white text-black hover:bg-violet-50 shadow-[0_4px_20px_rgba(139,92,246,0.3)] hover:shadow-[0_8px_30px_rgba(139,92,246,0.5)]`}
     >
       {content}
     </Link>
@@ -185,21 +185,21 @@ export function NodeRegistrationPage() {
            
           >
             {/* Card border glow */}
-            <div className="absolute -inset-[1px] rounded-[2.5rem] bg-orange-500/10 blur-sm opacity-100" />
+            <div className="absolute -inset-[1px] rounded-[2.5rem] bg-violet-500/10 blur-sm opacity-100" />
 
             <div className="relative rounded-[2.5rem] bg-[#0a0a0a]/90 backdrop-blur-sm border border-white/[0.08] p-10 md:p-14 text-center overflow-hidden">
               {/* Top shimmer */}
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-orange-400/40 to-transparent" />
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400/40 to-transparent" />
 
               {/* Corner glow */}
-              <div className="absolute -top-32 -right-32 w-64 h-64 rounded-full bg-orange-500/5 blur-3xl" />
+              <div className="absolute -top-32 -right-32 w-64 h-64 rounded-full bg-violet-500/5 blur-3xl" />
 
               {/* Server icon with animated ring */}
               <motion.div
                 variants={fadeInScale}
                 className="mx-auto mb-8 relative"
               >
-                <div className="absolute inset-0 rounded-2xl bg-orange-500/20 blur-xl animate-pulse" />
+                <div className="absolute inset-0 rounded-2xl bg-violet-500/20 blur-xl animate-pulse" />
                 <div className="relative w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/[0.1] flex items-center justify-center">
                   <Server className="w-6 h-6 text-white/60" />
                 </div>
@@ -211,7 +211,7 @@ export function NodeRegistrationPage() {
                 className="text-3xl md:text-4xl lg:text-[2.75rem] font-bold font-heading mb-4 leading-tight tracking-tight"
               >
                 <span className="text-white">Become a </span>
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-500 to-amber-400 drop-shadow-[0_0_30px_rgba(249,115,22,0.3)]">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-300 via-violet-500 to-indigo-400 drop-shadow-[0_0_30px_rgba(139,92,246,0.3)]">
                   Blindference
                 </span>
                 <span className="text-white"> Compute Node</span>
@@ -256,8 +256,8 @@ export function NodeRegistrationPage() {
                   icon={Download}
                   title="Install the package"
                   code={`pip install\nblindference-node`}
-                  accentColor="bg-orange-500/50"
-                  glowColor="bg-orange-500/10"
+                  accentColor="bg-violet-500/50"
+                  glowColor="bg-violet-500/10"
                 />
                 <StepCard
                   step="2. Configure"
