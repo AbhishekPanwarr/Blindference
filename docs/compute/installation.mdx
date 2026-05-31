@@ -6,10 +6,40 @@ icon: 'download'
 
 # Installation
 
-## PyPI (Recommended)
+## GitHub Clone (Recommended)
+
+```bash title="Clone and install from source"
+git clone https://github.com/baync180705/Blindference-node.git
+cd Blindference-node
+
+# Install Node.js dependencies (REQUIRED for CoFHE bridge)
+npm install
+
+# Install Python package in development mode
+pip install -e .
+```
+
+This is the recommended path for first-time setup. The CoFHE bridge (`cofhe_bridge.mjs`) requires Node.js packages (`@cofhe/sdk`, `viem`) that cannot be bundled in a Python wheel.
+
+For GPU support from source:
+
+```bash title="Install from source with GPU"
+pip install -e ".[gpu]"
+```
+
+## PyPI (Advanced — Manual npm install Required)
+
+<Warning>
+  The PyPI wheel includes Python code but **NOT Node.js dependencies**. After `pip install`, you **must** run `npm install` inside the installed package directory.
+</Warning>
 
 ```bash title="Install from PyPI"
 pip install blindference-node
+```
+
+```bash title="Install Node.js dependencies (REQUIRED)"
+BLF_NODE_DIR=$(python -c "import blindference_node, os; print(os.path.dirname(blindference_node.__file__))")
+cd "$BLF_NODE_DIR" && npm install
 ```
 
 For GPU-accelerated local inference:
@@ -22,14 +52,6 @@ For development (tests, linting):
 
 ```bash title="Install with dev dependencies"
 pip install "blindference-node[dev]"
-```
-
-## From Source
-
-```bash title="Clone and install from source"
-git clone https://github.com/baync180705/Blindference-node.git
-cd Blindference-node
-pip install -e .
 ```
 
 For GPU support from source:

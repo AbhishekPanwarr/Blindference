@@ -9,10 +9,40 @@ icon: 'clock-rotate-left'
 ## Latest Release
 
 <CardGroup cols={1}>
+  <Card title="Wave 4.1 — PyPI Packaging Fix (v0.3.5)" icon="box">
+    Fixed PyPI wheel to include `package.json` inside the package directory, enabling `npm install` after `pip install`. Added documentation warnings that PyPI requires manual Node.js dependency installation.
+  </Card>
   <Card title="Wave 4 — Full Quorum, NodeRegistry, PyPI, Professional Docs" icon="rocket">
     Complete operational validation with 3-node quorum, unified node registry, PyPI package, and professional documentation site.
   </Card>
 </CardGroup>
+
+### Patch Changes (v0.3.5)
+
+<Accordion title="PyPI Wheel Packaging Fix">
+  **Problem**: The PyPI wheel (`pip install blindference-node`) did not include `package.json` inside the installed package directory, making it impossible to run `npm install` for the CoFHE bridge without the Dockerfile hack that dynamically created a fake `package.json`.
+
+  **Fix**:
+  - Added `[tool.setuptools.package-data]` in `pyproject.toml` to ship `package.json`, `scripts/*.mjs`, and `contracts/abis/*.json`
+  - Added `blindference_node/package.json` so the wheel includes the file in the correct location
+  - Added `blindference_node/scripts/__init__.py` to ensure `scripts/` is treated as a proper Python subpackage
+  - Updated all documentation to warn that PyPI install requires manual `npm install`
+  - Bumped version: `0.3.4` → `0.3.5`
+
+  **Migration**:
+  ```bash
+  # Before (v0.3.4) — broken, had to hack package.json
+  pip install blindference-node==0.3.4
+  # Then manually create package.json or use Dockerfile hack
+
+  # After (v0.3.5) — package.json ships in wheel
+  pip install blindference-node==0.3.5
+  BLF_NODE_DIR=$(python -c "import blindference_node, os; print(os.path.dirname(blindference_node.__file__))")
+  cd "$BLF_NODE_DIR" && npm install  # Now works because package.json exists
+  ```
+</Accordion>
+
+### Major Changes
 
 ### Major Changes
 
