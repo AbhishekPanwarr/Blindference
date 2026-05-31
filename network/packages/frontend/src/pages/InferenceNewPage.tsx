@@ -932,10 +932,8 @@ export function InferenceNewPage() {
                       className="btn-primary flex items-center justify-center w-10 h-10 rounded-full p-0 disabled:opacity-40 disabled:cursor-not-allowed relative overflow-hidden"
                       data-tutorial="send-button"
                     >
-                      {isChatBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : (
-                        <div className="flex items-center justify-center w-6 h-6 rounded-md bg-white p-0.5">
-                          <img src="/logos/bf-final-logo-2.png" alt="B" className="w-full h-full object-contain" />
-                        </div>
+                      {isChatBusy ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : (
+                        <Send className="w-5 h-5 text-white" strokeWidth={2.5} />
                       )}
                     </button>
                   </div>
