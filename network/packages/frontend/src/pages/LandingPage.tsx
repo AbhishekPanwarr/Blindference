@@ -269,38 +269,34 @@ function FeaturesSection() {
 }
 
 /* ─── Partners ─── */
-function PartnersSection() {
-  const partners = [
-    { name: 'Arbitrum', abbr: 'Arb' },
-    { name: 'Fhenix', abbr: 'Fh' },
-    { name: 'Reineira', abbr: 'Re' },
+function TechStackSection() {
+  const stack = [
+    { name: 'Arbitrum Sepolia', role: 'Settlement Layer' },
+    { name: 'Fhenix CoFHE', role: 'Encryption' },
+    { name: 'Groq / Gemini', role: 'Model APIs' },
+    { name: 'IPFS / Pinata', role: 'Storage' },
   ]
 
   return (
     <section className="relative py-20 px-6">
       <div className="max-w-4xl mx-auto text-center">
-        <SectionLabel>BUILT ON</SectionLabel>
+        <SectionLabel>INFRASTRUCTURE</SectionLabel>
 
         <motion.div
           variants={staggerSlow}
           initial="hidden"
           whileInView="show"
           viewport={{ once: true }}
-          className="flex flex-wrap items-center justify-center gap-8 sm:gap-12 mt-8"
+          className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 mt-8"
         >
-          {partners.map((partner) => (
+          {stack.map((item) => (
             <motion.div
-              key={partner.name}
+              key={item.name}
               variants={fadeInScale}
-              whileHover={{ scale: 1.05, opacity: 1 }}
-              className="text-brand-text-secondary/50 hover:text-brand-text transition-all cursor-default"
+              className="flex flex-col items-center gap-2 px-4 py-3 rounded-xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-sm"
             >
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-xs font-bold text-violet-300">
-                  {partner.abbr}
-                </div>
-                <span className="text-sm font-medium">{partner.name}</span>
-              </div>
+              <span className="text-sm font-medium text-white/80">{item.name}</span>
+              <span className="text-[10px] text-white/30 uppercase tracking-wider">{item.role}</span>
             </motion.div>
           ))}
         </motion.div>
@@ -484,7 +480,7 @@ export default function LandingPage() {
 
         <GlowDivider />
 
-        <PartnersSection />
+        <TechStackSection />
         <FinalCTA />
       </main>
 
