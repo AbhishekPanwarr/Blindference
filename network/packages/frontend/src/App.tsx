@@ -84,7 +84,7 @@ function Navbar() {
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
-      className="fixed top-0 left-0 right-0 z-50 h-20 flex items-center justify-center px-6 pointer-events-none bg-gradient-to-b from-black/80 to-transparent"
+      className="fixed top-0 left-0 right-0 z-50 h-20 flex items-center justify-center px-6 pointer-events-none"
     >
       <div className="w-full max-w-7xl flex items-center justify-between pointer-events-auto">
         {/* Logo — NullPay-style static */}
@@ -121,9 +121,9 @@ function Navbar() {
           })}
         </div>
 
-        {/* Actions — single CTA */}
+        {/* Actions — single CTA on landing */}
         <div className="flex items-center gap-3">
-          {isLanding && (
+          {isLanding ? (
             <Link
               to="/app"
               className="hidden md:flex items-center justify-center gap-2 px-6 py-2.5 rounded-full border border-white/[0.1] bg-white/[0.05] hover:bg-white/[0.08] hover:border-white/[0.15] transition-all duration-300 text-sm font-semibold text-white/80 hover:text-white group"
@@ -131,8 +131,9 @@ function Navbar() {
               Launch App
               <svg className="w-4 h-4 text-white/50 group-hover:text-white transition-colors group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
             </Link>
+          ) : (
+            <WalletButton />
           )}
-          <WalletButton />
         </div>
       </div>
     </motion.nav>
