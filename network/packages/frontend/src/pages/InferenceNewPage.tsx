@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi'
-import { Lock, ShieldAlert, ShieldCheck, Copy, Cpu, CheckCircle2, Loader2, ChevronDown, ArrowUp, MessageSquare, BarChart2 } from 'lucide-react'
+import { Lock, ShieldAlert, ShieldCheck, Copy, Cpu, CheckCircle2, Loader2, ChevronDown, Send, MessageSquare, BarChart2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Hex } from 'viem'
 import axios from 'axios'
@@ -922,8 +922,8 @@ export function InferenceNewPage() {
                         </motion.span>
                       )}
                     </AnimatePresence>
-                    <span className="flex items-center gap-1 text-xs text-white/30">
-                      <Lock className="w-3.5 h-3.5" /> Private
+                    <span className="flex items-center gap-1.5 text-[11px] text-white/40 bg-white/[0.04] border border-white/[0.08] rounded-full px-2.5 py-1 backdrop-blur-sm">
+                      <Lock className="w-3 h-3" /> Private
                     </span>
                     <button
                       type="button"
@@ -932,7 +932,7 @@ export function InferenceNewPage() {
                       className="btn-primary flex items-center justify-center w-10 h-10 rounded-full p-0 disabled:opacity-40 disabled:cursor-not-allowed"
                       data-tutorial="send-button"
                     >
-                      {isChatBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowUp className="w-4 h-4" />}
+                      {isChatBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>

@@ -243,7 +243,7 @@ body::after {
    ============================================ */
 
 .btn-primary {
-  background: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
+  background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%);
   color: black;
   border: none;
   border-radius: 12px;
@@ -266,15 +266,15 @@ body::after {
 
 .btn-primary:hover {
   transform: scale(1.02);
-  box-shadow: 0 0 30px rgba(249, 115, 22, 0.4), 0 0 60px rgba(249, 115, 22, 0.15);
+  box-shadow: 0 0 30px rgba(139, 92, 246, 0.4), 0 0 60px rgba(139, 92, 246, 0.15);
 }
 
 .btn-primary:hover::before { opacity: 1; }
 
 .btn-outline {
   background: transparent;
-  color: #fdba74;
-  border: 1px solid rgba(249, 115, 22, 0.3);
+  color: #C4B5FD;
+  border: 1px solid rgba(139, 92, 246, 0.3);
   border-radius: 12px;
   padding: 12px 24px;
   font-weight: 600;
@@ -283,9 +283,9 @@ body::after {
 }
 
 .btn-outline:hover {
-  border-color: rgba(249, 115, 22, 0.6);
-  background: rgba(249, 115, 22, 0.08);
-  box-shadow: 0 0 20px rgba(249, 115, 22, 0.15);
+  border-color: rgba(139, 92, 246, 0.6);
+  background: rgba(139, 92, 246, 0.08);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.15);
 }
 
 /* ============================================
@@ -303,8 +303,8 @@ body::after {
 
 .input-glass:focus {
   outline: none;
-  border-color: rgba(249, 115, 22, 0.4);
-  box-shadow: 0 0 20px rgba(249, 115, 22, 0.12);
+  border-color: rgba(139, 92, 246, 0.4);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.12);
 }
 
 .input-glass::placeholder { color: #a1a1aa; }
