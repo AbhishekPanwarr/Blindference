@@ -88,22 +88,21 @@ function Navbar() {
       className="fixed top-0 left-0 right-0 z-50 h-20 flex items-center justify-center px-6 pointer-events-none"
     >
       <div className="w-full max-w-7xl flex items-center justify-between pointer-events-auto">
-        {/* Logo — Branded hover swap */}
+        {/* Logo */}
         <Link to="/" className="flex items-center gap-3 no-underline group/logo">
-          <div className="relative w-10 h-10 shrink-0">
-            {/* Default: colorful gradient logo */}
+          <div className="relative h-9 w-auto shrink-0 overflow-hidden rounded-lg">
             <img
-              src="/logos/bf-logo-2.png"
+              src="/logos/bf-final-logo-2.png"
               alt="Blindference"
-              className="absolute inset-0 w-full h-full object-cover rounded-xl transition-opacity duration-300 group-hover/logo:opacity-0"
+              className="h-full w-auto object-contain"
               draggable={false}
             />
-            {/* Hover: black/white logo */}
-            <img
-              src="/logos/bf-black.png"
-              alt="Blindference"
-              className="absolute inset-0 w-full h-full object-cover rounded-xl transition-opacity duration-300 opacity-0 group-hover/logo:opacity-100 scale-[1.15]"
-              draggable={false}
+            {/* Shimmer sweep on hover */}
+            <div
+              className="absolute inset-0 -translate-x-full group-hover/logo:translate-x-full transition-transform duration-700 ease-out"
+              style={{
+                background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%)',
+              }}
             />
           </div>
           <div className="flex flex-col">
