@@ -312,10 +312,13 @@ function Footer() {
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-violet-500 text-white font-extrabold text-sm flex items-center justify-center glow-violet">
-                B
-              </div>
+            <div className="flex items-center gap-2.5 mb-4">
+              <img
+                src="/logos/bf-final-logo-2.png"
+                alt="Blindference"
+                className="w-8 h-8 rounded-lg object-cover"
+                draggable={false}
+              />
               <span className="font-semibold text-sm tracking-[0.2em] text-brand-text font-heading">
                 BLINDFERENCE
               </span>
