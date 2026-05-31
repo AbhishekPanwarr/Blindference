@@ -44,7 +44,7 @@ const partners = [
     render: () => (
       <div className="flex items-center gap-2">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="shrink-0">
-          <path d="M12 2L22 20H2L12 2Z" fill="#f97316" />
+          <path d="M12 2L22 20H2L12 2Z" fill="#8B5CF6" />
           <path d="M12 8L16 16H8L12 8Z" fill="#000" />
         </svg>
         <span className="text-sm font-semibold tracking-wide">Arbitrum</span>
@@ -111,7 +111,7 @@ export default function ModelShowcase() {
           viewport={{ once: true, margin: '-100px' }}
           className="text-center mb-20"
         >
-          <span className="font-mono text-xs uppercase tracking-[0.3em] text-brand-primary">
+          <span className="font-mono text-xs uppercase tracking-[0.3em] text-violet-500">
             Integrations
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold font-heading text-brand-text mt-3 mb-4">
@@ -143,8 +143,8 @@ export default function ModelShowcase() {
                   'group relative rounded-2xl p-6 h-full flex flex-col',
                   'bg-brand-surface/60 backdrop-blur-xl border border-white/[0.08]',
                   'transition-all duration-300 ease-out',
-                  'hover:border-brand-primary/40',
-                  'hover:shadow-[0_0_30px_rgba(249,115,22,0.12),0_8px_32px_rgba(0,0,0,0.5)]',
+                  'hover:border-violet-500/40',
+                  'hover:shadow-[0_0_30px_rgba(139,92,246,0.12),0_8px_32px_rgba(0,0,0,0.5)]',
                   'hover:-translate-y-1'
                 )}
               >
@@ -153,15 +153,15 @@ export default function ModelShowcase() {
                   <span className="text-xs text-brand-text-secondary font-medium">
                     {model.provider}
                   </span>
-                  <span className="inline-flex items-center gap-1 rounded-lg bg-brand-primary/10 border border-brand-primary/20 px-2.5 py-1 text-[11px] font-semibold text-brand-highlight">
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-violet-500/10 border border-violet-500/20 px-2.5 py-1 text-[11px] font-semibold text-violet-300">
                     {model.badge}
                   </span>
                 </div>
 
                 {/* Center: model name + icon */}
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center shrink-0 group-hover:glow-primary transition-all duration-300">
-                    <model.Icon className="w-5 h-5 text-brand-secondary" />
+                  <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0 group-hover:glow-violet transition-all duration-300">
+                    <model.Icon className="w-5 h-5 text-violet-400" />
                   </div>
                   <h3 className="text-xl font-bold text-brand-text leading-tight font-heading">
                     {model.name}

@@ -3,7 +3,7 @@ import { motion, useMotionValue, useMotionTemplate } from 'framer-motion';
 
 /**
  * Cursor-tracking animated grid background for the hero section.
- * A global faint grid is always visible; an orange active grid
+ * A global faint grid is always visible; a violet active grid
  * glows only within a ~180 px radius of the cursor via a radial mask.
  *
  * Ported from NullPay frontend.
@@ -50,14 +50,14 @@ export default function HeroGrid() {
                 }}
             />
 
-            {/* Glowing active orange grid lines localized to cursor */}
+            {/* Glowing active violet grid lines localized to cursor */}
             <motion.div
                 className="absolute inset-0 pointer-events-none opacity-[0.45]"
                 animate={{ backgroundPosition: ['0px 0px', '64px 64px'] }}
                 transition={{ duration: 30, ease: 'linear', repeat: Infinity }}
                 style={{
                     backgroundImage:
-                        'linear-gradient(to right, #f97316 1px, transparent 1px), linear-gradient(to bottom, #f97316 1px, transparent 1px)',
+                        'linear-gradient(to right, #8B5CF6 1px, transparent 1px), linear-gradient(to bottom, #8B5CF6 1px, transparent 1px)',
                     backgroundSize: '64px 64px',
                     maskImage: useMotionTemplate`radial-gradient(180px circle at ${mouseX}px ${mouseY}px, black 0%, transparent 100%)`,
                     WebkitMaskImage: useMotionTemplate`radial-gradient(180px circle at ${mouseX}px ${mouseY}px, black 0%, transparent 100%)`,
@@ -71,7 +71,7 @@ export default function HeroGrid() {
                 transition={{ duration: 30, ease: 'linear', repeat: Infinity }}
                 style={{
                     backgroundImage:
-                        'linear-gradient(to right, #f97316 1px, transparent 1px), linear-gradient(to bottom, #f97316 1px, transparent 1px)',
+                        'linear-gradient(to right, #8B5CF6 1px, transparent 1px), linear-gradient(to bottom, #8B5CF6 1px, transparent 1px)',
                     backgroundSize: '64px 64px',
                     maskImage: mobileGridMask,
                     WebkitMaskImage: mobileGridMask,

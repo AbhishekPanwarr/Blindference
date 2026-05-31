@@ -79,8 +79,8 @@ export function RolesSection() {
               transition={{ delay: i * 0.12 }}
             >
               <div className="glass-card glass-card-hover p-8 h-full flex flex-col relative gradient-accent-top">
-                <div className="w-12 h-12 rounded-xl bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center mb-6 glow-primary">
-                  <role.icon className="w-6 h-6 text-brand-secondary" />
+                <div className="w-12 h-12 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mb-6 glow-violet">
+                  <role.icon className="w-6 h-6 text-violet-400" />
                 </div>
 
                 <h3 className="text-xl font-bold text-brand-text mb-3 font-heading">
@@ -115,7 +115,7 @@ export function RolesSection() {
                 ) : (
                   <Link
                     to={role.href}
-                    className="inline-flex items-center justify-center gap-2 btn-outline text-xs rounded-full"
+                    className="inline-flex items-center justify-center gap-2 btn-outline-purple text-xs rounded-full"
                   >
                     {role.cta}
                     <ArrowRight className="w-3.5 h-3.5" />

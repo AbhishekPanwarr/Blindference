@@ -50,8 +50,8 @@ const row2 = [...cards].reverse();
 
 function getSourceColor(source: string) {
   switch (source) {
-    case "TechCrunch":
-      return "bg-orange-500";
+      case "TechCrunch":
+      return "bg-violet-500";
     case "Wired":
       return "bg-blue-500";
     case "The Guardian":
@@ -89,7 +89,7 @@ function MarqueeRow({
                 {card.source}
               </span>
             </div>
-            <h4 className="text-sm font-bold text-white mb-2 leading-snug group-hover:text-brand-primary transition-colors">
+              <h4 className="text-sm font-bold text-white mb-2 leading-snug group-hover:text-violet-500 transition-colors">
               {card.title}
             </h4>
             <p className="text-[12.5px] text-brand-text-secondary leading-relaxed line-clamp-3">
@@ -115,7 +115,7 @@ export default function PrivacyMarquee() {
         >
           <motion.p
             variants={fadeInUp}
-            className="font-mono text-xs uppercase tracking-[0.25em] text-brand-primary mb-4"
+            className="font-mono text-xs uppercase tracking-[0.25em] text-violet-500 mb-4"
           >
             THE PROBLEM
           </motion.p>

@@ -40,7 +40,7 @@ export default function HowItWorks() {
         >
           <motion.p
             variants={fadeInUp}
-            className="font-mono text-xs uppercase tracking-[0.25em] text-brand-primary mb-4"
+            className="font-mono text-xs uppercase tracking-[0.25em] text-violet-500 mb-4"
           >
             HOW BLINDFERENCE WORKS
           </motion.p>
@@ -62,7 +62,7 @@ export default function HowItWorks() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
           {/* Connecting gradient line on desktop */}
-          <div className="hidden md:block absolute top-12 left-[16.67%] right-[16.67%] h-px bg-gradient-to-r from-brand-primary/30 via-brand-secondary/20 to-brand-primary/10" />
+          <div className="hidden md:block absolute top-12 left-[16.67%] right-[16.67%] h-px bg-gradient-to-r from-violet-500/30 via-violet-400/20 to-violet-500/10" />
 
           {steps.map((step, i) => (
             <motion.div
@@ -79,8 +79,8 @@ export default function HowItWorks() {
                 className="p-8 h-full flex flex-col text-center"
                 hoverEffect
               >
-                <div className="w-14 h-14 rounded-full bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center mx-auto mb-6 glow-primary">
-                  <step.icon className="w-6 h-6 text-brand-secondary" />
+                <div className="w-14 h-14 rounded-full bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mx-auto mb-6 glow-violet">
+                  <step.icon className="w-6 h-6 text-violet-400" />
                 </div>
                 <h3 className="text-xl font-bold text-white mb-3 font-heading">
                   {step.title}
@@ -88,7 +88,7 @@ export default function HowItWorks() {
                 <p className="text-sm text-brand-text-secondary leading-relaxed flex-1">
                   {step.description}
                 </p>
-                <p className="mt-6 font-mono text-[10px] uppercase tracking-[0.2em] text-brand-primary/70">
+                <p className="mt-6 font-mono text-[10px] uppercase tracking-[0.2em] text-violet-500/70">
                   {step.stepLabel}
                 </p>
               </GlassCard>

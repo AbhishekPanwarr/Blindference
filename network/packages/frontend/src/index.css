@@ -674,6 +674,44 @@ body::after {
   background-clip: text;
 }
 
+/* ─── Purple-Blue Theme (Crypzone) ─── */
+.text-gradient-purple {
+  background: linear-gradient(135deg, #A78BFA 0%, #8B5CF6 50%, #C4B5FD 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.glow-violet {
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.35), 0 0 60px rgba(139, 92, 246, 0.12);
+}
+
+.glow-border-violet {
+  border-color: rgba(139, 92, 246, 0.4);
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.2);
+}
+
+.text-glow-violet {
+  text-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+}
+
+.btn-outline-purple {
+  background: transparent;
+  color: #C4B5FD;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.btn-outline-purple:hover {
+  border-color: rgba(139, 92, 246, 0.6);
+  background: rgba(139, 92, 246, 0.08);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.15);
+}
+
 .text-stroke-white {
   -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.12);
   color: transparent;

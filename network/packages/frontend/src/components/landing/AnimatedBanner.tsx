@@ -34,9 +34,9 @@ export default function AnimatedBanner() {
           />
 
           {/* Top shimmer line */}
-          <div className="absolute left-1/2 top-0 h-px w-4/5 -translate-x-1/2 bg-gradient-to-r from-transparent via-orange-500/20 to-transparent" />
+          <div className="absolute left-1/2 top-0 h-px w-4/5 -translate-x-1/2 bg-gradient-to-r from-transparent via-violet-500/20 to-transparent" />
 
-          {/* Orange dome glow — fills the card like NullPay */}
+          {/* Purple-blue dome glow — fills the card like NullPay */}
           <div className="pointer-events-none absolute bottom-0 left-0 right-0 top-[42%] overflow-hidden rounded-b-[2.5rem]">
             <motion.div style={{ y: domeY }} className="relative h-full w-full">
               <motion.div
@@ -44,9 +44,9 @@ export default function AnimatedBanner() {
                 transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
                 className="absolute left-1/2 top-0 aspect-[2/1] w-[160%] -translate-x-1/2 rounded-t-[100%] md:w-[130%]"
                 style={{
-                  background: 'linear-gradient(90deg, #fb923c 0%, #f97316 50%, #9a3412 100%)',
+                  background: 'linear-gradient(90deg, #A78BFA 0%, #8B5CF6 50%, #4F46E5 100%)',
                   filter: 'blur(16px)',
-                  boxShadow: '0 -20px 80px rgba(249, 115, 22, 0.25)',
+                  boxShadow: '0 -20px 80px rgba(139, 92, 246, 0.25)',
                 }}
               />
               <motion.div
@@ -54,7 +54,7 @@ export default function AnimatedBanner() {
                 transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
                 className="absolute left-1/2 top-[4%] aspect-[2/1] w-[158%] -translate-x-1/2 rounded-t-[100%] md:w-[128%]"
                 style={{
-                  background: 'linear-gradient(90deg, #fdba74 0%, #f97316 50%, #c2410c 100%)',
+                  background: 'linear-gradient(90deg, #C4B5FD 0%, #8B5CF6 50%, #6366F1 100%)',
                 }}
               />
             </motion.div>
@@ -92,14 +92,14 @@ export default function AnimatedBanner() {
             >
               <Link
                 to="/app"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-3.5 text-sm font-semibold text-black shadow-[0_0_30px_rgba(249,115,22,0.3)] transition-all duration-300 hover:scale-105 hover:bg-orange-50"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-3.5 text-sm font-semibold text-black shadow-[0_0_30px_rgba(139,92,246,0.3)] transition-all duration-300 hover:scale-105 hover:bg-violet-50"
               >
                 Explore Product
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
                 to="/docs"
-                className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/[0.04] px-8 py-3.5 text-sm font-semibold text-white/85 backdrop-blur-xl transition-all duration-300 hover:border-orange-400/25 hover:bg-white/[0.08] hover:text-white"
+                className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/[0.04] px-8 py-3.5 text-sm font-semibold text-white/85 backdrop-blur-xl transition-all duration-300 hover:border-violet-400/25 hover:bg-white/[0.08] hover:text-white"
               >
                 Developer Portal
               </Link>

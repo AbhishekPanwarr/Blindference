@@ -33,7 +33,7 @@ function Scanlines() {
       className="absolute inset-0 z-[2] pointer-events-none opacity-[0.04]"
       style={{
         background:
-          'linear-gradient(to bottom, transparent 50%, rgba(249, 115, 22, 0.03) 51%, transparent 100%)',
+          'linear-gradient(to bottom, transparent 50%, rgba(139, 92, 246, 0.03) 51%, transparent 100%)',
         backgroundSize: '100% 4px',
       }}
     />
@@ -51,7 +51,7 @@ function AuroraBlobs() {
           scale: [1, 1.15, 0.9, 1],
         }}
         transition={{ duration: 20, ease: 'linear', repeat: Infinity }}
-        className="absolute top-[10%] left-[20%] w-[500px] h-[500px] rounded-full bg-orange-500/5 blur-[120px]"
+        className="absolute top-[10%] left-[20%] w-[500px] h-[500px] rounded-full bg-violet-500/5 blur-[120px]"
       />
       <motion.div
         animate={{
@@ -60,7 +60,7 @@ function AuroraBlobs() {
           scale: [1, 0.85, 1.1, 1],
         }}
         transition={{ duration: 25, ease: 'linear', repeat: Infinity }}
-        className="absolute top-[40%] right-[10%] w-[400px] h-[400px] rounded-full bg-white/3 blur-[100px]"
+        className="absolute top-[40%] right-[10%] w-[400px] h-[400px] rounded-full bg-indigo-500/3 blur-[100px]"
       />
     </div>
   )
@@ -100,7 +100,7 @@ function HeroSection() {
                 <h1 className="text-[3.3rem] font-black leading-[0.9] tracking-[-0.06em] sm:text-[3.9rem] md:text-7xl lg:text-[5rem] xl:text-[5.8rem]">
                   <span className="block text-white">Confidential AI</span>
                   <span className="block mt-1 md:mt-0">
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-500 to-orange-400 drop-shadow-[0_0_30px_rgba(249,115,22,0.3)]">Inference,</span>{' '}
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-300 via-violet-500 to-indigo-400 drop-shadow-[0_0_30px_rgba(139,92,246,0.3)]">Inference,</span>{' '}
                     <span className="text-white/60">Verified.</span>
                   </span>
                 </h1>
@@ -111,11 +111,11 @@ function HeroSection() {
                 className="max-w-2xl pt-6 text-xl font-light leading-relaxed tracking-wide text-white/60 md:text-2xl lg:text-[1.35rem]"
               >
                 Your prompts are encrypted with{' '}
-                <span className="text-white/90 font-medium border-b border-orange-500/30">
+                <span className="text-white/90 font-medium border-b border-violet-500/30">
                   FHE
                 </span>
                 . Your answers are proven by{' '}
-                <span className="text-white/90 font-medium border-b border-orange-500/30">
+                <span className="text-white/90 font-medium border-b border-violet-500/30">
                   quorum consensus
                 </span>{' '}
                 inside TEEs.
@@ -129,7 +129,7 @@ function HeroSection() {
                 <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
                   <Link
                     to="/app"
-                    className="group inline-flex min-w-[180px] items-center justify-center gap-2 rounded-full bg-orange-500 px-6 py-3 text-base font-semibold text-white shadow-[0_4px_20px_rgba(249,115,22,0.3)] transition-all hover:scale-[1.03] hover:bg-orange-400 hover:shadow-[0_8px_30px_rgba(249,115,22,0.5)]"
+                    className="group inline-flex min-w-[180px] items-center justify-center gap-2 rounded-full bg-violet-500 px-6 py-3 text-base font-semibold text-white shadow-[0_4px_20px_rgba(139,92,246,0.3)] transition-all hover:scale-[1.03] hover:bg-violet-400 hover:shadow-[0_8px_30px_rgba(139,92,246,0.5)]"
                   >
                     <span className="relative z-10">Launch App</span>
                     <ArrowRight className="relative z-10 w-4 h-4 transition-transform group-hover:translate-x-1" />
@@ -165,7 +165,7 @@ function HeroSection() {
                       duration: 0.5,
                       ease: [0.22, 1, 0.36, 1],
                     }}
-                    className="group relative flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] hover:border-orange-500/20 transition-all duration-500 backdrop-blur-xl cursor-default"
+                    className="group relative flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] hover:border-violet-500/20 transition-all duration-500 backdrop-blur-xl cursor-default"
                   >
                     <span className="text-[10px] font-mono tracking-[0.25em] text-white/50 group-hover:text-white/80 transition-colors uppercase font-bold">
                       {label}
@@ -191,43 +191,43 @@ function FeaturesSection() {
       icon: Lock,
       title: 'End-to-End Encryption',
       desc: 'AES-256-GCM + CoFHE threshold encryption ensures only the quorum can access your prompts.',
-      accentColor: 'bg-orange-500/50',
-      glowColor: 'bg-orange-500/10',
+      accentColor: 'bg-violet-500/50',
+      glowColor: 'bg-violet-500/10',
     },
     {
       icon: CheckCircle2,
       title: 'Quorum Consensus',
       desc: '1 leader + 2 verifiers run the same inference. Mismatches trigger automatic dispute resolution.',
-      accentColor: 'bg-orange-500/50',
-      glowColor: 'bg-orange-500/10',
+      accentColor: 'bg-violet-500/50',
+      glowColor: 'bg-violet-500/10',
     },
     {
       icon: Shield,
       title: 'On-Chain Insurance',
       desc: 'Optional hallucination coverage via Reineira. Disputed results trigger USDC payouts.',
-      accentColor: 'bg-orange-500/50',
-      glowColor: 'bg-orange-500/10',
+      accentColor: 'bg-violet-500/50',
+      glowColor: 'bg-violet-500/10',
     },
     {
       icon: Server,
       title: 'Decentralized Nodes',
       desc: 'Anyone can run a compute node. Attestation, staking, and slashing keep the network honest.',
-      accentColor: 'bg-orange-500/50',
-      glowColor: 'bg-orange-500/10',
+      accentColor: 'bg-violet-500/50',
+      glowColor: 'bg-violet-500/10',
     },
     {
       icon: Wallet,
       title: 'Pay Per Inference',
       desc: 'Use cUSDC credits or create an escrow. No subscriptions, no hidden fees.',
-      accentColor: 'bg-orange-500/50',
-      glowColor: 'bg-orange-500/10',
+      accentColor: 'bg-violet-500/50',
+      glowColor: 'bg-violet-500/10',
     },
     {
       icon: Database,
       title: 'IPFS Storage',
       desc: 'Encrypted prompts stored on IPFS via Pinata. Decentralized, immutable, always available.',
-      accentColor: 'bg-orange-500/50',
-      glowColor: 'bg-orange-500/10',
+      accentColor: 'bg-violet-500/50',
+      glowColor: 'bg-violet-500/10',
     },
   ]
 
@@ -243,7 +243,7 @@ function FeaturesSection() {
         >
           <SectionLabel>BUILT FOR PRIVACY</SectionLabel>
           <h2 className="text-3xl sm:text-4xl font-bold font-heading text-brand-text mt-4 mb-4">
-            Built for <span className="gradient-text">Privacy</span>
+            Built for <span className="text-gradient-purple">Privacy</span>
           </h2>
           <p className="text-brand-text-secondary max-w-xl mx-auto">
             Every layer of the stack is designed to keep your data confidential
@@ -295,7 +295,7 @@ function PartnersSection() {
               className="text-brand-text-secondary/50 hover:text-brand-text transition-all cursor-default"
             >
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-xs font-bold text-brand-highlight">
+                <div className="w-8 h-8 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-xs font-bold text-violet-300">
                   {partner.abbr}
                 </div>
                 <span className="text-sm font-medium">{partner.name}</span>
@@ -311,12 +311,12 @@ function PartnersSection() {
 /* ─── Footer ─── */
 function Footer() {
   return (
-    <footer className="relative border-t border-brand-primary/10 px-6 py-12">
+    <footer className="relative border-t border-violet-500/10 px-6 py-12">
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-brand-primary text-white font-extrabold text-sm flex items-center justify-center glow-primary">
+              <div className="w-8 h-8 rounded-lg bg-violet-500 text-white font-extrabold text-sm flex items-center justify-center glow-violet">
                 B
               </div>
               <span className="font-semibold text-sm tracking-[0.2em] text-brand-text font-heading">
@@ -413,7 +413,7 @@ function Footer() {
           </div>
         </div>
 
-        <div className="pt-8 border-t border-brand-primary/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="pt-8 border-t border-violet-500/10 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-brand-text-secondary/60">
             &copy; 2025 Blindference Labs. All rights reserved.
           </p>
