@@ -437,6 +437,26 @@ export default function LandingPage() {
       <main className="relative z-10">
         <HeroSection />
 
+        {/* Stats bar — NullPay style */}
+        <section className="relative py-10 px-6">
+          <div className="max-w-4xl mx-auto flex items-center justify-center gap-12 md:gap-20">
+            {[
+              { value: '50K+', label: 'Encrypted Requests' },
+              { value: '120+', label: 'Active Nodes' },
+              { value: '99.9%', label: 'Uptime SLA' },
+            ].map((stat) => (
+              <div key={stat.label} className="text-center">
+                <div className="text-3xl md:text-4xl font-bold text-white tracking-tight">
+                  {stat.value}
+                </div>
+                <div className="text-[11px] text-white/40 mt-1 uppercase tracking-wider">
+                  {stat.label}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         <GlowDivider />
 
         <AnimatedBanner />
