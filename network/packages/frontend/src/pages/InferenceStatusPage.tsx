@@ -175,7 +175,7 @@ export function InferenceStatusPage() {
             className="relative mb-6 h-24 w-24"
           >
             <div className="absolute inset-0 rounded-full border border-white/10" />
-            <div className="absolute inset-0 rounded-full border-t border-orange-500/40" />
+            <div className="absolute inset-0 rounded-full border-t border-violet-500/40" />
           </motion.div>
           <motion.p
             animate={{ opacity: [0.5, 1, 0.5] }}
@@ -293,7 +293,7 @@ export function InferenceStatusPage() {
                         Coverage Status
                       </div>
                       <div className="flex items-center gap-2 text-sm font-bold text-white">
-                        <span className="h-2 w-2 animate-pulse rounded-full bg-orange-500" />
+                        <span className="h-2 w-2 animate-pulse rounded-full bg-violet-500" />
                         ACTIVE{' '}
                         <span className="ml-2 text-xs font-normal text-white/50 font-mono">
                           ID: {status.coverage_id}
@@ -508,8 +508,8 @@ export function InferenceStatusPage() {
 
                     {/* Leader output preview (if available) */}
                     {status.raw && 'leader_submission' in status.raw && status.raw.leader_submission?.summary && (
-                      <div className="w-full rounded-xl border border-orange-500/20 bg-orange-500/5 p-4">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-orange-400 mb-2">
+                      <div className="w-full rounded-xl border border-violet-500/20 bg-violet-500/5 p-4">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-violet-400 mb-2">
                           Leader Output
                         </p>
                         <p className="text-sm text-white/80 font-mono line-clamp-6">
@@ -532,7 +532,7 @@ export function InferenceStatusPage() {
                           setDisputePrefill('I believe the leader output is correct and the quorum rejection was a false negative.')
                           setIsDisputeOpen(true)
                         }}
-                        className="w-full flex items-center justify-center gap-2 rounded-lg border border-orange-500/20 bg-orange-500/10 px-3 py-2 text-xs font-semibold text-orange-400 hover:bg-orange-500/20 transition-colors"
+                        className="w-full flex items-center justify-center gap-2 rounded-lg border border-violet-500/20 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-400 hover:bg-violet-500/20 transition-colors"
                         type="button"
                       >
                         <ShieldCheck className="w-3.5 h-3.5" />
@@ -551,7 +551,7 @@ export function InferenceStatusPage() {
                         opacity: [0.3, 0.8, 0.3],
                       }}
                       transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
-                      className="absolute w-48 h-48 bg-orange-500/5 rounded-full blur-3xl pointer-events-none"
+                      className="absolute w-48 h-48 bg-violet-500/5 rounded-full blur-3xl pointer-events-none"
                     />
 
                     <div className="relative mb-8 h-28 w-28">
@@ -563,7 +563,7 @@ export function InferenceStatusPage() {
                       <motion.div
                         animate={{ rotate: -360 }}
                         transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}
-                        className="absolute inset-2 rounded-full border border-orange-500/20 border-t-orange-500/40"
+                        className="absolute inset-2 rounded-full border border-violet-500/20 border-t-violet-500/40"
                       />
                       <div className="absolute inset-0 flex items-center justify-center">
                         <span className="text-[10px] font-mono text-white/50 font-bold tracking-widest uppercase">
@@ -633,7 +633,7 @@ export function InferenceStatusPage() {
               <div key={step.label} className="flex items-start gap-3">
                 <div
                   className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${
-                    isCurrent ? 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]' : isCompleted ? 'bg-white/50' : 'bg-[rgba(10,10,10,0.8)]'
+                    isCurrent ? 'bg-violet-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]' : isCompleted ? 'bg-white/50' : 'bg-[rgba(10,10,10,0.8)]'
                   }`}
                 />
                 <div>
@@ -702,7 +702,7 @@ export function InferenceStatusPage() {
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="bg-[rgba(10,10,10,0.9)] border border-orange-500/20 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl glass-card"
+              className="bg-[rgba(10,10,10,0.9)] border border-violet-500/20 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl glass-card"
             >
               <div className="p-6 border-b border-white/10 text-center space-y-2">
                 <div className="w-14 h-14 rounded-full bg-[rgba(10,10,10,0.6)] mx-auto flex items-center justify-center mb-3 border border-white/10">
@@ -723,7 +723,7 @@ export function InferenceStatusPage() {
                       initial={{ width: 0 }}
                       animate={{ width: isDecryptingAnswer ? '60%' : '100%' }}
                       transition={{ duration: 1.5 }}
-                      className="h-full bg-orange-500"
+                      className="h-full bg-violet-500"
                     />
                   </div>
                 </div>

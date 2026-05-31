@@ -52,7 +52,7 @@ function AuroraBlobs() {
           scale: [1, 1.15, 0.9, 1],
         }}
         transition={{ duration: 20, ease: 'linear', repeat: Infinity }}
-        className="absolute top-[10%] left-[20%] w-[500px] h-[500px] rounded-full bg-orange-500/5 blur-[120px]"
+        className="absolute top-[10%] left-[20%] w-[500px] h-[500px] rounded-full bg-violet-500/5 blur-[120px]"
       />
       <motion.div
         animate={{

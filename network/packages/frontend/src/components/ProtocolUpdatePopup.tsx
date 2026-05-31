@@ -36,20 +36,20 @@ export function ProtocolUpdatePopup() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: "spring", duration: 0.5 }}
-            className="relative w-full max-w-4xl overflow-hidden rounded-2xl bg-[rgba(10,10,10,0.9)] border border-orange-500/20 shadow-glow-primary max-h-[90vh] overflow-y-auto"
+            className="relative w-full max-w-4xl overflow-hidden rounded-2xl bg-[rgba(10,10,10,0.9)] border border-violet-500/20 shadow-glow-violet max-h-[90vh] overflow-y-auto"
           >
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-500 via-orange-400 to-white" />
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-violet-500 via-violet-400 to-white" />
 
             <button
               onClick={closePopup}
-              className="absolute right-4 top-4 rounded-full p-2 text-white/50 hover:bg-orange-500/10 hover:text-white transition-colors z-10"
+              className="absolute right-4 top-4 rounded-full p-2 text-white/50 hover:bg-violet-500/10 hover:text-white transition-colors z-10"
             >
               <X className="h-5 w-5" />
             </button>
 
             <div className="p-8 sm:p-12">
-              <div className="mb-6 inline-flex items-center gap-2 rounded border border-orange-500/20 bg-orange-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-orange-400">
-                <Sparkles className="h-3.5 w-3.5 text-orange-400" />
+              <div className="mb-6 inline-flex items-center gap-2 rounded border border-violet-500/20 bg-violet-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-violet-400">
+                <Sparkles className="h-3.5 w-3.5 text-violet-400" />
                 Protocol Update Live
               </div>
 
@@ -86,16 +86,16 @@ export function ProtocolUpdatePopup() {
                   {
                     icon: Monitor,
                     title: '5. Neon Orange Protocol Aesthetic',
-                    desc: 'A massive frontend overhaul bringing a sleek, developer-focused dark mode experience with neon orange accents. Fluid framer-motion micro-animations and intuitive workflows tailored for web3 engineers.',
+                    desc: 'A massive frontend overhaul bringing a sleek, developer-focused dark mode experience with neon violet accents. Fluid framer-motion micro-animations and intuitive workflows tailored for web3 engineers.',
                   },
                 ].map((feature) => {
                   const Icon = feature.icon
                   return (
                     <div
                       key={feature.title}
-                      className="flex items-start gap-4 p-4 rounded-xl border border-white/10 bg-[rgba(10,10,10,0.6)] hover:bg-orange-500/5 transition-colors glass-card-hover"
+                      className="flex items-start gap-4 p-4 rounded-xl border border-white/10 bg-[rgba(10,10,10,0.6)] hover:bg-violet-500/5 transition-colors glass-card-hover"
                     >
-                      <div className="rounded border border-orange-500/20 bg-orange-500/10 p-3 mt-1 text-orange-400">
+                      <div className="rounded border border-violet-500/20 bg-violet-500/10 p-3 mt-1 text-violet-400">
                         <Icon className="h-5 w-5" />
                       </div>
                       <div>
@@ -110,7 +110,7 @@ export function ProtocolUpdatePopup() {
               <div className="flex justify-center">
                 <button
                   onClick={closePopup}
-                  className="w-full sm:w-auto min-w-[300px] rounded bg-orange-500 hover:bg-orange-400 px-8 py-4 text-sm font-bold uppercase tracking-widest text-white transition-colors glow-primary"
+                  className="w-full sm:w-auto min-w-[300px] rounded bg-violet-500 hover:bg-violet-400 px-8 py-4 text-sm font-bold uppercase tracking-widest text-white transition-colors glow-violet"
                 >
                   Start Building on Blindference
                 </button>

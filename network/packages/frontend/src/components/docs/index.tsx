@@ -39,7 +39,7 @@ export function Card({ title, icon, href, children, className }: CardProps) {
       <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_2.5s_linear_infinite] bg-gradient-to-r from-transparent via-white/5 to-transparent pointer-events-none" />
       <div className="relative z-10 p-6">
         {icon && (
-          <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mb-4 text-orange-400">
+          <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mb-4 text-violet-400">
             {iconMap[icon] || iconMap.default}
           </div>
         )}
@@ -91,8 +91,8 @@ interface StepProps {
 export function Step({ title, children }: StepProps) {
   return (
     <div className="relative pl-8 pb-8 last:pb-0">
-      <div className="absolute left-0 top-0 w-6 h-6 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center">
-        <div className="w-2 h-2 rounded-full bg-orange-400" />
+      <div className="absolute left-0 top-0 w-6 h-6 rounded-full bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
+        <div className="w-2 h-2 rounded-full bg-violet-400" />
       </div>
       <div className="absolute left-[11px] top-6 bottom-0 w-px bg-white/10" />
       {title && <h4 className="text-white font-semibold mb-2">{title}</h4>}
@@ -223,14 +223,14 @@ const calloutStyles = {
   note: "border-l-4 border-blue-500/50 bg-blue-500/5",
   tip: "border-l-4 border-green-500/50 bg-green-500/5",
   warning: "border-l-4 border-yellow-500/50 bg-yellow-500/5",
-  info: "border-l-4 border-orange-500/50 bg-orange-500/5",
+  info: "border-l-4 border-violet-500/50 bg-violet-500/5",
 };
 
 const calloutIcons = {
   note: <Info className="w-4 h-4 text-blue-400" />,
   tip: <Lightbulb className="w-4 h-4 text-green-400" />,
   warning: <AlertTriangle className="w-4 h-4 text-yellow-400" />,
-  info: <Zap className="w-4 h-4 text-orange-400" />,
+  info: <Zap className="w-4 h-4 text-violet-400" />,
 };
 
 function Callout({ type, children, className }: CalloutProps & { type: keyof typeof calloutStyles }) {
@@ -355,9 +355,9 @@ export function Mermaid({ children }: MermaidProps) {
         mermaid.default.initialize({
           theme: 'dark',
           themeVariables: {
-            primaryColor: '#f97316',
+            primaryColor: '#8B5CF6',
             primaryTextColor: '#fff',
-            primaryBorderColor: '#f97316',
+            primaryBorderColor: '#8B5CF6',
             lineColor: '#666',
             secondaryColor: '#1a1a1a',
             tertiaryColor: '#0a0a0a',
@@ -385,7 +385,7 @@ export function Pre({ children, ...props }: React.HTMLProps<HTMLPreElement>) {
 
 export function InlineCode({ children }: { children: React.ReactNode }) {
   return (
-    <code className="px-1.5 py-0.5 rounded bg-white/[0.06] text-orange-300 text-sm font-mono">
+    <code className="px-1.5 py-0.5 rounded bg-white/[0.06] text-violet-300 text-sm font-mono">
       {children}
     </code>
   );

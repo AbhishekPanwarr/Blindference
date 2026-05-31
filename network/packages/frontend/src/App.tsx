@@ -160,7 +160,7 @@ function BackgroundOrbs() {
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-white/5 rounded-full blur-[120px] animate-float" />
       <div className="absolute top-[20%] right-[-5%] w-[30%] h-[30%] bg-zinc-800/20 rounded-full blur-[100px] animate-float-delayed" />
       <div className="absolute bottom-[-10%] left-[20%] w-[35%] h-[35%] bg-white/5 rounded-full blur-[120px] animate-pulse-slow" />
-      <div className="absolute top-[60%] left-[60%] w-[25%] h-[25%] bg-orange-500/5 rounded-full blur-[100px] animate-float" />
+      <div className="absolute top-[60%] left-[60%] w-[25%] h-[25%] bg-violet-500/5 rounded-full blur-[100px] animate-float" />
     </div>
   )
 }
@@ -236,8 +236,8 @@ function App() {
                   {({ icon, message }: any) => (
                     <div className="flex items-center gap-3.5">
                       {t.type === 'success' ? (
-                        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-500/10 shadow-[0_0_12px_rgba(249,115,22,0.2)]">
-                          <Check className="h-3.5 w-3.5 text-orange-400 stroke-[3]" />
+                        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-500/10 shadow-[0_0_12px_rgba(249,115,22,0.2)]">
+                          <Check className="h-3.5 w-3.5 text-violet-400 stroke-[3]" />
                         </div>
                       ) : t.type === 'error' ? (
                         <AlertCircle className="h-5 w-5 text-red-400" />

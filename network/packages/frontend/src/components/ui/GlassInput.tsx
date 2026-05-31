@@ -27,7 +27,7 @@ export const GlassInput = React.forwardRef<HTMLInputElement, GlassInputProps>(({
                 error
                     ? "from-red-500/20 via-red-500/10 to-red-500/20"
                     : value
-                        ? "from-orange-500/20 via-orange-500/10 to-orange-500/20"
+                        ? "from-violet-500/20 via-violet-500/10 to-violet-500/20"
                         : "from-white/10 via-white/5 to-white/10"
             )} />
 
@@ -36,14 +36,14 @@ export const GlassInput = React.forwardRef<HTMLInputElement, GlassInputProps>(({
                 error
                     ? "border-red-500/30 bg-red-500/5"
                     : value
-                        ? "border-orange-500/30 shadow-[0_0_20px_rgba(249,115,22,0.05)]"
+                        ? "border-violet-500/30 shadow-[0_0_20px_rgba(249,115,22,0.05)]"
                         : "border-white/10 focus-within:border-white/20"
             )}>
                 <div className="flex items-center gap-3 px-4 py-3">
                     {icon && (
                         <div className={cn(
                             "flex shrink-0 items-center justify-center transition-colors duration-300",
-                            error ? "text-red-400" : value ? "text-orange-400" : "text-gray-500 group-focus-within:text-white/70"
+                            error ? "text-red-400" : value ? "text-violet-400" : "text-gray-500 group-focus-within:text-white/70"
                         )}>
                             {icon}
                         </div>
@@ -53,7 +53,7 @@ export const GlassInput = React.forwardRef<HTMLInputElement, GlassInputProps>(({
                         value={value}
                         className={cn(
                             "flex-1 bg-transparent border-none outline-none text-sm font-mono tracking-wider transition-colors placeholder:text-gray-600 disabled:opacity-50 min-w-0",
-                            error ? "text-red-200" : value ? "text-orange-200" : "text-white",
+                            error ? "text-red-200" : value ? "text-violet-200" : "text-white",
                             className
                         )}
                         {...props}

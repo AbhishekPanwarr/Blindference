@@ -19,7 +19,7 @@ export function NodeStatsCard({ title, value, subtitle, icon, accent = 'default'
   return (
     <div className={`rounded-xl border p-5 ${accentClasses[accent]} glass-card-hover transition-colors`}>
       <div className="flex items-center gap-3 mb-3">
-        <div className="text-orange-400">{icon}</div>
+        <div className="text-violet-400">{icon}</div>
         <span className="text-xs font-medium text-white/50 uppercase tracking-wider">{title}</span>
       </div>
       <div className="text-2xl font-semibold text-white font-heading">{value}</div>

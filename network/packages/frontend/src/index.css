@@ -15,9 +15,9 @@
   --color-brand-surface: #0a0a0a;
   --color-brand-text: #ffffff;
   --color-brand-text-secondary: #a1a1aa;
-  --color-brand-primary: #f97316;
-  --color-brand-secondary: #fb923c;
-  --color-brand-highlight: #fdba74;
+  --color-brand-primary: #8B5CF6;
+  --color-brand-secondary: #A78BFA;
+  --color-brand-highlight: #C4B5FD;
   --color-brand-blue: #4DA3FF;
 
   /* Semantic */
@@ -360,7 +360,7 @@ body::after {
   padding: 4px 10px;
   font-size: 12px;
   font-weight: 500;
-  color: #fdba74;
+  color: #C4B5FD;
 }
 
 /* ============================================
@@ -523,13 +523,13 @@ body::after {
 }
 
 .prose-docs a {
-  color: #f97316;
+  color: #8B5CF6;
   text-decoration: none;
   transition: color 0.2s ease;
 }
 
 .prose-docs a:hover {
-  color: #fb923c;
+  color: #A78BFA;
   text-decoration: underline;
 }
 
@@ -648,7 +648,7 @@ body::after {
 
 .prose-docs :not(pre) > code {
   background: rgba(255, 255, 255, 0.06);
-  color: #fb923c;
+  color: #A78BFA;
   padding: 0.15rem 0.4rem;
   border-radius: 6px;
   font-size: 0.9em;
@@ -668,7 +668,7 @@ body::after {
    ============================================ */
 
 .text-gradient-gold {
-  background: linear-gradient(135deg, #fb923c 0%, #f97316 50%, #fdba74 100%);
+  background: linear-gradient(135deg, #A78BFA 0%, #8B5CF6 50%, #C4B5FD 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
