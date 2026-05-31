@@ -934,7 +934,7 @@ export function InferenceNewPage() {
                     >
                       {isChatBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : (
                         <div className="flex items-center justify-center">
-                          <img src="/logos/bf-final-logo-2.png" alt="B" className="w-5 h-5 object-contain opacity-90" />
+                          <img src="/logos/bf-final-logo-2.png" alt="B" className="w-5 h-5 object-contain opacity-90 brightness-0 invert" />
                         </div>
                       )}
                     </button>
