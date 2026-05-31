@@ -101,6 +101,18 @@
         ]
       },
       {
+        "group": "Agent SDK",
+        "pages": [
+          "build/agent-sdk/installation",
+          "build/agent-sdk/cli-reference",
+          "build/agent-sdk/sdk-api",
+          "build/agent-sdk/rest-server",
+          "build/agent-sdk/configuration",
+          "build/agent-sdk/python-interop",
+          "build/agent-sdk/troubleshooting"
+        ]
+      },
+      {
         "group": "API Reference",
         "pages": [
           "api-reference/introduction",

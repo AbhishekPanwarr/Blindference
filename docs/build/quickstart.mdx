@@ -1,0 +1,217 @@
+---
+title: Quickstart
+description: 'Build your first Blindference agent in 10 minutes'
+icon: 'rocket'
+---
+
+# Quickstart
+
+Build a simple agent that submits a confidential text inference request and retrieves the result.
+
+## Prerequisites
+
+- Node.js 18+ and npm
+- Python 3.11+ (for backend examples)
+- MetaMask with Arbitrum Sepolia testnet
+- Sepolia ETH for gas
+
+<Info>
+  You can get Sepolia ETH from the [Arbitrum Sepolia faucet](https://faucet.quicknode.com/arbitrum/sepolia) or [Alchemy faucet](https://sepoliafaucet.com/).
+</Info>
+
+## Clone and Setup
+
+```bash title="Clone repository and install dependencies"
+git clone https://github.com/baync180705/blindference.git
+cd blindference/network/packages/frontend
+npm install
+```
+
+## Configure Environment
+
+```bash title="Copy environment file"
+cp .env.example .env
+```
+
+Edit `.env`:
+
+```bash title="Frontend environment variables"
+VITE_ICL_BASE_URL=https://icl.blindference.xyz
+VITE_ARBITRUM_SEPOLIA_RPC_URL=https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY
+VITE_CHAIN_ID=421614
+VITE_WALLET_CONNECT_PROJECT_ID=your_project_id
+VITE_BLINDFERENCE_AGENT_ADDRESS=0x43132afC4F163C244f7b66Adafee32F6B904994c
+VITE_BLINDFERENCE_INPUT_VAULT_ADDRESS=0x8dD7B2A9B69C76A69d33B2DF46426Cbe657a902b
+VITE_PROMPT_KEY_STORE_ADDRESS=0x1E22dD12f448B15f1Ca8560fB6B4463834FaAf73
+VITE_PROMPT_UPLOAD_TIMEOUT_MS=20000
+VITE_IPFS_GATEWAY_URL=https://gateway.pinata.cloud/ipfs
+```
+
+<Warning>
+  Replace `YOUR_KEY` with a real Alchemy API key. The frontend, ICL, and each node should use **different dedicated keys** to avoid rate limiting.
+</Warning>
+
+## Start the Frontend
+
+```bash title="Start development server"
+npm run dev
+```
+
+Open http://localhost:3000 and connect MetaMask to Arbitrum Sepolia.
+
+## Submit a Text Inference Request
+
+<Tabs>
+  <Tab title="Using the UI">
+    <Steps>
+      <Step title="Open app" icon="globe">
+        Navigate to the Blindference frontend
+      </Step>
+      <Step title="Create inference" icon="plus">
+        Click "New Inference" in the sidebar
+      </Step>
+      <Step title="Enter prompt" icon="message-square">
+        Enter a prompt (e.g., "Explain quantum computing in simple terms")
+      </Step>
+      <Step title="Select model" icon="brain">
+        Choose a model: Groq Llama 3 or Google Gemini
+      </Step>
+      <Step title="Submit" icon="send">
+        Click "Submit". MetaMask will prompt for:
+        - `storeKey` transaction (stores CoFHE-encrypted AES key halves)
+      </Step>
+      <Step title="Wait for quorum" icon="clock">
+        Wait for quorum execution (~30-60s)
+      </Step>
+      <Step title="Reveal answer" icon="eye">
+        Click "Reveal Answer" to decrypt the result
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Using the Agent SDK (Recommended)">
+    The fastest way to run confidential inference from code:
+
+    ```bash title="Install and run in one command"
+    npm install -g @abhieren/blindference-agent
+    blindference-agent infer --prompt "What is the capital of France?"
+    ```
+
+    Or use the SDK programmatically:
+
+    ```typescript title="TypeScript SDK"
+    import { BlindferenceAgent } from '@abhieren/blindference-agent'
+
+    const agent = new BlindferenceAgent({
+      privateKey: process.env.BLF_PRIVATE_KEY!,
+      paymentServiceUrl: 'https://payment.blindference.xyz',
+      rpcUrl: process.env.BLF_RPC_URL!
+    })
+
+    await agent.initCofhe()
+    const result = await agent.infer({
+      prompt: 'What is the capital of France?',
+      modelId: 'groq:llama-3.3-70b-versatile'
+    })
+
+    console.log(result.output) // "Paris"
+    ```
+
+    <Info>
+      The Agent SDK handles encryption, submission, polling, and decryption automatically.
+      See the [Agent SDK docs](/build/agent-sdk/installation) for full details.
+    </Info>
+  </Tab>
+  <Tab title="Using the API (Advanced)">
+    ```python title="Submit inference via Python"
+    import requests
+    import json
+
+    # 1. Encrypt prompt (browser-side, simplified)
+    # In production, use @cofhe/sdk in browser
+    encrypted_prompt = "encrypted_blob_base64..."
+    aes_key_high = "0x..."  # CoFHE encrypted uint128
+    aes_key_low = "0x..."   # CoFHE encrypted uint128
+
+    # 2. Upload to IPFS
+    ipfs_response = requests.post(
+        "https://api.pinata.cloud/pinning/pinFileToIPFS",
+        headers={"Authorization": "Bearer YOUR_PINATA_JWT"},
+        files={"file": encrypted_prompt}
+    )
+    prompt_cid = ipfs_response.json()["IpfsHash"]
+
+    # 3. Submit to ICL
+    icl_response = requests.post(
+        "https://icl.blindference.xyz/v1/inference/requests",
+        json={
+            "developer_address": "0xYourWalletAddress",
+            "model_id": "groq:llama-3.3-70b-versatile",
+            "mode": "text",
+            "text_request": {
+                "prompt_cid": prompt_cid,
+                "encrypted_prompt_key": {
+                    "high": aes_key_high,
+                    "low": aes_key_low
+                },
+                "model_id": "groq:llama-3.3-70b-versatile",
+                "coverage_enabled": False
+            },
+            "min_tier": 0,
+            "verifier_count": 2
+        }
+    )
+
+    request_id = icl_response.json()["job_id"]
+    print(f"Request submitted: {request_id}")
+
+    # 4. Poll for status
+    import time
+    while True:
+        status = requests.get(
+            f"https://icl.blindference.xyz/v1/inference/{request_id}"
+        ).json()
+        print(f"Status: {status['status']}")
+        if status["status"] in ["ACCEPTED", "REJECTED"]:
+            break
+        time.sleep(5)
+
+    # 5. Decrypt result (using CoFHE SDK in browser or node)
+    # ... decrypt output key from PromptKeyStore, download output blob, AES decrypt
+    ```
+  </Tab>
+</Tabs>
+
+## Verify
+
+Check the request status in the ICL:
+
+```bash title="Check request status via API"
+curl -s "https://icl.blindference.xyz/v1/inference/YOUR_REQUEST_ID" | python3 -m json.tool
+```
+
+Expected response:
+
+```json title="Accepted inference response"
+{
+  "job_id": "...",
+  "status": "ACCEPTED",
+  "output_cid": "Qm...",
+  "commitment_hash": "0x...",
+  "quorum": {
+    "verifier_addresses": ["0x...", "0x..."],
+    "confirmations": 2,
+    "confidence": 100
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="CoFHE Encryption" icon="lock" href="cofhe-encryption">
+    Deep dive into browser-side encryption
+  </Card>
+  <Card title="ICL API" icon="cloud" href="../api-reference/icl-api">
+    Full API reference for programmatic integration
+  </Card>
+</CardGroup>

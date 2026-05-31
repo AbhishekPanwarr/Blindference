@@ -1,0 +1,213 @@
+---
+title: "Troubleshooting"
+description: "Common issues and solutions for the Agent SDK"
+icon: "wrench"
+---
+
+## "Private key is required"
+
+**Cause:** The SDK cannot find your wallet private key.
+
+**Solution:** Create a `.env` file in your working directory:
+
+```bash Terminal
+cat > .env << 'EOF'
+BLF_PRIVATE_KEY=0xYOUR_PRIVATE_KEY
+BLF_PAYMENT_URL=https://payment.blindference.xyz
+BLF_RPC_URL=https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY
+EOF
+```
+
+Or export directly:
+
+```bash Terminal
+export BLF_PRIVATE_KEY=0xYOUR_PRIVATE_KEY
+```
+
+> ⚠️ **Never commit private keys to git.**
+
+## "Payment Service URL is required"
+
+**Cause:** The Payment Service URL is not configured.
+
+**Solution:**
+
+```bash Terminal
+export BLF_PAYMENT_URL=https://payment.blindference.xyz
+```
+
+## "Insufficient credits"
+
+**Cause:** Your wallet has no active credits.
+
+**Solution:**
+
+1. Get BLIND tokens from the [faucet](https://blindference.xyz/faucet)
+2. Purchase a credit package:
+
+```bash Terminal
+blindference-agent buy-package --id starter
+```
+
+Check your balance:
+
+```bash Terminal
+blindference-agent balance
+```
+
+## CoFHE initialization hangs
+
+**Cause:** ZK proof generation on first initialization takes 10-30 seconds.
+
+**Solution:**
+- Wait for completion (do not interrupt)
+- Ensure your RPC URL is valid (not the default placeholder)
+- Verify you have testnet ETH for gas
+
+Debug mode:
+
+```bash Terminal
+BLF_LOG_LEVEL=debug blindference-agent infer --prompt "test"
+```
+
+## "Invalid CoFHE RPC URL"
+
+**Cause:** The default RPC URL is a placeholder.
+
+**Solution:** Set a real Alchemy or Infura URL:
+
+```bash Terminal
+export BLF_RPC_URL='https://arb-sepolia.g.alchemy.com/v2/YOUR_REAL_KEY'
+export BLF_COFHE_URL='https://arb-sepolia.g.alchemy.com/v2/YOUR_REAL_KEY'
+```
+
+Get a free key at [dashboard.alchemy.com](https://dashboard.alchemy.com/apps).
+
+## "Polling timed out"
+
+**Cause:** Job is taking longer than the configured timeout.
+
+**Solution:**
+
+1. Check if the job is still processing:
+
+```bash Terminal
+curl https://payment.blindference.xyz/v1/jobs/YOUR_JOB_ID
+```
+
+2. Check if quorum nodes are active:
+
+```bash Terminal
+curl https://icl.blindference.xyz/health
+```
+
+3. Increase polling timeout:
+
+```bash Terminal
+export BLF_MAX_POLL_ATTEMPTS=200
+export BLF_POLL_INTERVAL_MS=5000
+```
+
+4. Check the [Payment Service dashboard](https://payment.blindference.xyz) for job status.
+
+## "IPFS download failed"
+
+**Cause:** IPFS content is not yet propagated to gateways.
+
+**Solution:**
+- Wait 30-60 seconds for IPFS propagation
+- The SDK automatically tries multiple gateways: `ipfs.io` → `pinata.cloud` → `dweb.link`
+- Configure a custom gateway:
+
+```bash Terminal
+export BLF_IPFS_GATEWAY=https://gateway.pinata.cloud/ipfs
+```
+
+- Verify the job completed successfully (not FAILED)
+
+## "Job FAILED or REJECTED"
+
+**Cause:** Quorum nodes could not reach consensus.
+
+**Solution:**
+- Check if enough nodes are online: `curl https://icl.blindference.xyz/health`
+- Try again with a different model: `--model gemini:gemini-2.5-flash`
+- Enable insurance for retry protection: `--insurance`
+- Check node status at [www.blindference.xyz](https://www.blindference.xyz)
+
+## "Permission denied" when installing globally
+
+**Cause:** npm requires elevated permissions.
+
+**Solution:**
+
+```bash Terminal
+# Use npx (no install needed)
+npx @abhieren/blindference-agent infer --prompt "Hello"
+
+# Or use sudo (not recommended)
+sudo npm install -g @abhieren/blindference-agent
+
+# Or fix npm permissions
+mkdir ~/.npm-global
+npm config set prefix '~/.npm-global'
+export PATH=~/.npm-global/bin:$PATH
+npm install -g @abhieren/blindference-agent
+```
+
+## "Cannot find module '@abhieren/blindference-agent'"
+
+**Cause:** Package not installed in the project.
+
+**Solution:**
+
+```bash Terminal
+npm install @abhieren/blindference-agent
+```
+
+Or if using globally:
+
+```bash Terminal
+npm install -g @abhieren/blindference-agent
+```
+
+## REST server CORS errors
+
+**Cause:** Browser security blocking requests.
+
+**Solution:** Configure allowed origins:
+
+```bash Terminal
+export BLF_CORS_ORIGINS=https://yourdomain.com,https://app.yourdomain.com
+blindference-agent start --port 3000
+```
+
+For development only:
+
+```bash Terminal
+export BLF_CORS_ORIGINS=*
+```
+
+## Debug Mode
+
+Enable verbose logging for all commands:
+
+```bash Terminal
+BLF_LOG_LEVEL=debug blindference-agent infer --prompt "test"
+```
+
+This shows:
+- CoFHE initialization steps
+- Encryption details
+- API requests/responses
+- IPFS gateway attempts
+- Polling status updates
+
+## Getting Help
+
+If your issue is not listed here:
+
+1. Enable debug mode and capture logs
+2. Check the [FAQ](/resources/faq)
+3. Open an issue on [GitHub](https://github.com/AbhishekPanwarr/Blindference-Agent/issues)
+4. Join the [Discord](https://discord.gg/blindference)

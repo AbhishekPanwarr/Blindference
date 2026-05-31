@@ -1,0 +1,86 @@
+---
+title: Introduction
+description: 'Build agents and applications on top of Blindference'
+---
+
+# Build — Introduction
+
+Build agents and applications that use Blindference for confidential inference, risk scoring, and custom AI workflows.
+
+## What You Can Build
+
+- **Confidential AI Assistants**: Healthcare, legal, financial advisors that protect user privacy
+- **Verifiable Model Inference**: Prove you ran a specific model on specific data and got a specific result
+- **Private Risk Scoring**: Credit evaluation, insurance underwriting without exposing applicant data
+- **Decentralized AI Marketplaces**: Match users with model providers through encrypted channels
+
+## Architecture for Builders
+
+As an agent developer, you interact with three main layers:
+
+<CardGroup cols={3}>
+  <Card title="Frontend" icon="browser">
+    Browser-side encryption, wallet connection, UI
+  </Card>
+  <Card title="ICL API" icon="cloud">
+    Coordinator for quorum selection, dispatch, aggregation
+  </Card>
+  <Card title="Smart Contracts" icon="file-contract">
+    On-chain commitments, key storage, settlements
+  </Card>
+</CardGroup>
+
+## Three Integration Paths
+
+### Path 1: Web Application (Full Stack)
+
+Build a React/Vite frontend that:
+1. Connects user's wallet (MetaMask)
+2. Encrypts prompts in browser
+3. Submits to ICL
+4. Polls for results
+5. Decrypts and displays answer
+
+**Best for**: End-user applications, chatbots, assistants
+
+### Path 2: Agent SDK (Node.js/TypeScript)
+
+Use the `@abhieren/blindference-agent` SDK to:
+1. Programmatically encrypt and submit inference requests
+2. Auto-poll for completion
+3. Decrypt results locally
+4. Integrate into any Node.js application
+
+**Best for**: Backend services, CLI tools, automated agents
+
+<Card title="Agent SDK Docs" icon="code" href="agent-sdk/installation">
+  Installation, CLI reference, SDK API, REST server, configuration
+</Card>
+
+### Path 3: Custom Backend Integration
+
+Build a server-side agent that:
+1. Programmatically submits inference requests
+2. Receives webhooks from ICL
+3. Processes results
+4. Integrates with other protocols
+
+**Best for**: Multi-language stacks, DeFi integrations, data pipelines
+
+## Prerequisites
+
+- Node.js 18+ (for frontend)
+- Python 3.11+ (for backend agents)
+- MetaMask or compatible wallet
+- Arbitrum Sepolia testnet ETH (for gas)
+
+## Quick Start
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="quickstart">
+    Build your first agent in 10 minutes
+  </Card>
+  <Card title="Architecture" icon="sitemap" href="architecture">
+    Understand the data flows
+  </Card>
+</CardGroup>
