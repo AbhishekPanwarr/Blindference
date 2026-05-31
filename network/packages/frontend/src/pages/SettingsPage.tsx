@@ -158,7 +158,7 @@ export function SettingsPage() {
           </div>
           <button
             onClick={() => toggleAutoDecrypt(!autoDecrypt)}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${autoDecrypt ? 'bg-orange-500' : 'bg-[rgba(10,10,10,0.6)]'}`}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${autoDecrypt ? 'bg-violet-500' : 'bg-[rgba(10,10,10,0.6)]'}`}
           >
             <span
               className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${autoDecrypt ? 'translate-x-6' : 'translate-x-1'}`}
@@ -181,7 +181,7 @@ export function SettingsPage() {
         </p>
         <button
           onClick={handleClearStorage}
-          className="px-4 py-2 rounded-lg border border-white/10 bg-[rgba(10,10,10,0.6)] text-xs font-medium text-white/50 hover:bg-orange-500/10 transition-colors"
+          className="px-4 py-2 rounded-lg border border-white/10 bg-[rgba(10,10,10,0.6)] text-xs font-medium text-white/50 hover:bg-violet-500/10 transition-colors"
         >
           {cleared ? 'Cleared ✓' : 'Clear Local Storage'}
         </button>
@@ -225,7 +225,7 @@ function TutorialSettings() {
         </div>
         <button
           onClick={() => setEnabled(!enabled)}
-          className={enabled ? 'relative inline-flex h-6 w-11 items-center rounded-full transition-colors bg-orange-500' : 'relative inline-flex h-6 w-11 items-center rounded-full transition-colors bg-[rgba(10,10,10,0.6)]'}
+          className={enabled ? 'relative inline-flex h-6 w-11 items-center rounded-full transition-colors bg-violet-500' : 'relative inline-flex h-6 w-11 items-center rounded-full transition-colors bg-[rgba(10,10,10,0.6)]'}
         >
           <span
             className={enabled ? 'inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-6' : 'inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1'}
@@ -236,7 +236,7 @@ function TutorialSettings() {
       <div className="p-3 rounded-lg border border-white/10 bg-[rgba(10,10,10,0.6)] space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-xs text-white/50">Status</span>
-          <span className={inferenceSeen ? 'text-xs font-mono text-white/70' : 'text-xs font-mono text-orange-400'}>
+          <span className={inferenceSeen ? 'text-xs font-mono text-white/70' : 'text-xs font-mono text-violet-400'}>
             {inferenceSeen ? 'Seen ✓' : 'Not seen'}
           </span>
         </div>
@@ -244,7 +244,7 @@ function TutorialSettings() {
 
       <button
         onClick={handleReset}
-        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-white/10 bg-[rgba(10,10,10,0.6)] text-xs font-medium text-white/50 hover:bg-orange-500/10 hover:text-white/80 transition-all"
+        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-white/10 bg-[rgba(10,10,10,0.6)] text-xs font-medium text-white/50 hover:bg-violet-500/10 hover:text-white/80 transition-all"
       >
         <RotateCcw className="w-3.5 h-3.5" />
         {resetting ? 'Reset ✓' : 'Replay Tutorial'}

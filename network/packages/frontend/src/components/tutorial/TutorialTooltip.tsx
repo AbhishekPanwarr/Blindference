@@ -93,10 +93,10 @@ export function TutorialTooltip({
       {/* Glass tooltip card — smooth, curvy boundary */}
       <div className="relative rounded-[2rem] bg-[#060606]/95 backdrop-blur-2xl border border-white/[0.1] shadow-[0_30px_100px_rgba(0,0,0,0.8)] overflow-hidden">
         {/* Top shimmer line */}
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-orange-400/50 to-transparent" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400/50 to-transparent" />
 
         {/* Corner glow */}
-        <div className="absolute -top-20 -right-20 w-40 h-40 rounded-full bg-orange-500/8 blur-3xl" />
+        <div className="absolute -top-20 -right-20 w-40 h-40 rounded-full bg-violet-500/8 blur-3xl" />
 
         {/* Content */}
         <div className="p-6 space-y-4">
@@ -107,11 +107,11 @@ export function TutorialTooltip({
             transition={{ delay: 0.1, duration: 0.3 }}
             className="flex items-start gap-3"
           >
-            <div className="shrink-0 w-8 h-8 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
-              <HelpCircle className="w-4 h-4 text-orange-400" />
+            <div className="shrink-0 w-8 h-8 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+              <HelpCircle className="w-4 h-4 text-violet-400" />
             </div>
             <div>
-              <div className="text-[10px] font-semibold text-orange-400/80 uppercase tracking-[0.15em] mb-0.5">
+              <div className="text-[10px] font-semibold text-violet-400/80 uppercase tracking-[0.15em] mb-0.5">
                 Step {currentStepIndex + 1} of {totalSteps}
               </div>
               <h3 className="text-[15px] font-bold text-white tracking-tight leading-snug">
@@ -144,7 +144,7 @@ export function TutorialTooltip({
                   key={i}
                   className={`h-1.5 rounded-full transition-all duration-300 ${
                     i === currentStepIndex
-                      ? 'w-4 bg-orange-500'
+                      ? 'w-4 bg-violet-500'
                       : i < currentStepIndex
                       ? 'w-1.5 bg-white/40'
                       : 'w-1.5 bg-white/15'
@@ -175,7 +175,7 @@ export function TutorialTooltip({
 
               <button
                 onClick={onNext}
-                className="group relative flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-orange-500 text-white text-xs font-semibold overflow-hidden transition-all hover:scale-[1.03] hover:bg-orange-400 shadow-[0_4px_20px_rgba(249,115,22,0.3)]"
+                className="group relative flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-violet-500 text-white text-xs font-semibold overflow-hidden transition-all hover:scale-[1.03] hover:bg-violet-400 shadow-[0_4px_20px_rgba(139,92,246,0.3)]"
               >
                 <span className="relative z-10">{isLast ? 'Finish' : 'Next'}</span>
                 <ArrowRight className="w-3.5 h-3.5 relative z-10" />

@@ -630,7 +630,7 @@ export function InferenceNewPage() {
                 onClick={() => setMode('chat')}
                 className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition-colors border ${
                   mode === 'chat'
-                    ? 'bg-orange-500 text-white border-orange-500 glow-primary'
+                    ? 'bg-violet-500 text-white border-violet-500 glow-violet'
                     : 'glass-card-subtle text-white/50 border-white/10 hover:border-white/20 hover:text-white'
                 }`}
               >
@@ -642,7 +642,7 @@ export function InferenceNewPage() {
                 onClick={() => setMode('risk')}
                 className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition-colors border ${
                   mode === 'risk'
-                    ? 'bg-orange-500 text-white border-orange-500 glow-primary'
+                    ? 'bg-violet-500 text-white border-violet-500 glow-violet'
                     : 'glass-card-subtle text-white/50 border-white/10 hover:border-white/20 hover:text-white'
                 }`}
               >
@@ -724,7 +724,7 @@ export function InferenceNewPage() {
                           className={cn(
                             'cursor-pointer rounded-xl p-4 text-left outline-none transition-all flex flex-col gap-1.5',
                             isSelected
-                              ? 'border border-orange-500/30 bg-orange-500/5 shadow-[0_0_15px_rgba(249,115,22,0.1)]'
+                              ? 'border border-violet-500/30 bg-violet-500/5 shadow-[0_0_15px_rgba(139,92,246,0.1)]'
                               : 'border border-white/10 bg-[rgba(10,10,10,0.4)] hover:border-white/20'
                           )}
                           key={id}
@@ -776,7 +776,7 @@ export function InferenceNewPage() {
                 <div className="flex items-start gap-4 rounded-xl border border-white/10 bg-[rgba(10,10,10,0.4)] p-4 hover:border-white/20 transition-colors">
                   <input
                     checked={store.coverageEnabled}
-                    className="mt-1 cursor-pointer h-5 w-5 rounded border-white/10 bg-[rgba(10,10,10,0.6)] text-orange-500 focus:ring-orange-500/20 focus:ring-offset-black"
+                    className="mt-1 cursor-pointer h-5 w-5 rounded border-white/10 bg-[rgba(10,10,10,0.6)] text-violet-500 focus:ring-violet-500/20 focus:ring-offset-black"
                     onChange={(e) => store.setCoverageEnabled(e.target.checked)}
                     type="checkbox"
                   />
@@ -847,7 +847,7 @@ export function InferenceNewPage() {
               </AnimatePresence>
 
               {/* Big rounded-3xl input */}
-              <div className="rounded-3xl border border-white/10 glass-card backdrop-blur-md relative focus-within:border-orange-500/40 focus-within:shadow-[0_0_20px_rgba(249,115,22,0.1)] transition-all" data-tutorial="prompt-input">
+              <div className="rounded-3xl border border-white/10 glass-card backdrop-blur-md relative focus-within:border-violet-500/40 focus-within:shadow-[0_0_20px_rgba(139,92,246,0.1)] transition-all" data-tutorial="prompt-input">
                 <textarea
                   rows={3}
                   className="w-full resize-none bg-transparent px-5 pt-4 pb-12 text-sm leading-relaxed text-white placeholder:text-white/30 focus:outline-none"
@@ -896,7 +896,7 @@ export function InferenceNewPage() {
                               <Cpu className="w-4 h-4 text-white/50 mt-0.5 shrink-0" />
                               <div>
                                 <div className="text-sm font-semibold text-white flex items-center gap-2">
-                                  {o.label}{selectedModelKey === k && <CheckCircle2 className="w-3.5 h-3.5 text-orange-400" />}
+                                  {o.label}{selectedModelKey === k && <CheckCircle2 className="w-3.5 h-3.5 text-violet-400" />}
                                 </div>
                                 <div className="text-xs text-white/50 mt-0.5">{o.provider} · {o.model}</div>
                               </div>
@@ -917,7 +917,7 @@ export function InferenceNewPage() {
                           exit={{ opacity: 0 }}
                           className="flex items-center gap-1.5 text-xs text-white/50"
                         >
-                          <Loader2 className="w-3.5 h-3.5 animate-spin text-orange-500" />
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-violet-500" />
                           {chatStage === 'encrypting' ? 'Sealing...' : chatStage === 'uploading' ? 'Uploading...' : chatStage === 'escrow' ? 'Escrow...' : 'Dispatching...'}
                         </motion.span>
                       )}
@@ -947,7 +947,7 @@ export function InferenceNewPage() {
                     onClick={() => setPaymentMode('credits')}
                     className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
                       paymentMode === 'credits'
-                        ? 'bg-orange-500 text-white'
+                        ? 'bg-violet-500 text-white'
                         : 'text-white/50 hover:text-white'
                     }`}
                   >
@@ -958,7 +958,7 @@ export function InferenceNewPage() {
                     onClick={() => setPaymentMode('escrow')}
                     className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
                       paymentMode === 'escrow'
-                        ? 'bg-orange-500 text-white'
+                        ? 'bg-violet-500 text-white'
                         : 'text-white/50 hover:text-white'
                     }`}
                   >
@@ -974,7 +974,7 @@ export function InferenceNewPage() {
                       onClick={() => setPaymentCurrency('cusdc')}
                       className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
                         paymentCurrency === 'cusdc'
-                          ? 'bg-orange-500/20 text-orange-400'
+                          ? 'bg-violet-500/20 text-violet-400'
                           : 'text-white/50 hover:text-white'
                       }`}
                     >
@@ -985,7 +985,7 @@ export function InferenceNewPage() {
                       onClick={() => setPaymentCurrency('blind')}
                       className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
                         paymentCurrency === 'blind'
-                          ? 'bg-orange-500/20 text-orange-400'
+                          ? 'bg-violet-500/20 text-violet-400'
                           : 'text-white/50 hover:text-white'
                       }`}
                     >
@@ -1002,7 +1002,7 @@ export function InferenceNewPage() {
                       type="checkbox"
                       checked={insuranceOptIn}
                       onChange={(e) => setInsuranceOptIn(e.target.checked)}
-                      className="w-3.5 h-3.5 rounded border-white/10 bg-[rgba(10,10,10,0.6)] text-orange-500 focus:ring-orange-500/20"
+                      className="w-3.5 h-3.5 rounded border-white/10 bg-[rgba(10,10,10,0.6)] text-violet-500 focus:ring-violet-500/20"
                     />
                     <span className="text-xs text-white/60 font-medium">
                       Insure +2%
@@ -1043,14 +1043,14 @@ export function InferenceNewPage() {
                   {!isLast && <div className="absolute left-[7px] top-5 w-[2px] h-full bg-white/10" />}
                   <div className="relative z-10 mt-0.5 shrink-0">
                     {ss === 'done' ? (
-                      <div className="w-4 h-4 rounded-full bg-orange-500 flex items-center justify-center">
+                      <div className="w-4 h-4 rounded-full bg-violet-500 flex items-center justify-center">
                         <CheckCircle2 className="w-3 h-3 text-black" />
                       </div>
                     ) : ss === 'active' ? (
                       <motion.div
                         animate={{ scale: [1, 1.2, 1], opacity: [0.7, 1, 0.7] }}
                         transition={{ repeat: Infinity, duration: 1.4 }}
-                        className="w-4 h-4 rounded-full bg-orange-500 glow-primary"
+                        className="w-4 h-4 rounded-full bg-violet-500 glow-violet"
                       />
                     ) : ss === 'error' ? (
                       <div className="w-4 h-4 rounded-full bg-error/80 flex items-center justify-center">
@@ -1085,7 +1085,7 @@ export function InferenceNewPage() {
                 <div className="font-mono text-[10px] text-white/50 break-all">{latestRequestId}</div>
                 {status?.status && (
                   <Badge variant={status.status === 'ACCEPTED' ? 'success' : 'default'} className="mt-3 gap-1.5 px-3 py-1 text-[10px] uppercase tracking-wide">
-                    <div className={`w-1.5 h-1.5 rounded-full ${status.status === 'ACCEPTED' ? 'bg-orange-500' : 'animate-pulse bg-orange-500'}`} />
+                    <div className={`w-1.5 h-1.5 rounded-full ${status.status === 'ACCEPTED' ? 'bg-violet-500' : 'animate-pulse bg-violet-500'}`} />
                     {status.status}
                   </Badge>
                 )}
@@ -1134,7 +1134,7 @@ export function InferenceNewPage() {
                                   href={item.href}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-orange-400 hover:text-orange-300 underline underline-offset-2"
+                                  className="text-violet-400 hover:text-violet-300 underline underline-offset-2"
                                 >
                                   {item.value!.slice(0, 18)}{item.value!.length > 18 ? '…' : ''}
                                 </a>
