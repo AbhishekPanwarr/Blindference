@@ -174,7 +174,7 @@ body::after {
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, rgba(249, 115, 22, 0.5) 0%, rgba(251, 146, 60, 0.2) 50%, transparent 70%);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.5) 0%, rgba(167, 139, 250, 0.2) 50%, transparent 70%);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
@@ -191,12 +191,12 @@ body::after {
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent 0%, rgba(249, 115, 22, 0.5) 20%, rgba(251, 146, 60, 0.3) 50%, rgba(255, 255, 255, 0.1) 80%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(139, 92, 246, 0.5) 20%, rgba(167, 139, 250, 0.3) 50%, rgba(255, 255, 255, 0.1) 80%, transparent 100%);
 }
 
 .section-divider {
   height: 1px;
-  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.1) 20%, rgba(249, 115, 22, 0.15) 50%, rgba(255, 255, 255, 0.05) 80%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.1) 20%, rgba(139, 92, 246, 0.15) 50%, rgba(255, 255, 255, 0.05) 80%, transparent 100%);
 }
 
 /* ============================================
