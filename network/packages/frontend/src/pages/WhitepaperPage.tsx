@@ -55,7 +55,7 @@ function P({ children }: { children: React.ReactNode }) {
 /* ─── Inline Code ─── */
 function Code({ children }: { children: React.ReactNode }) {
   return (
-    <code className="px-1.5 py-0.5 rounded bg-white/[0.05] border border-white/[0.08] text-xs font-mono text-orange-300">
+    <code className="px-1.5 py-0.5 rounded bg-white/[0.05] border border-white/[0.08] text-xs font-mono text-violet-300">
       {children}
     </code>
   )
@@ -84,7 +84,7 @@ export default function WhitepaperPage() {
       <GrainOverlay />
 
       <div className="pointer-events-none absolute inset-0 z-0">
-        <div className="absolute top-[5%] left-[10%] w-[600px] h-[600px] rounded-full bg-orange-500/[0.03] blur-[150px]" />
+        <div className="absolute top-[5%] left-[10%] w-[600px] h-[600px] rounded-full bg-violet-500/[0.03] blur-[150px]" />
         <div className="absolute top-[40%] right-[5%] w-[400px] h-[400px] rounded-full bg-blue-500/[0.03] blur-[120px]" />
       </div>
 
@@ -106,7 +106,7 @@ export default function WhitepaperPage() {
                 className="text-4xl md:text-5xl lg:text-6xl font-bold mt-6 mb-6 tracking-tight"
               >
                 Blindference:{' '}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-500 to-orange-400">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-300 via-violet-500 to-indigo-400">
                   Confidential AI Inference
                 </span>
               </motion.h1>
@@ -124,7 +124,7 @@ export default function WhitepaperPage() {
                 <span className="text-xs text-white/20">|</span>
                 <span className="text-xs text-white/30 font-mono">June 2025</span>
                 <span className="text-xs text-white/20">|</span>
-                <Link to="/architecture" className="text-xs text-orange-400/60 hover:text-orange-400 transition-colors flex items-center gap-1">
+                <Link to="/architecture" className="text-xs text-violet-400/60 hover:text-violet-400 transition-colors flex items-center gap-1">
                   <ExternalLink className="w-3 h-3" />
                   Visual Architecture
                 </Link>
@@ -148,7 +148,7 @@ export default function WhitepaperPage() {
             >
               <GlassCard className="gradient-accent-top p-8">
                 <h3 className="text-sm font-bold text-white mb-6 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-orange-400" />
+                  <FileText className="w-4 h-4 text-violet-400" />
                   Table of Contents
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
@@ -181,7 +181,7 @@ export default function WhitepaperPage() {
             </P>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-8">
               <GlassCard className="gradient-accent-top p-6">
-                <Lock className="w-5 h-5 text-orange-400 mb-3" />
+                <Lock className="w-5 h-5 text-violet-400 mb-3" />
                 <h4 className="text-sm font-bold text-white mb-2">Input Privacy</h4>
                 <p className="text-xs text-white/50">The user's prompt or data is encrypted before it leaves their device.</p>
               </GlassCard>
@@ -226,7 +226,7 @@ export default function WhitepaperPage() {
                 'Status polling and output decryption with ephemeral keys',
               ].map((item) => (
                 <div key={item} className="flex items-start gap-3 text-sm text-white/60">
-                  <ChevronRight className="w-4 h-4 text-orange-400/60 shrink-0 mt-0.5" />
+                  <ChevronRight className="w-4 h-4 text-violet-400/60 shrink-0 mt-0.5" />
                   {item}
                 </div>
               ))}
@@ -247,7 +247,7 @@ export default function WhitepaperPage() {
                 'On-chain commitment — writes accepted results to ResultRegistry',
               ].map((item) => (
                 <div key={item} className="flex items-start gap-3 text-sm text-white/60">
-                  <ChevronRight className="w-4 h-4 text-blue-400/60 shrink-0 mt-0.5" />
+                  <ChevronRight className="w-4 h-4 text-violet-400/60 shrink-0 mt-0.5" />
                   {item}
                 </div>
               ))}
@@ -308,7 +308,7 @@ export default function WhitepaperPage() {
                     ['BlindferenceInputVault', 'On-chain FHE input validation. Grants ACL access so nodes can decrypt browser-generated ciphertexts.'],
                   ].map(([contract, purpose]) => (
                     <tr key={contract} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="px-4 py-3 font-mono text-xs text-orange-400/80">{contract}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-violet-400/80">{contract}</td>
                       <td className="px-4 py-3 text-xs text-white/50">{purpose}</td>
                     </tr>
                   ))}
@@ -406,7 +406,7 @@ export default function WhitepaperPage() {
                 'Even the leader cannot read the final output',
               ].map((item) => (
                 <div key={item} className="flex items-start gap-3 text-sm text-white/60">
-                  <Lock className="w-4 h-4 text-orange-400/60 shrink-0 mt-0.5" />
+                  <Lock className="w-4 h-4 text-violet-400/60 shrink-0 mt-0.5" />
                   {item}
                 </div>
               ))}
@@ -541,7 +541,7 @@ export default function WhitepaperPage() {
                 <tbody className="divide-y divide-white/[0.06]">
                   <tr className="hover:bg-white/[0.02] transition-colors">
                     <td className="px-4 py-3 text-xs text-white/70 font-medium">Leader</td>
-                    <td className="px-4 py-3 text-xs text-orange-400 font-bold">60%</td>
+                    <td className="px-4 py-3 text-xs text-violet-400 font-bold">60%</td>
                     <td className="px-4 py-3 text-xs text-white/50">Primary compute + output key storage</td>
                   </tr>
                   <tr className="hover:bg-white/[0.02] transition-colors">
@@ -634,7 +634,7 @@ Node Runtime
                 </Link>
                 <Link
                   to="/app"
-                  className="inline-flex items-center gap-2 bg-orange-500 text-white font-bold text-sm rounded-full px-8 py-3.5 transition-all hover:scale-[1.03] hover:bg-orange-400 hover:shadow-[0_8px_30px_rgba(249,115,22,0.5)]"
+                  className="inline-flex items-center gap-2 bg-violet-500 text-white font-bold text-sm rounded-full px-8 py-3.5 transition-all hover:scale-[1.03] hover:bg-violet-400 hover:shadow-[0_8px_30px_rgba(139,92,246,0.5)]"
                 >
                   Launch App
                   <ArrowRight className="w-4 h-4" />
