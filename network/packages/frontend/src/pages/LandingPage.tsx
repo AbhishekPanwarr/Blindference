@@ -428,73 +428,6 @@ function Footer() {
 }
 
 /* ─── Hero Stats Bar ─── */
-function HeroStatsBar() {
-  const stats = [
-    { value: '50K+', label: 'Encrypted Requests' },
-    { value: '120+', label: 'Active Nodes' },
-    { value: '99.9%', label: 'Uptime SLA' },
-  ]
-
-  const partners = ['Arbitrum', 'Fhenix', 'Reineira', 'Groq', 'Gemini']
-
-  return (
-    <section className="relative py-12 px-6">
-      <div className="max-w-6xl mx-auto">
-        <motion.div
-          variants={staggerSlow}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true }}
-          className="glass-card rounded-2xl p-8 md:p-10 relative overflow-hidden"
-        >
-          {/* Background glow */}
-          <div className="absolute top-0 right-0 w-[300px] h-[300px] rounded-full bg-violet-500/5 blur-[100px] pointer-events-none" />
-          
-          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
-            {/* Stats */}
-            <div className="flex items-center gap-8 md:gap-12">
-              {stats.map((stat, i) => (
-                <motion.div
-                  key={stat.label}
-                  variants={fadeInUp}
-                  transition={{ delay: i * 0.1 }}
-                  className="text-center"
-                >
-                  <div className="text-2xl md:text-3xl font-bold gradient-text mb-1">
-                    {stat.value}
-                  </div>
-                  <div className="text-[11px] text-white/40 uppercase tracking-wider">
-                    {stat.label}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Divider */}
-            <div className="hidden md:block w-px h-12 bg-gradient-to-b from-transparent via-white/10 to-transparent" />
-
-            {/* Partners */}
-            <motion.div
-              variants={fadeInUp}
-              className="flex items-center gap-4 flex-wrap justify-center"
-            >
-              <span className="text-[10px] text-white/30 uppercase tracking-wider mr-2">Built on</span>
-              {partners.map((partner) => (
-                <span
-                  key={partner}
-                  className="text-xs font-medium text-white/50 hover:text-white/80 transition-colors"
-                >
-                  {partner}
-                </span>
-              ))}
-            </motion.div>
-          </div>
-        </motion.div>
-      </div>
-    </section>
-  )
-}
-
 /* ─── Page ─── */
 export default function LandingPage() {
   return (
@@ -503,8 +436,6 @@ export default function LandingPage() {
 
       <main className="relative z-10">
         <HeroSection />
-
-        <HeroStatsBar />
 
         <GlowDivider />
 
