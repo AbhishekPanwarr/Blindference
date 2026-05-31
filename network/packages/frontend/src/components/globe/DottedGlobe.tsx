@@ -19,8 +19,8 @@ export default function DottedGlobe({ className = '', globeClassName = '' }: Dot
   return (
     <div className={`relative mx-auto aspect-square w-full max-w-[360px] sm:max-w-[500px] md:max-w-[620px] lg:max-w-[760px] ${className}`}>
       {/* Background glow */}
-      <div className="absolute inset-[14%] rounded-full bg-orange-500/8 blur-[110px] md:blur-[150px]" />
-      <div className="absolute inset-[11%] rounded-full bg-orange-400/5 blur-[80px] md:blur-[100px]" />
+      <div className="absolute inset-[14%] rounded-full bg-violet-500/8 blur-[110px] md:blur-[150px]" />
+      <div className="absolute inset-[11%] rounded-full bg-violet-400/5 blur-[80px] md:blur-[100px]" />
 
       {/* Orbital ellipses */}
       <div
@@ -71,8 +71,8 @@ export default function DottedGlobe({ className = '', globeClassName = '' }: Dot
           <span
             className="w-1.5 h-1.5 rounded-full shrink-0"
             style={{
-              background: '#f97316',
-              boxShadow: '0 0 8px #f97316',
+              background: '#8B5CF6',
+              boxShadow: '0 0 8px #8B5CF6',
             }}
           />
           <span className="text-[11px] font-semibold text-white/75 tracking-wide">
@@ -83,7 +83,7 @@ export default function DottedGlobe({ className = '', globeClassName = '' }: Dot
 
       <div className="pointer-events-none absolute inset-[12%] rounded-full">
         <GlobePulse
-          className={`h-full w-full opacity-85 drop-shadow-[0_0_65px_rgba(249,115,22,0.12)] ${globeClassName}`}
+          className={`h-full w-full opacity-85 drop-shadow-[0_0_65px_rgba(139,92,246,0.12)] ${globeClassName}`}
           markers={heroMarkers}
           speed={0.0024}
         />
