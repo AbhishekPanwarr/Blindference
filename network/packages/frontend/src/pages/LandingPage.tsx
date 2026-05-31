@@ -100,7 +100,7 @@ function HeroSection() {
                 <h1 className="text-[3.3rem] font-black leading-[0.9] tracking-[-0.06em] sm:text-[3.9rem] md:text-7xl lg:text-[5rem] xl:text-[5.8rem]">
                   <span className="block text-white">Confidential AI</span>
                   <span className="block mt-1 md:mt-0">
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-300 via-violet-500 to-indigo-400 drop-shadow-[0_0_30px_rgba(139,92,246,0.3)]">Inference,</span>{' '}
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 via-violet-500 via-purple-500 to-cyan-400 drop-shadow-[0_0_30px_rgba(139,92,246,0.3)]">Inference,</span>{' '}
                     <span className="text-white/60">Verified.</span>
                   </span>
                 </h1>

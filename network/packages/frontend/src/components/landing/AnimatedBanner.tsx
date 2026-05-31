@@ -44,7 +44,7 @@ export default function AnimatedBanner() {
                 transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
                 className="absolute left-1/2 top-0 aspect-[2/1] w-[160%] -translate-x-1/2 rounded-t-[100%] md:w-[130%]"
                 style={{
-                  background: 'linear-gradient(90deg, #A78BFA 0%, #8B5CF6 50%, #4F46E5 100%)',
+                  background: 'linear-gradient(90deg, #E879F9 0%, #A855F7 30%, #8B5CF6 60%, #6366F1 100%)',
                   filter: 'blur(16px)',
                   boxShadow: '0 -20px 80px rgba(139, 92, 246, 0.25)',
                 }}
@@ -54,7 +54,7 @@ export default function AnimatedBanner() {
                 transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
                 className="absolute left-1/2 top-[4%] aspect-[2/1] w-[158%] -translate-x-1/2 rounded-t-[100%] md:w-[128%]"
                 style={{
-                  background: 'linear-gradient(90deg, #C4B5FD 0%, #8B5CF6 50%, #6366F1 100%)',
+                  background: 'linear-gradient(90deg, #F0ABFC 0%, #C084FC 30%, #8B5CF6 60%, #3B82F6 100%)',
                 }}
               />
             </motion.div>
