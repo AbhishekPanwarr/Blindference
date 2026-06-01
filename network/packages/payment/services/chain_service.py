@@ -187,6 +187,133 @@ class ChainService:
             "status": "live",
         }
 
+    async def create_three_escrows(
+        self,
+        *,
+        amount_cusdc: int,
+        job_id: str,
+        leader_address: str,
+        verifier_addresses: list[str],
+        resolver_address: str,
+    ) -> dict[str, Any]:
+        """Create 3 Reineira escrows for leader (60%) + 2 verifiers (20% each).
+
+        Uses the Reineira SDK via create_escrow.ts subprocess. Creates escrows
+        sequentially and returns all 3 escrow IDs.
+        """
+        if self.settings.MOCK_CHAIN:
+            base = int(self.web3_client.keccak_text(f"mock-escrow:{job_id}"), 16) % (2 ** 64)
+            return {
+                "escrow_ids": [base + 1, base + 2, base + 3],
+                "status": "mock",
+            }
+
+        script_path = Path(__file__).resolve().parents[1] / "scripts" / "create_escrow.ts"
+        if not script_path.exists():
+            logger.warning("Escrow script not found at %s — using mock", script_path)
+            base = int(self.web3_client.keccak_text(f"placeholder-escrow:{job_id}"), 16) % (2 ** 64)
+            return {
+                "escrow_ids": [base + 1, base + 2, base + 3],
+                "status": "placeholder",
+            }
+
+        shares = [
+            (leader_address, int(amount_cusdc * 0.6)),
+            (verifier_addresses[0], int(amount_cusdc * 0.2)),
+            (verifier_addresses[1] if len(verifier_addresses) > 1 else verifier_addresses[0], int(amount_cusdc * 0.2)),
+        ]
+
+        resolver_data = self.web3_client.w3.keccak(text=job_id).hex() if not job_id.startswith("0x") else job_id
+        # Proper encoding: abi.encode(bytes32(jobId))
+        # The create_escrow.ts script defaults to this encoding when no --resolver-data is passed
+
+        escrow_ids: list[int] = []
+        for i, (owner, amount) in enumerate(shares):
+            logger.info("Creating escrow %d/3: owner=%s amount=%d", i + 1, owner, amount)
+            env = {
+                **os.environ,
+                "ICL_WALLET_PRIVATE_KEY": self.settings.ICL_WALLET_PRIVATE_KEY,
+                "ARBITRUM_SEPOLIA_RPC_URL": self.settings.ARBITRUM_SEPOLIA_RPC,
+                "ARBITRUM_SEPOLIA_RPC": self.settings.ARBITRUM_SEPOLIA_RPC,
+            }
+            cmd = [
+                "npx", "ts-node", str(script_path),
+                "--amount", str(amount),
+                "--job-id", job_id,
+                "--owner", owner,
+                "--resolver", resolver_address,
+            ]
+            try:
+                result = await asyncio.to_thread(
+                    subprocess.run,
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                    cwd=str(script_path.parents[1]),
+                    env=env,
+                )
+            except subprocess.TimeoutExpired:
+                logger.error("Escrow %d creation timed out for job=%s", i + 1, job_id)
+                raise RuntimeError(f"Escrow {i + 1} creation timed out")
+
+            if result.returncode != 0:
+                stderr = result.stderr.strip() if result.stderr else "<no stderr>"
+                logger.error("Escrow %d creation failed for job=%s: %s", i + 1, job_id, stderr)
+                raise RuntimeError(f"Escrow {i + 1} creation failed: {stderr}")
+
+            stdout = result.stdout.strip()
+            if not stdout.isdigit():
+                logger.error("Escrow %d returned non-numeric ID: %s", i + 1, stdout)
+                raise RuntimeError(f"Invalid escrow ID returned: {stdout}")
+
+            escrow_ids.append(int(stdout))
+            logger.info("Escrow %d created: id=%d", i + 1, int(stdout))
+
+        return {
+            "escrow_ids": escrow_ids,
+            "status": "live",
+        }
+
+    async def redeem_escrow(self, escrow_id: int) -> dict[str, Any]:
+        """Call escrow.redeem(escrowId) directly via Web3."""
+        if self.settings.MOCK_CHAIN:
+            return {"status": "mock", "tx_hash": None}
+
+        escrow_abi = [
+            {
+                "constant": False,
+                "inputs": [{"name": "escrowId", "type": "uint256"}],
+                "name": "redeem",
+                "outputs": [],
+                "payable": False,
+                "stateMutability": "nonpayable",
+                "type": "function",
+            }
+        ]
+        escrow_contract = self.web3_client.w3.eth.contract(
+            address=Web3.to_checksum_address(self.settings.REINEIRA_ESCROW_ADDRESS),
+            abi=escrow_abi,
+        )
+        try:
+            tx = escrow_contract.functions.redeem(escrow_id).build_transaction({
+                "from": self.web3_client.account.address,
+                "nonce": self.web3_client.w3.eth.get_transaction_count(self.web3_client.account.address),
+                "gas": 500_000,
+                "gasPrice": int(self.web3_client.w3.eth.gas_price * 1.5),
+            })
+            signed = self.web3_client.account.sign_transaction(tx)
+            tx_hash = self.web3_client.w3.eth.send_raw_transaction(signed.raw_transaction)
+            receipt = self.web3_client.w3.eth.wait_for_transaction_receipt(tx_hash)
+            status = "success" if receipt.status == 1 else "reverted"
+            return {
+                "status": status,
+                "tx_hash": receipt.transactionHash.hex(),
+            }
+        except Exception as exc:
+            logger.error("redeem() failed for escrow=%d: %s", escrow_id, exc)
+            return {"status": "failed", "error": str(exc)}
+
     async def purchase_insurance(
         self,
         *,

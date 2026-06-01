@@ -91,35 +91,12 @@ class JobService:
                 job_id, payload.escrow_id,
             )
 
-        # 3. Create escrow (synchronous, wait for tx)
+        # 3. Escrow creation for credits mode is deferred to complete_job()
+        #    (quorum addresses are not known until ICL completes inference).
+        #    User-created escrow mode uses a pre-existing escrow.
         escrow_id = None
         escrow_tx_hash = None
-        if payload.payment_mode == "credits" and amount_cusdc > 0:
-            try:
-                escrow_result = await self.chain_service.create_and_fund_escrow(
-                    amount_cusdc=total_cusdc,
-                    job_id=on_chain_job_id,
-                    owner_address=user_address,
-                    resolver_address=self.settings.INFERENCE_GATE_ADDRESS,
-                )
-                escrow_id = escrow_result.get("escrow_id")
-                escrow_tx_hash = escrow_result.get("tx_hash")
-                logger.info(
-                    "Escrow created for job=%s: escrow_id=%s tx=%s",
-                    job_id, escrow_id, escrow_tx_hash,
-                )
-            except Exception as exc:
-                logger.error("Escrow creation failed for job=%s: %s", job_id, exc)
-                # Refund credits if escrow fails
-                if payload.payment_mode == "credits":
-                    await self.credit_service.refund(
-                        user_address=user_address,
-                        amount_cusdc=str(total_cusdc),
-                        amount_blind=str(amount_blind),
-                        reason=f"escrow_failed:{job_id}",
-                    )
-                raise RuntimeError(f"Escrow creation failed: {exc}") from exc
-        elif payload.payment_mode == "escrow":
+        if payload.payment_mode == "escrow":
             escrow_id = payload.escrow_id
 
         # 4. Purchase insurance (if opted in)
@@ -303,22 +280,51 @@ class JobService:
                 [payload.leader_address] + payload.verifier_addresses
             )
 
-            # Escrow mode: call PayoutClaimer.claim() to release escrowed cUSDC
+            # ─── Escrow settlement ───
             claim_result = None
+            escrow_result = None
             job_escrow_id = job.get("escrow_id")
-            if amount_cusdc > 0 and job_escrow_id:
-                try:
-                    claim_result = await self.chain_service.claim_payout(
-                        escrow_id=str(job_escrow_id),
-                        job_id=job.get("task_id") or actual_job_id,
-                    )
-                    logger.info(
-                        "PayoutClaimer.claim() result for job=%s: %s",
-                        actual_job_id, claim_result.get("status"),
-                    )
-                except Exception as exc:
-                    logger.error("PayoutClaimer.claim() failed for job=%s: %s", actual_job_id, exc)
-                    claim_result = {"status": "failed", "error": str(exc)}
+
+            if amount_cusdc > 0:
+                if job_escrow_id:
+                    # User-created escrow mode: PayoutClaimer.claim() fallback
+                    try:
+                        claim_result = await self.chain_service.claim_payout(
+                            escrow_id=str(job_escrow_id),
+                            job_id=job.get("task_id") or actual_job_id,
+                        )
+                        logger.info(
+                            "PayoutClaimer.claim() result for job=%s: %s",
+                            actual_job_id, claim_result.get("status"),
+                        )
+                    except Exception as exc:
+                        logger.error("PayoutClaimer.claim() failed for job=%s: %s", actual_job_id, exc)
+                        claim_result = {"status": "failed", "error": str(exc)}
+                else:
+                    # Credits mode: create 3 escrows (60/20/20) + redeem
+                    try:
+                        escrow_result = await self.chain_service.create_three_escrows(
+                            amount_cusdc=amount_cusdc,
+                            job_id=job.get("task_id") or actual_job_id,
+                            leader_address=payload.leader_address,
+                            verifier_addresses=payload.verifier_addresses[:2],
+                            resolver_address=self.settings.INFERENCE_GATE_ADDRESS,
+                        )
+                        logger.info(
+                            "3 escrows created for job=%s: ids=%s",
+                            actual_job_id, escrow_result.get("escrow_ids"),
+                        )
+
+                        # Redeem all 3 escrows (InferenceGate checks ResultRegistry)
+                        for esc_id in escrow_result.get("escrow_ids", []):
+                            redeem_res = await self.chain_service.redeem_escrow(esc_id)
+                            logger.info(
+                                "Redeem escrow=%d for job=%s: %s",
+                                esc_id, actual_job_id, redeem_res.get("status"),
+                            )
+                    except Exception as exc:
+                        logger.error("3-escrow settlement failed for job=%s: %s", actual_job_id, exc)
+                        escrow_result = {"status": "failed", "error": str(exc)}
 
             # Build per-node reward map (human-readable BLIND)
             rewards_map: dict[str, float] = {}
@@ -347,6 +353,7 @@ class JobService:
                         ],
                         "rewards": rewards_map,
                         "claim_result": claim_result,
+                        "escrow_result": escrow_result,
                         "updated_at": now,
                     }
                 },
@@ -360,6 +367,7 @@ class JobService:
                 "status": "COMPLETED",
                 "rewards": reward_result,
                 "claim_result": claim_result,
+                "escrow_result": escrow_result,
             }
 
         else:  # timeout or rejected
