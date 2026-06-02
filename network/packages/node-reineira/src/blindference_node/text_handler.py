@@ -67,6 +67,7 @@ async def process_text_task_as_leader(
         "output_key_store_job_id": output_key_store["job_id"] if output_key_store else None,
         "verdict": "CONFIRM",
         "confidence": 100,
+        "summary": output_text[:500] if isinstance(output_text, str) else None,
     }
     response = await _submit_leader_text_result(payload["job_id"], payload, config)
     return {

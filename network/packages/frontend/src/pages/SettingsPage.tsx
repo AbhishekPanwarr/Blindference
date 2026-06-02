@@ -50,7 +50,7 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="px-6 py-8 max-w-2xl mx-auto space-y-8">
+    <div className="px-6 py-8 max-w-2xl mx-auto space-y-10">
       <div>
         <SectionLabel>SETTINGS</SectionLabel>
         <h1 className="text-2xl font-heading gradient-text mb-1 mt-1">Settings</h1>

@@ -153,7 +153,7 @@ function HeroSection() {
               >
                 {[
                   '100% Private',
-                  'ZK Native',
+                  'Cryptographically Secure',
                   'FHE Protected',
                   'Quorum Verified',
                 ].map((label, i) => (
@@ -240,7 +240,7 @@ function FeaturesSection() {
           initial="hidden"
           whileInView="show"
           viewport={{ once: true }}
-          className="text-center mb-20"
+          className="text-center mb-12"
         >
           <SectionLabel>BUILT FOR PRIVACY</SectionLabel>
           <h2 className="text-3xl sm:text-4xl font-bold font-heading text-brand-text mt-4 mb-4">
@@ -462,7 +462,6 @@ export default function LandingPage() {
 
         <GlowDivider />
 
-        <AnimatedBanner />
         <PrivacyMarquee />
 
         <GlowDivider />

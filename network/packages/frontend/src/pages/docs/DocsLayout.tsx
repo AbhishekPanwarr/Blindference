@@ -551,10 +551,13 @@ export default function DocsLayout() {
             >
               <Menu className="w-5 h-5 text-white/60" />
             </button>
-            <Link to="/docs" className="flex items-center gap-2 no-underline">
-              <div className="w-7 h-7 rounded-lg bg-violet-500/20 border border-violet-500/30 flex items-center justify-center text-violet-400 font-bold text-xs">
-                B
-              </div>
+            <Link to="/docs" className="flex items-center gap-2.5 no-underline">
+              <img
+                src="/logos/bf-final-logo-2.png"
+                alt="Blindference"
+                className="h-7 w-auto object-contain"
+                draggable={false}
+              />
               <span className="font-semibold text-sm text-white hidden sm:block">Blindference Docs</span>
             </Link>
           </div>

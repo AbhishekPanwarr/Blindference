@@ -16,6 +16,7 @@ class LeaderTextResultSubmission(BaseModel):
     output_key_store_job_id: str | None = None
     verdict: str | None = None
     confidence: int | None = Field(default=None, ge=0, le=100)
+    summary: str | None = None
 
 
 class VerifierTextVerdict(BaseModel):

@@ -51,6 +51,7 @@ class JobRecord(BaseModel):
     output_cid: str | None = None
     encrypted_output_key_high: str | None = None
     encrypted_output_key_low: str | None = None
+    leader_summary: str | None = None
     rewards_distributed: bool = False
     reward_tx_hashes: list[str] = Field(default_factory=list)
     rewards: dict[str, float] = Field(default_factory=dict)
@@ -71,3 +72,4 @@ class JobCompletionRequest(BaseModel):
     output_cid: str | None = None
     encrypted_output_key_high: str | None = None
     encrypted_output_key_low: str | None = None
+    leader_summary: str | None = None

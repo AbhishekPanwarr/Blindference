@@ -42,33 +42,7 @@ Blindference is a **confidential AI execution layer** for Web3. It enables users
 
 ## System Architecture
 
-```mermaid
-flowchart LR
-    U[User Wallet] --> FE[Frontend]
-    FE -->|AES encrypt prompt| ENC[(Encrypted Prompt Blob)]
-    FE -->|Store prompt key| PKS[PromptKeyStore]
-    FE -->|Submit request| ICL[ICL]
-
-    ICL --> L[Leader Node]
-    ICL --> V1[Verifier 1]
-    ICL --> V2[Verifier 2]
-
-    PKS --> L
-    PKS --> V1
-    PKS --> V2
-
-    L --> LLM1[Groq / Gemini]
-    V1 --> LLM2[Groq / Gemini]
-    V2 --> LLM3[Groq / Gemini]
-
-    L -->|Store output key for user| PKS
-    L -->|Leader result| ICL
-    V1 -->|Verdict| ICL
-    V2 -->|Verdict| ICL
-
-    ICL --> FE
-    PKS --> FE
-```
+<img src="/docs/architecture.png" alt="Blindference architecture diagram" className="my-6 rounded-2xl border border-white/[0.08] w-full" />
 
 ## Quick Links
 

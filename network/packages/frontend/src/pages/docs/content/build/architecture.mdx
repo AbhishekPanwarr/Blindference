@@ -12,43 +12,7 @@ The `@abhieren/blindference-agent` SDK provides a complete end-to-end confidenti
 
 ## Agent SDK Data Flow
 
-```mermaid
-flowchart LR
-    subgraph Your Machine
-        A[Agent CLI / SDK]
-        ENC[AES-256-GCM Encrypt]
-        COFHE[CoFHE Key Split]
-        DEC[AES Decrypt Result]
-    end
-
-    subgraph Network
-        PS[Payment Service]
-        ICL[ICL Coordinator]
-        IPFS[IPFS Storage]
-    end
-
-    subgraph Quorum
-        L[Leader Node]
-        V1[Verifier 1]
-        V2[Verifier 2]
-    end
-
-    A --> ENC
-    ENC --> COFHE
-    COFHE --> PS
-    ENC --> IPFS
-    PS --> ICL
-    ICL --> L
-    ICL --> V1
-    ICL --> V2
-    L --> IPFS
-    V1 --> IPFS
-    V2 --> IPFS
-    L --> PS
-    V1 --> PS
-    V2 --> PS
-    PS --> DEC
-```
+<img src="/docs/architecture.png" alt="Blindference architecture diagram" className="my-6 rounded-2xl border border-white/[0.08] w-full" />
 
 ## Step-by-Step Flow
 

@@ -471,7 +471,8 @@ export function Pre({ children, title: preTitle, ...props }: React.HTMLProps<HTM
   const extractCode = (child: React.ReactNode) => {
     if (React.isValidElement(child)) {
       const el = child as React.ReactElement;
-      if (el.type === 'code') {
+      // MDX maps `code` to InlineCode, so check both native 'code' and our wrapper
+      if (el.type === 'code' || el.type === InlineCode) {
         const codeProps = el.props as { className?: string; children?: React.ReactNode; title?: string };
         language = codeProps.className?.replace('language-', '') || 'text';
         title = title || codeProps.title || '';
@@ -492,6 +493,10 @@ export function Pre({ children, title: preTitle, ...props }: React.HTMLProps<HTM
 
   // If we found a code block with language, render Mac-style
   if (code && language !== 'text') {
+    // Route mermaid blocks to the Mermaid diagram component
+    if (language === 'mermaid') {
+      return <Mermaid>{code}</Mermaid>;
+    }
     return <MacCodeBlock code={code} language={language} title={title} />;
   }
 
