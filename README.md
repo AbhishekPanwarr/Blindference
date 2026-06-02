@@ -107,7 +107,7 @@ In short: **No party — not the node operators, not the coordinator, not the bl
 
 1. Visit [https://www.blindference.xyz](https://www.blindference.xyz)
 2. Connect MetaMask (Arbitrum Sepolia)
-3. Get test ETH + BLIND tokens from the [faucet](https://www.blindference.xyz/faucet)
+3. Get test ETH + BLIND tokens from the [faucet](https://www.blindference.xyz/buy-credits)
 4. Buy credits or create an escrow
 5. Type a prompt → submit → wait 60-120s → decrypt result locally
 
