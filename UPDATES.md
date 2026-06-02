@@ -135,45 +135,6 @@ Comprehensive documentation now live at `/docs`:
 
 ---
 
-## Wave 4 — Risk Scoring + Reineira Integration
-
-**Date**: May 2026
-
-- Added confidential risk scoring pipeline (structured financial features)
-- Integrated Reineira escrow and insurance contracts
-- Built Payment Service with credit balances and escrow creation
-- Added node attestation registry (TPM/SGX/mock tiers)
-- Implemented reward distribution (60/20/20 split)
-
-## Wave 3 — Quorum Consensus
-
-**Date**: April 2026
-
-- Built ICL (Inference Coordination Layer) for quorum selection and dispatch
-- Implemented leader-verifier consensus (2/3 hash match)
-- Added ResultRegistry for on-chain commitment storage
-- Built node runtime with Groq/Gemini inference backends
-
-## Wave 2 — CoFHE Integration
-
-**Date**: March 2026
-
-- Integrated Fhenix CoFHE for threshold decryption
-- Built PromptKeyStore for encrypted key half storage
-- Added AES-256-GCM browser encryption
-- Implemented IPFS upload/download pipeline
-
-## Wave 1 — Foundation
-
-**Date**: February 2026
-
-- Initial smart contract suite: BlindferenceInference, ResultRegistry, BlindferenceStaking
-- Basic frontend with MetaMask integration
-- Node registration and staking
-- Mock inference pipeline for testing
-
----
-
 ## Testnet Details
 
 | Parameter | Value |
