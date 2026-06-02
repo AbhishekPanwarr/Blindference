@@ -1,0 +1,113 @@
+---
+title: "Configuration"
+description: "Environment variables and configuration options for the Agent SDK"
+icon: "gear"
+---
+
+All configuration is via environment variables prefixed with `BLF_`.
+
+## Required Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `BLF_PRIVATE_KEY` | Your wallet private key (hex, with `0x` prefix) | `0xabc123...` |
+| `BLF_PAYMENT_URL` | Payment Service URL | `https://payment.blindference.xyz` |
+| `BLF_ICL_URL` | ICL API URL | `https://icl.blindference.xyz` |
+| `BLF_RPC_URL` | Arbitrum Sepolia RPC endpoint | `https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY` |
+
+## Optional Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `BLF_COFHE_URL` | CoFHE RPC URL (if different from BLF_RPC_URL) | Same as `BLF_RPC_URL` |
+| `BLF_CHAIN_ID` | Chain ID | `421614` |
+| `BLF_IPFS_GATEWAY` | IPFS download gateway | `https://ipfs.io/ipfs` |
+| `BLF_PINATA_JWT` | Pinata JWT for IPFS uploads | — |
+| `BLF_PROMPT_KEY_STORE` | PromptKeyStore contract address | Auto-detected |
+| `BLF_LOG_LEVEL` | Logging level (`debug`, `info`, `warn`, `error`) | `info` |
+| `BLF_MAX_POLL_ATTEMPTS` | Max polling attempts before timeout | `120` |
+| `BLF_POLL_INTERVAL_MS` | Polling interval in milliseconds | `3000` |
+| `BLF_GAS_MULTIPLIER` | Gas price multiplier | `1.2` |
+| `BLF_CORS_ORIGINS` | CORS allowed origins (REST server) | `*` |
+
+## .env File Example
+
+Create a `.env` file in your working directory:
+
+```bash title="Terminal"
+# Required
+BLF_PRIVATE_KEY=0xYOUR_PRIVATE_KEY_HERE
+BLF_PAYMENT_URL=https://payment.blindference.xyz
+BLF_ICL_URL=https://icl.blindference.xyz
+BLF_RPC_URL=https://arb-sepolia.g.alchemy.com/v2/YOUR_ALCHEMY_KEY
+
+# Optional
+BLF_COFHE_URL=https://arb-sepolia.g.alchemy.com/v2/YOUR_ALCHEMY_KEY
+BLF_IPFS_GATEWAY=https://ipfs.io/ipfs
+BLF_LOG_LEVEL=info
+BLF_MAX_POLL_ATTEMPTS=120
+BLF_POLL_INTERVAL_MS=3000
+BLF_GAS_MULTIPLIER=1.2
+```
+
+> ⚠️ **Never commit `.env` files to git.** Add `.env` to your `.gitignore`.
+
+## CLI Flag Overrides
+
+Any CLI flag overrides the corresponding environment variable:
+
+```bash title="Terminal"
+# Environment variable
+export BLF_PAYMENT_URL=https://payment.blindference.xyz
+
+# CLI flag override
+blindference-agent infer --prompt "Hello" --payment-service https://custom.payment.url
+```
+
+## Getting an Alchemy Key
+
+1. Go to [dashboard.alchemy.com](https://dashboard.alchemy.com/apps)
+2. Create a new app
+3. Select "Arbitrum Sepolia" as the network
+4. Copy the HTTPS API key
+5. Set it as `BLF_RPC_URL`
+
+## Network Configuration
+
+The SDK defaults to **Arbitrum Sepolia** (Chain ID: `421614`).
+
+| Parameter | Value |
+|-----------|-------|
+| Network | Arbitrum Sepolia |
+| Chain ID | `421614` |
+| Currency | ETH (for gas), BLIND/cUSDC (for credits) |
+| Block Explorer | [sepolia.arbiscan.io](https://sepolia.arbiscan.io) |
+
+## IPFS Gateway Fallback
+
+The SDK uses a multi-gateway fallback for IPFS downloads:
+
+1. `BLF_IPFS_GATEWAY` environment variable (if set)
+2. CLI `--ipfs-gateway` flag (if set)
+3. `https://ipfs.io/ipfs` (primary)
+4. `https://gateway.pinata.cloud/ipfs` (fallback 1)
+5. `https://dweb.link/ipfs` (fallback 2)
+
+If all gateways fail, the SDK throws an error after the configured timeout.
+
+## Advanced: Custom CoFHE Config
+
+For advanced use cases, you can pass a custom CoFHE configuration object:
+
+```typescript title="TypeScript"
+const agent = new BlindferenceAgent({
+  privateKey: process.env.BLF_PRIVATE_KEY!,
+  paymentServiceUrl: 'https://payment.blindference.xyz',
+  rpcUrl: process.env.BLF_RPC_URL!,
+  cofheConfig: {
+    // Custom CoFHE SDK configuration
+    verifierUrl: 'https://custom.verifier.url',
+    thresholdNetworkUrl: 'https://custom.threshold.url'
+  }
+})
+```

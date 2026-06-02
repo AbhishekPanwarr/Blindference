@@ -77,9 +77,9 @@ function DiagramNode({
         animate={
           isActive
             ? {
-                borderColor: 'rgba(249,115,22,0.6)',
+                borderColor: 'rgba(139,92,246,0.6)',
                 boxShadow:
-                  '0 0 20px rgba(249,115,22,0.35), 0 4px 24px rgba(0,0,0,0.5), inset 0 0 10px rgba(249,115,22,0.05)',
+                  '0 0 20px rgba(139,92,246,0.35), 0 4px 24px rgba(0,0,0,0.5), inset 0 0 10px rgba(139,92,246,0.05)',
               }
             : {
                 borderColor: 'rgba(255,255,255,0.08)',
@@ -95,7 +95,7 @@ function DiagramNode({
         <Icon
           className={cn(
             'w-3.5 h-3.5 shrink-0',
-            isActive ? 'text-brand-primary' : 'text-brand-secondary'
+            isActive ? 'text-violet-500' : 'text-violet-400'
           )}
         />
         <span className="text-[10px] font-bold text-white whitespace-nowrap">
@@ -116,7 +116,7 @@ function ConnectionPath({
   return (
     <motion.path
       d={pathD}
-      stroke="#f97316"
+      stroke="#8B5CF6"
       strokeWidth={isActive ? 2.5 : 1.5}
       strokeDasharray="6 4"
       fill="none"
@@ -176,7 +176,7 @@ export default function ArchitectureDiagram() {
           viewport={{ once: true, margin: '-100px' }}
           className="text-center mb-20"
         >
-          <span className="font-mono text-xs uppercase tracking-[0.3em] text-brand-primary">
+          <span className="font-mono text-xs uppercase tracking-[0.3em] text-violet-500">
             Architecture
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold font-heading text-brand-text mt-3 mb-4">
@@ -208,7 +208,7 @@ export default function ArchitectureDiagram() {
                 className="flex gap-4"
               >
                 <div className="mt-1.5 shrink-0">
-                  <div className="w-2.5 h-2.5 rounded-full bg-brand-primary shadow-[0_0_8px_rgba(249,115,22,0.5)]" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-violet-500 shadow-[0_0_8px_rgba(139,92,246,0.5)]" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-brand-text mb-1 font-heading">
@@ -231,7 +231,7 @@ export default function ArchitectureDiagram() {
             className="relative w-full max-w-[720px] mx-auto aspect-[720/400] rounded-2xl border border-white/5 bg-white/[0.02] backdrop-blur-sm shadow-glass overflow-hidden"
           >
             {/* Decorative depth shadow */}
-            <div className="absolute -inset-4 bg-gradient-to-br from-brand-primary/5 via-transparent to-brand-primary/5 blur-2xl pointer-events-none" />
+            <div className="absolute -inset-4 bg-gradient-to-br from-violet-500/5 via-transparent to-violet-500/5 blur-2xl pointer-events-none" />
 
             <svg
               viewBox="0 0 720 400"
@@ -259,7 +259,7 @@ export default function ArchitectureDiagram() {
                   x2="0"
                   y2="1"
                 >
-                  <stop offset="0%" stopColor="rgba(249,115,22,0.15)" />
+                  <stop offset="0%" stopColor="rgba(139,92,246,0.15)" />
                   <stop offset="100%" stopColor="transparent" />
                 </linearGradient>
               </defs>

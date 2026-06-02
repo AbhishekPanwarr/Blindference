@@ -233,7 +233,12 @@ class QuorumService:
             candidate_addresses=list(quorum["candidate_addresses"]),
         )
 
-        await self.database[INFERENCE_REQUESTS].insert_one(request_record.model_dump())
+        _req_dict = request_record.model_dump()
+        _req_dict.pop("failure_reason", None)
+        _req_dict.pop("escrow_id", None)
+        _req_dict.pop("leader_output_ready", None)
+        _req_dict.pop("claimed_nodes", None)
+        await self.database[INFERENCE_REQUESTS].insert_one(_req_dict)
         await self.database[QUORUM_ASSIGNMENTS].insert_one(assignment_record.model_dump())
         if normalized_permits:
             await self.database[PERMITS].update_one(
@@ -400,7 +405,12 @@ class QuorumService:
             candidate_addresses=list(quorum["candidate_addresses"]),
         )
 
-        await self.database[INFERENCE_REQUESTS].insert_one(request_record.model_dump())
+        _req_dict2 = request_record.model_dump()
+        _req_dict2.pop("failure_reason", None)
+        _req_dict2.pop("escrow_id", None)
+        _req_dict2.pop("leader_output_ready", None)
+        _req_dict2.pop("claimed_nodes", None)
+        await self.database[INFERENCE_REQUESTS].insert_one(_req_dict2)
         await self.database[QUORUM_ASSIGNMENTS].insert_one(assignment_record.model_dump())
         logger.debug("[Trace] DB records inserted: request_id=%s", request_record.request_id)
         if normalized_permits:
@@ -868,6 +878,7 @@ class QuorumService:
             "output_key_store_job_id": payload.output_key_store_job_id,
             "verdict": verdict,
             "confidence": payload.confidence,
+            "summary": payload.summary,
             "submitted_at": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -1350,6 +1361,7 @@ class QuorumService:
                 leader_address=assignment["leader_address"],
                 verifier_addresses=assignment["verifier_addresses"],
                 result_hash=commit_response.result_hash,
+                leader_summary=leader_submission.get("leader_summary"),
             )
         )
 
@@ -1429,6 +1441,7 @@ class QuorumService:
                     output_cid=leader_result.get("output_cid"),
                     encrypted_output_key_high=request_document.get("encrypted_output_key_high"),
                     encrypted_output_key_low=request_document.get("encrypted_output_key_low"),
+                    leader_summary=leader_result.get("summary"),
                 )
             )
 
@@ -1457,6 +1470,10 @@ class QuorumService:
                     leader_address=assignment["leader_address"],
                     verifier_addresses=assignment["verifier_addresses"],
                     error_reason=reject_reason,
+                    output_cid=leader_result.get("output_cid"),
+                    encrypted_output_key_high=request_document.get("encrypted_output_key_high"),
+                    encrypted_output_key_low=request_document.get("encrypted_output_key_low"),
+                    leader_summary=leader_result.get("summary"),
                 )
             )
             refreshed = await self.database[INFERENCE_REQUESTS].find_one({"request_id": request_id})
@@ -2087,6 +2104,7 @@ class QuorumService:
         output_cid: str | None = None,
         encrypted_output_key_high: str | None = None,
         encrypted_output_key_low: str | None = None,
+        leader_summary: str | None = None,
     ) -> None:
         """Notify Payment Service that a job has been finalized (success/timeout/rejected)."""
         from config import get_settings
@@ -2109,6 +2127,8 @@ class QuorumService:
             payload["encrypted_output_key_high"] = encrypted_output_key_high
         if encrypted_output_key_low:
             payload["encrypted_output_key_low"] = encrypted_output_key_low
+        if leader_summary:
+            payload["leader_summary"] = leader_summary
 
         for attempt in range(1, 4):
             try:

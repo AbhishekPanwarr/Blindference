@@ -91,7 +91,7 @@ export function PrivacyComparison() {
         </motion.div>
 
         {/* Two-column comparison */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 relative">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 relative">
           {/* Connecting vertical line on desktop */}
           <div className="hidden lg:block absolute top-0 bottom-0 left-1/2 w-px bg-gradient-to-b from-transparent via-white/10 to-transparent" />
 

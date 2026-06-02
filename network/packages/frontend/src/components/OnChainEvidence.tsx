@@ -17,7 +17,7 @@ function TxLink({ label, txHash }: { label: string; txHash: string }) {
     <div className="flex justify-between items-center py-2 border-b border-white/10 last:border-0">
        <span className="text-[11px] text-white/50 font-bold uppercase tracking-widest">{label}</span>
        <div className="flex items-center gap-2">
-         <a href={`https://sepolia.arbiscan.io/tx/${txHash}`} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-white hover:text-orange-400 transition-colors">
+         <a href={`https://sepolia.arbiscan.io/tx/${txHash}`} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-white hover:text-violet-400 transition-colors">
             <span className="font-mono text-[11px] bg-[rgba(10,10,10,0.8)] px-1.5 py-0.5 rounded border border-white/10">{txHash.slice(0, 10)}...{txHash.slice(-4)}</span>
             <ExternalLink className="w-3 h-3 text-white/50" />
          </a>
@@ -42,7 +42,7 @@ export function OnChainEvidence({
       <div className="flex flex-col">
         <div className="flex justify-between items-center py-2 border-b border-white/10">
            <span className="text-[11px] text-white/50 font-bold uppercase tracking-widest">Task ID</span>
-           <div className="flex items-center gap-1.5 text-white hover:text-orange-400 transition-colors">
+           <div className="flex items-center gap-1.5 text-white hover:text-violet-400 transition-colors">
              <span className="font-mono text-[11px] text-white/50 bg-[rgba(10,10,10,0.8)] px-1.5 py-0.5 rounded border border-white/10">{taskId.slice(0, 16)}...</span>
              <CopyButton text={taskId} title="Copy task ID" className="text-white/50 hover:text-white transition-colors" />
            </div>

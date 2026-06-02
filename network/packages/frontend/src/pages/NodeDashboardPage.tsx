@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { GlassCard } from '../components/ui/GlassCard'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis } from 'recharts'
+import { SectionLabel } from '../components/effects/GlowDivider'
 
 function weiToEth(wei: string | number): string {
   try {
@@ -83,7 +84,7 @@ export function NodeDashboardPage() {
   const jobStatusData = [
     { name: 'Completed', value: stats?.success ?? 0, color: '#22c55e' },
     { name: 'Failed', value: stats?.failed ?? 0, color: '#ef4444' },
-    { name: 'Pending', value: (stats?.total_jobs ?? 0) - (stats?.success ?? 0) - (stats?.failed ?? 0), color: '#f97316' },
+    { name: 'Pending', value: (stats?.total_jobs ?? 0) - (stats?.success ?? 0) - (stats?.failed ?? 0), color: '#8B5CF6' },
   ]
 
   const earningsData = [
@@ -104,9 +105,10 @@ export function NodeDashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
-              <BarChart3 className="w-5 h-5 text-orange-400" />
+          <SectionLabel>OPERATOR DASHBOARD</SectionLabel>
+          <div className="flex items-center gap-3 mb-1 mt-1">
+            <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+              <BarChart3 className="w-5 h-5 text-violet-400" />
             </div>
             <h1 className="text-2xl font-semibold gradient-text font-heading">Node Dashboard</h1>
           </div>
@@ -119,7 +121,7 @@ export function NodeDashboardPage() {
           </div>
           <button
             onClick={() => { refetchStats(); refetchJobs() }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 text-xs text-white/50 hover:bg-orange-500/10 transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 text-xs text-white/50 hover:bg-violet-500/10 transition-colors"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             Refresh
@@ -155,19 +157,19 @@ export function NodeDashboardPage() {
 
           <GlassCard className="p-5">
             <div className="flex items-start justify-between mb-3">
-              <CheckCircle className={`w-5 h-5 ${successRate > 90 ? 'text-green-400' : successRate >= 50 ? 'text-orange-400' : 'text-red-400'}`} />
+              <CheckCircle className={`w-5 h-5 ${successRate > 90 ? 'text-green-400' : successRate >= 50 ? 'text-violet-400' : 'text-red-400'}`} />
             </div>
             <p className="text-[10px] font-mono uppercase tracking-wider text-white/40 mb-1">Success Rate</p>
-            <p className={`text-2xl font-semibold ${successRate > 90 ? 'text-green-400' : successRate >= 50 ? 'text-orange-400' : 'text-red-400'}`}>{successRate}%</p>
+            <p className={`text-2xl font-semibold ${successRate > 90 ? 'text-green-400' : successRate >= 50 ? 'text-violet-400' : 'text-red-400'}`}>{successRate}%</p>
             <p className="text-[10px] text-white/30 mt-1">{stats?.total_jobs ? `${stats.total_jobs} total` : 'No jobs yet'}</p>
           </GlassCard>
 
           <GlassCard className="p-5">
             <div className="flex items-start justify-between mb-3">
-              <TrendingUp className="w-5 h-5 text-orange-400" />
+              <TrendingUp className="w-5 h-5 text-violet-400" />
             </div>
             <p className="text-[10px] font-mono uppercase tracking-wider text-white/40 mb-1">BLIND Earned</p>
-            <p className="text-2xl font-semibold text-orange-400">{weiToEth(stats?.total_earned_blind ?? '0')}</p>
+            <p className="text-2xl font-semibold text-violet-400">{weiToEth(stats?.total_earned_blind ?? '0')}</p>
             <p className="text-[10px] text-white/30 mt-1">Cumulative</p>
           </GlassCard>
 
@@ -285,8 +287,8 @@ export function NodeDashboardPage() {
                 <AreaChart data={earningsData}>
                   <defs>
                     <linearGradient id="colorEarnings" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#f97316" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <XAxis dataKey="day" stroke="rgba(255,255,255,0.2)" tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 12 }} />
@@ -299,7 +301,7 @@ export function NodeDashboardPage() {
                       color: '#fff'
                     }}
                   />
-                  <Area type="monotone" dataKey="earnings" stroke="#f97316" fill="url(#colorEarnings)" strokeWidth={2} />
+                  <Area type="monotone" dataKey="earnings" stroke="#8B5CF6" fill="url(#colorEarnings)" strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -322,12 +324,12 @@ export function NodeDashboardPage() {
                 onClick={() => setFilterRole(tab.key as any)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-2 ${
                   filterRole === tab.key
-                    ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+                    ? 'bg-violet-500/20 text-violet-400 border border-violet-500/30'
                     : 'text-white/50 border border-white/10 hover:bg-white/5'
                 }`}
               >
                 {tab.label}
-                <span className={`px-1.5 py-0.5 rounded text-[10px] ${filterRole === tab.key ? 'bg-orange-500/30 text-orange-300' : 'bg-white/10 text-white/40'}`}>
+                <span className={`px-1.5 py-0.5 rounded text-[10px] ${filterRole === tab.key ? 'bg-violet-500/30 text-violet-300' : 'bg-white/10 text-white/40'}`}>
                   {tab.count}
                 </span>
               </button>
@@ -350,7 +352,7 @@ export function NodeDashboardPage() {
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <Server className="w-8 h-8 text-white/20 mb-3" />
                   <p className="text-sm text-white/40 mb-2">No jobs processed yet. Start your node to begin earning.</p>
-                  <a href="/node-registration" className="text-xs text-orange-400 hover:text-orange-300 transition-colors">
+                  <a href="/nodes" className="text-xs text-violet-400 hover:text-violet-300 transition-colors">
                     Go to Node Registration →
                   </a>
                 </div>
@@ -378,7 +380,7 @@ export function NodeDashboardPage() {
                           <td className="px-5 py-3">
                             <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
                               job.role === 'leader'
-                                ? 'bg-orange-500/20 text-orange-400'
+                                ? 'bg-violet-500/20 text-violet-400'
                                 : 'bg-blue-500/20 text-blue-400'
                             }`}>
                               {job.role === 'leader' ? 'Leader' : 'Verifier'}
@@ -390,12 +392,12 @@ export function NodeDashboardPage() {
                               <span className={`w-1.5 h-1.5 rounded-full ${
                                 job.status === 'completed' ? 'bg-green-400' :
                                 job.status === 'failed' ? 'bg-red-400' :
-                                'bg-orange-400'
+                                'bg-violet-400'
                               }`} />
                               <span className={`text-xs capitalize ${
                                 job.status === 'completed' ? 'text-green-400' :
                                 job.status === 'failed' ? 'text-red-400' :
-                                'text-orange-400'
+                                'text-violet-400'
                               }`}>
                                 {job.status}
                               </span>

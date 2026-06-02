@@ -39,6 +39,8 @@ class JobRecord(BaseModel):
     amount_blind: str = "0"
     insurance_opt_in: bool = False
     insurance_premium_cusdc: str = "0"
+    payment_mode: Literal["credits", "escrow"] = "credits"
+    payment_currency: Literal["cusdc", "blind"] = "cusdc"
     escrow_id: int | None = None
     coverage_id: int | None = None
     status: Literal["PENDING_PAYMENT", "RUNNING", "COMPLETED", "FAILED", "REFUNDED"] = "PENDING_PAYMENT"
@@ -49,6 +51,7 @@ class JobRecord(BaseModel):
     output_cid: str | None = None
     encrypted_output_key_high: str | None = None
     encrypted_output_key_low: str | None = None
+    leader_summary: str | None = None
     rewards_distributed: bool = False
     reward_tx_hashes: list[str] = Field(default_factory=list)
     rewards: dict[str, float] = Field(default_factory=dict)
@@ -69,3 +72,4 @@ class JobCompletionRequest(BaseModel):
     output_cid: str | None = None
     encrypted_output_key_high: str | None = None
     encrypted_output_key_low: str | None = None
+    leader_summary: str | None = None

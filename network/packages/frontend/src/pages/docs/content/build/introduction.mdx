@@ -1,0 +1,91 @@
+---
+title: Introduction
+description: 'Build confidential AI agents with the Blindference SDK'
+icon: 'book-open'
+---
+
+# Build — Introduction
+
+Build agents and applications that use Blindference for confidential AI inference, risk scoring, and custom workflows — without exposing sensitive data to any single party.
+
+## Why Blindference Agent SDK?
+
+When you send a prompt to ChatGPT, Claude, or any cloud LLM API, your data travels in plaintext. The provider logs it, stores it, and may train on it. This is fine for "What is the capital of France?" but catastrophic for:
+
+- **Financial data** — "Analyze this portfolio risk..."
+- **Medical records** — "Summarize this patient history..."
+- **Legal documents** — "Review this contract for liability..."
+- **Proprietary code** — "Debug this internal algorithm..."
+- **Agent memory** — Autonomous agents that accumulate sensitive context over time
+
+### The Agent SDK Difference
+
+The `@abhieren/blindference-agent` SDK encrypts your prompt with **AES-256-GCM** before it leaves your machine, splits the key into **FHE-encrypted halves** via Fhenix CoFHE, and submits it to a **decentralized quorum** of verified nodes (1 Leader + 2 Verifiers). Only after cryptographic consensus is reached is the result decrypted locally.
+
+**Your plaintext never touches a server.**
+
+## Comparison
+
+| Feature | OpenAI API | Local LLM | Blindference Agent SDK |
+|---------|-----------|-----------|------------------------|
+| **Prompt Privacy** | ❌ Plaintext | ✅ Local | ✅ Encrypted (AES+CoFHE) |
+| **Result Integrity** | ❌ Trust provider | ✅ You ran it | ✅ Quorum consensus |
+| **Premium Models** | ✅ GPT-4, etc. | ❌ Limited | ✅ Groq, Gemini, etc. |
+| **Verifiable Compute** | ❌ No proof | ❌ No proof | ✅ On-chain commitments |
+| **Decentralized** | ❌ Centralized | ✅ Local only | ✅ Multi-node quorum |
+| **Payment Model** | Subscription | Free | Pay-per-inference (cUSDC) |
+| **Easy Integration** | ✅ SDK | ❌ Complex setup | ✅ One-line CLI |
+
+## What You Can Build
+
+<CardGroup cols={2}>
+  <Card title="Confidential AI Assistants" icon="lock">
+    Healthcare, legal, and financial advisors that protect user privacy by encrypting every prompt before transmission.
+  </Card>
+  <Card title="Autonomous Agents" icon="bot">
+    Crypto trading bots, DeFi agents, and DAO automation tools that query LLMs without exposing strategy or sensitive data.
+  </Card>
+  <Card title="Verifiable Model Inference" icon="shield-check">
+    Prove you ran a specific model on specific data and got a specific result — with on-chain evidence.
+  </Card>
+  <Card title="Private Risk Scoring" icon="chart-line">
+    Credit evaluation, insurance underwriting, and compliance checks without exposing applicant data to centralized providers.
+  </Card>
+</CardGroup>
+
+## How It Works
+
+<Steps>
+  <Step title="Encrypt locally" icon="lock">
+    Your prompt is AES-256-GCM encrypted in your local environment before any network request is made.
+  </Step>
+  <Step title="Split the key" icon="key">
+    The AES key is split into halves and encrypted with Fhenix CoFHE. Only assigned quorum nodes can decrypt their half.
+  </Step>
+  <Step title="Submit to network" icon="cloud">
+    The encrypted job is submitted to the Payment Service, which creates an on-chain escrow and dispatches to the ICL.
+  </Step>
+  <Step title="Quorum executes" icon="users">
+    1 Leader + 2 Verifiers independently run the same inference on the decrypted prompt.
+  </Step>
+  <Step title="Consensus validates" icon="check-double">
+    Verifiers check the leader's output hash. 2/3 match = accepted. Less than 2/3 = rejected.
+  </Step>
+  <Step title="Decrypt result" icon="eye">
+    You download the encrypted result from IPFS and decrypt it locally. Only your wallet can access the output key.
+  </Step>
+</Steps>
+
+## Quick Start
+
+Get your first confidential inference running in under 5 minutes:
+
+<Card title="5-Minute Quickstart" icon="rocket" href="quickstart">
+  Install the SDK, configure your environment, and run your first encrypted inference job.
+</Card>
+
+## Architecture
+
+<Card title="SDK Architecture" icon="sitemap" href="architecture">
+  Understand the Agent SDK data flow: encrypt → submit → poll → decrypt.
+</Card>

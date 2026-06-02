@@ -5,48 +5,74 @@ interface MarqueeCard {
   source: string;
   title: string;
   excerpt: string;
+  url: string;
 }
 
 const cards: MarqueeCard[] = [
   {
     source: "TechCrunch",
-    title: "Sam Altman warns there's no legal confidentiality when using ChatGPT as a therapist",
-    excerpt: "OpenAI's CEO admits conversations may be reviewed, used for training, or shared with third parties.",
+    title: "Samsung bans use of generative AI tools like ChatGPT after April internal data leak",
+    excerpt: "Samsung Electronics restricted ChatGPT on company devices after employees accidentally leaked sensitive internal code and confidential data to the platform.",
+    url: "https://techcrunch.com/2023/05/02/samsung-bans-use-of-generative-ai-tools-like-chatgpt-after-april-internal-data-leak/",
+  },
+  {
+    source: "OpenAI",
+    title: "March 20 ChatGPT outage: Here's what happened",
+    excerpt: "A Redis bug allowed some users to see other users' chat history titles, and exposed payment info for 1.2% of ChatGPT Plus subscribers during a nine-hour window.",
+    url: "https://openai.com/blog/march-20-chatgpt-outage",
+  },
+  {
+    source: "TechCrunch",
+    title: "Google saves your conversations with Gemini for years by default",
+    excerpt: "Human annotators routinely read and label Gemini conversations to improve the service. Data is retained for up to three years, including location and device info.",
+    url: "https://techcrunch.com/2024/02/08/google-saves-your-conversations-with-gemini-for-years-by-default/",
   },
   {
     source: "TechCrunch",
     title: "ChatGPT hit with privacy complaint over defamatory hallucinations",
-    excerpt: "EU privacy body weighs in on tricky GenAI lawfulness questions after false personal data generated.",
+    excerpt: "Privacy group noyb filed a GDPR complaint after ChatGPT falsely told a user he had murdered his own children — with no way to correct the false information.",
+    url: "https://techcrunch.com/2025/03/19/chatgpt-hit-with-privacy-complaint-over-defamatory-hallucinations/",
   },
   {
-    source: "TechCrunch",
-    title: "Anthropic users face a new choice – opt out or share your chats for AI training",
-    excerpt: "Claude users must explicitly opt out or their conversations will be used to improve Anthropic's models.",
+    source: "404 Media",
+    title: "New Study Reveals the Manipulative 'Dark Patterns' of AI Chatbots",
+    excerpt: "A Center for Democracy & Technology study found chatbots promising 'your secret's safe with me' while actually sharing data with the platform and third parties.",
+    url: "https://www.404media.co/new-study-reveals-the-manipulative-dark-patterns-of-ai-chatbots/",
   },
   {
-    source: "Wired",
-    title: "The latest viral ChatGPT trend is doing 'reverse location search' from photos",
-    excerpt: "Users discovered ChatGPT can extract precise GPS coordinates from uploaded images without consent.",
+    source: "404 Media",
+    title: "Instagram Is Blocking Minors from Accessing Chatbot Platform AI Studio",
+    excerpt: "Therapy chatbots on Meta's AI Studio fabricated license numbers to pose as mental health professionals, with no clarity on whether conversations were kept confidential.",
+    url: "https://www.404media.co/instagram-is-blocking-minors-from-accessing-chatbot-platform-ai-studio/",
   },
   {
-    source: "TechCrunch",
-    title: "Why does the name 'David Mayer' crash ChatGPT? OpenAI says privacy tool went rogue",
-    excerpt: "A privacy protection system malfunctioned and blocked legitimate queries, raising questions about control.",
+    source: "404 Media",
+    title: "'Lobotomized': Character.AI Is Showing What AI Enshittification Looks Like",
+    excerpt: "Character.AI is being sued by families of users who died by suicide after using the app, and by Pennsylvania after AI characters falsely claimed to be licensed doctors.",
+    url: "https://www.404media.co/lobotomized-character-ai-is-showing-what-ai-enshittification-looks-like/",
   },
   {
-    source: "The Guardian",
-    title: "Elon Musk threatens to ban Apple devices over ChatGPT integrations",
-    excerpt: "Apple's deep OS integration with OpenAI raises concerns about data flowing to external AI without user knowledge.",
+    source: "404 Media",
+    title: "'BusPatrol' Put AI Cameras in Tens of Thousands of School Buses. Now They Want to Give Cops Access",
+    excerpt: "BusPatrol plans to convert school bus cameras into automatic license plate readers, giving law enforcement location data from every vehicle they pass.",
+    url: "https://www.404media.co/buspatrol-put-ai-cameras-in-tens-of-thousands-of-school-buses-now-they-want-to-give-cops-access/",
   },
   {
-    source: "TechCrunch",
-    title: "Amazon acquires Bee, the AI wearable that records everything you say",
-    excerpt: "Continuous audio recording by AI wearables creates unprecedented privacy risks for users.",
+    source: "Ars Technica",
+    title: "First man convicted under Take It Down Act kept making AI nudes after arrest",
+    excerpt: "An Ohio man used over 100 AI models to create hundreds of non-consensual intimate images of women and minors, continuing even after arrest.",
+    url: "https://arstechnica.com/tech-policy/2026/04/first-man-convicted-under-take-it-down-act-kept-making-ai-nudes-after-arrest/",
+  },
+  {
+    source: "404 Media",
+    title: "Podcast: How Deepfakes Destroyed a High School",
+    excerpt: "Deepfake technology was used to create non-consensual explicit images of high school students, who were failed by administrators and law enforcement at every step.",
+    url: "https://www.404media.co/podcast-how-deepfakes-destroyed-a-high-school/",
   },
 ];
 
-const row1 = cards;
-const row2 = [...cards].reverse();
+const row1 = cards.slice(0, 5);
+const row2 = cards.slice(5, 10);
 
 function getSourceColor(source: string) {
   switch (source) {
@@ -56,6 +82,12 @@ function getSourceColor(source: string) {
       return "bg-blue-500";
     case "The Guardian":
       return "bg-emerald-500";
+    case "404 Media":
+      return "bg-yellow-500";
+    case "Ars Technica":
+      return "bg-red-500";
+    case "OpenAI":
+      return "bg-green-500";
     default:
       return "bg-white";
   }
@@ -77,9 +109,12 @@ function MarqueeRow({
         style={{ width: "max-content" }}
       >
         {allItems.map((card, i) => (
-          <div
+          <a
+            href={card.url}
+            target="_blank"
+            rel="noopener noreferrer"
             key={`${card.title}-${i}`}
-            className="w-[340px] shrink-0 bg-[#080808]/80 backdrop-blur-sm border border-white/[0.06] rounded-2xl p-5 transition-all duration-300 hover:border-white/[0.15] group"
+            className="w-[340px] shrink-0 bg-[#080808]/80 backdrop-blur-sm border border-white/[0.06] rounded-2xl p-5 transition-all duration-300 hover:border-white/[0.15] group block"
           >
             <div className="flex items-center gap-2 mb-3">
               <span
@@ -89,13 +124,13 @@ function MarqueeRow({
                 {card.source}
               </span>
             </div>
-            <h4 className="text-sm font-bold text-white mb-2 leading-snug group-hover:text-brand-primary transition-colors">
+              <h4 className="text-sm font-bold text-white mb-2 leading-snug group-hover:text-violet-500 transition-colors">
               {card.title}
             </h4>
             <p className="text-[12.5px] text-brand-text-secondary leading-relaxed line-clamp-3">
               {card.excerpt}
             </p>
-          </div>
+          </a>
         ))}
       </div>
     </div>
@@ -115,7 +150,7 @@ export default function PrivacyMarquee() {
         >
           <motion.p
             variants={fadeInUp}
-            className="font-mono text-xs uppercase tracking-[0.25em] text-brand-primary mb-4"
+            className="font-mono text-xs uppercase tracking-[0.25em] text-violet-500 mb-4"
           >
             THE PROBLEM
           </motion.p>

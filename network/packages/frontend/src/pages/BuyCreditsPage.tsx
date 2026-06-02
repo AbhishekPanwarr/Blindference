@@ -9,6 +9,7 @@ import { useWrapUSDC } from '../hooks/useWrapUSDC'
 import { Hex, parseAbi } from 'viem'
 import { arbitrumSepolia } from 'wagmi/chains'
 import { GlassCard } from '../components/ui/GlassCard'
+import { SectionLabel } from '../components/effects/GlowDivider'
 
 const BLIND_TOKEN_ADDRESS = (import.meta.env.VITE_BLIND_TOKEN_ADDRESS || '') as Hex
 const PAYMENT_WALLET_ADDRESS = (import.meta.env.VITE_PAYMENT_WALLET_ADDRESS || '') as Hex
@@ -16,7 +17,7 @@ const PAYMENT_WALLET_ADDRESS = (import.meta.env.VITE_PAYMENT_WALLET_ADDRESS || '
 const PACKAGE_ICONS: Record<string, React.ReactNode> = {
   starter: <Zap className="w-6 h-6 text-yellow-500" />,
   pro: <Shield className="w-6 h-6 text-blue-500" />,
-  enterprise: <Crown className="w-6 h-6 text-orange-500" />,
+  enterprise: <Crown className="w-6 h-6 text-violet-500" />,
 }
 
 function formatWei(wei: string | number): string {
@@ -223,14 +224,15 @@ export function BuyCreditsPage() {
   return (
     <div className="max-w-5xl mx-auto px-6 py-10 space-y-10">
       {/* ── Header ── */}
-      <GlassCard className="p-8 text-center" hoverEffect={false}>
+      <GlassCard className="gradient-accent-top p-8 text-center" hoverEffect={false}>
         <button
           onClick={() => navigate(-1)}
-          className="absolute top-4 left-4 p-2 rounded-full border border-white/10 glass-card hover:bg-orange-500/10 transition-colors"
+          className="absolute top-4 left-4 p-2 rounded-full border border-white/10 glass-card hover:bg-violet-500/10 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 text-white/50" />
         </button>
-        <h1 className="text-3xl font-bold text-white mb-2">
+        <SectionLabel>CREDITS & TOKENS</SectionLabel>
+        <h1 className="text-3xl font-bold text-white mb-2 mt-1">
           Manage Your <span className="gradient-text">Credits</span>
         </h1>
         <p className="text-sm text-white/50 max-w-xl mx-auto">
@@ -250,7 +252,7 @@ export function BuyCreditsPage() {
               </p>
             </div>
             <div className="p-2 rounded-xl bg-[rgba(10,10,10,0.6)] border border-white/10">
-              <Droplets className="w-5 h-5 text-orange-400" />
+              <Droplets className="w-5 h-5 text-violet-400" />
             </div>
           </div>
           <div className="mb-5">
@@ -282,7 +284,7 @@ export function BuyCreditsPage() {
               </p>
             </div>
             <div className="p-2 rounded-xl bg-[rgba(10,10,10,0.6)] border border-white/10">
-              <Zap className="w-5 h-5 text-orange-400" />
+              <Zap className="w-5 h-5 text-violet-400" />
             </div>
           </div>
           <div className="mb-5">
@@ -320,7 +322,7 @@ export function BuyCreditsPage() {
               className={
                 'px-5 py-2 rounded-full text-sm font-semibold transition-all duration-300 border ' +
                 (activeTab === tab.key
-                  ? 'bg-orange-500 text-black border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.35)]'
+                  ? 'bg-violet-500 text-white border-violet-500 shadow-[0_0_20px_rgba(139,92,246,0.35)]'
                   : 'bg-[rgba(10,10,10,0.6)] text-white/60 border-white/10 hover:border-white/20 hover:text-white')
               }
             >
@@ -459,7 +461,7 @@ export function BuyCreditsPage() {
                   </p>
                 </div>
                 <div className="p-2 rounded-xl bg-[rgba(10,10,10,0.6)] border border-white/10">
-                  <Droplets className="w-5 h-5 text-orange-400" />
+              <Droplets className="w-5 h-5 text-violet-400" />
                 </div>
               </div>
 
@@ -535,7 +537,7 @@ export function BuyCreditsPage() {
                   href="https://faucet.circle.com/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-3 py-1.5 rounded-full border border-white/10 bg-[rgba(10,10,10,0.6)] text-xs font-medium text-white/50 hover:border-orange-500/30 hover:text-orange-400 transition-all flex items-center gap-2"
+                  className="px-3 py-1.5 rounded-full border border-white/10 bg-[rgba(10,10,10,0.6)] text-xs font-medium text-white/50 hover:border-violet-500/30 hover:text-violet-400 transition-all flex items-center gap-2"
                 >
                   <ExternalLink className="w-3 h-3" />
                   Circle Faucet
@@ -697,7 +699,7 @@ export function BuyCreditsPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-white/50">cUSDC</span>
-                    <span className="text-orange-400 font-mono">{balances.cusdc}</span>
+                    <span className="text-violet-400 font-mono">{balances.cusdc}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-white/50">ETH</span>

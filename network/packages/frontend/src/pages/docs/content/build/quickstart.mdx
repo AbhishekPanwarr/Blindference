@@ -1,0 +1,178 @@
+---
+title: Quickstart
+description: 'Run your first confidential inference in 5 minutes'
+icon: 'rocket'
+---
+
+# Quickstart
+
+Get your first confidential AI inference running in under 5 minutes with the `@abhieren/blindference-agent` SDK.
+
+## Prerequisites
+
+- **Node.js 18+** — verify with `node --version`
+- **npm 9+** — verify with `npm --version`
+- A **MetaMask wallet** with Arbitrum Sepolia testnet configured
+- **Testnet ETH** on Arbitrum Sepolia (for gas)
+- **Testnet BLIND tokens** — get from the [Blindference Faucet](https://blindference.xyz/faucet)
+
+<Info>
+  You can get Sepolia ETH from the [Arbitrum Sepolia faucet](https://faucet.quicknode.com/arbitrum/sepolia) or [Alchemy faucet](https://sepoliafaucet.com/).
+</Info>
+
+## 1. Install
+
+Install the Agent SDK globally to use the CLI from anywhere:
+
+```bash title="Terminal"
+npm install -g @abhieren/blindference-agent
+```
+
+Verify the installation:
+
+```bash title="Terminal"
+blindference-agent --version
+```
+
+## 2. Configure Environment
+
+Create a `.env` file in your working directory:
+
+```bash title="Terminal"
+cat > .env << 'EOF'
+# REQUIRED: Your Arbitrum Sepolia wallet private key
+BLF_PRIVATE_KEY=0xYOUR_PRIVATE_KEY_HERE
+
+# REQUIRED: RPC endpoint (get free key at https://www.alchemy.com/)
+BLF_RPC_URL=https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY
+
+# Production endpoints (default — no need to change)
+BLF_PAYMENT_URL=https://payment.blindference.xyz
+BLF_ICL_URL=https://icl.blindference.xyz
+EOF
+```
+
+<Warning>
+  Replace `YOUR_PRIVATE_KEY_HERE` with a **dedicated test wallet** private key. Never use a wallet that holds mainnet assets.
+</Warning>
+
+<Info>
+  Get a free Alchemy API key at [dashboard.alchemy.com](https://dashboard.alchemy.com/apps). The default RPC URLs won't work without a real endpoint.
+</Info>
+
+## 3. Get Credits
+
+Purchase inference credits with your BLIND tokens:
+
+```bash title="Terminal"
+blindference-agent buy-package --id starter
+```
+
+Available packages:
+
+| Package | Calls | Price |
+|---------|-------|-------|
+| `starter` | 10 | ~5 BLIND |
+| `pro` | 100 | ~40 BLIND |
+| `enterprise` | 1000 | ~300 BLIND |
+
+## 4. Run Inference
+
+Submit your first confidential inference job:
+
+```bash title="Terminal"
+blindference-agent infer --prompt "What is the capital of France?"
+```
+
+**Expected output:**
+
+```
+Initializing CoFHE...
+Encrypting prompt...
+Submitting to Payment Service...
+Job submitted: abc-123
+Polling for completion (this may take 1-3 minutes)...
+Job COMPLETED
+
+Result:
+Paris
+```
+
+<Info>
+  CoFHE initialization takes 10-30 seconds on first run (ZK proof generation). Subsequent calls are faster.
+</Info>
+
+## 5. Start the REST Server (Optional)
+
+For language-agnostic integration, start the local REST server:
+
+```bash title="Terminal"
+blindference-agent start --port 3000
+```
+
+Now call from any language:
+
+```bash title="Terminal"
+curl -X POST http://localhost:3000/infer \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "What is 2+2?"}'
+```
+
+## Use the SDK Programmatically
+
+Import the SDK in your TypeScript or JavaScript project:
+
+```typescript title="TypeScript"
+import { BlindferenceAgent } from '@abhieren/blindference-agent'
+
+const agent = new BlindferenceAgent({
+  privateKey: process.env.BLF_PRIVATE_KEY!,
+  paymentServiceUrl: 'https://payment.blindference.xyz',
+  rpcUrl: process.env.BLF_RPC_URL!
+})
+
+await agent.initCofhe()
+
+const result = await agent.infer({
+  prompt: 'What is the capital of France?',
+  modelId: 'groq:llama-3.3-70b-versatile',
+  currency: 'BLIND'
+})
+
+if (result.status === 'COMPLETED') {
+  console.log('Answer:', result.output) // "Paris"
+} else {
+  console.error('Job failed:', result.status)
+}
+```
+
+## Verify Your Job
+
+Check the status via the Payment Service API:
+
+```bash title="Terminal"
+curl -s "https://payment.blindference.xyz/v1/jobs/YOUR_JOB_ID"
+```
+
+Or check if quorum nodes are active:
+
+```bash title="Terminal"
+curl https://icl.blindference.xyz/health
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="CLI Reference" icon="terminal" href="cli-reference">
+    Complete reference for all blindference-agent commands
+  </Card>
+  <Card title="SDK API" icon="code" href="sdk-api">
+    Programmatic usage with TypeScript types and examples
+  </Card>
+  <Card title="Configuration" icon="gear" href="configuration">
+    Environment variables, network settings, and advanced options
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="troubleshooting">
+    Common errors and how to fix them
+  </Card>
+</CardGroup>

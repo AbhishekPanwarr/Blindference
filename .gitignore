@@ -17,6 +17,7 @@ htmlcov/
 node_modules/
 dist/
 build/
+!docs/build/
 *.tsbuildinfo
 
 artifacts/

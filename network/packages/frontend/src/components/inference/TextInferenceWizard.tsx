@@ -5,6 +5,7 @@ import axios from 'axios'
 import { Lock, ShieldAlert, Cpu } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Hex } from 'viem'
+import { SectionLabel } from '../effects/GlowDivider'
 
 import { inferenceApi, jobApi } from '../../api/inferenceApi'
 import { useCofheClient } from '../../hooks/useCofheClient'
@@ -61,6 +62,16 @@ export function TextInferenceWizard() {
   const [isFocused, setIsFocused] = useState(false)
   const selectedModel = TEXT_MODEL_OPTIONS[selectedModelKey]
 
+  // Persist conversation history across wizard sessions (navigates away after submit)
+  const [messageHistory, setMessageHistory] = useState<{ role: string; content: string }[]>(() => {
+    try {
+      const raw = localStorage.getItem('blindference_wizard_history')
+      return raw ? JSON.parse(raw) : []
+    } catch {
+      return []
+    }
+  })
+
   const [encryptStep, setEncryptStep] = useState<string | null>(null)
 
   const isBusy = stage !== 'idle'
@@ -107,8 +118,14 @@ export function TextInferenceWizard() {
       setStage('encrypting')
       setEncryptStep('AES-256-GCM encrypting prompt...')
 
+      // Build conversation history from persisted wizard turns
+      const conversation = messageHistory
+      const payloadObj = { conversation, prompt: normalizedPrompt }
+      const payloadString = JSON.stringify(payloadObj)
+      console.log(`[Blindference] Encrypting ${conversation.length} history turns + current prompt`)
+
       const promptKey = generateKey()
-      const encryptedPrompt = await encryptText(normalizedPrompt, promptKey)
+      const encryptedPrompt = await encryptText(payloadString, promptKey)
       const packedPrompt = packPayload(encryptedPrompt)
 
       setEncryptStep('CoFHE ZK proof generation (~10-30s)...')
@@ -208,6 +225,8 @@ export function TextInferenceWizard() {
           prompt_key_store_tx: promptKeyStoreTx,
           prompt_key_store_status: 'stored_by_user',
           prompt_key_store_address: promptKeyStoreAddress,
+          conversation_history: conversation,
+          has_conversation_history: conversation.length > 0,
         },
       })
 
@@ -218,6 +237,15 @@ export function TextInferenceWizard() {
 
       if (!requestId) {
         throw new Error('The ICL response did not include a request identifier.')
+      }
+
+      // Persist user message for next turn
+      const nextHistory = [...messageHistory, { role: 'user', content: normalizedPrompt }]
+      setMessageHistory(nextHistory)
+      try {
+        localStorage.setItem('blindference_wizard_history', JSON.stringify(nextHistory))
+      } catch {
+        // ignore quota errors
       }
 
       navigate(`/inference/${requestId}`)
@@ -349,7 +377,7 @@ export function TextInferenceWizard() {
         </details>
       </motion.div>
 
-      <motion.div variants={itemVariants} className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
+      <motion.div variants={itemVariants} className="rounded-xl border border-white/10 bg-white/[0.02] p-5 gradient-accent-top">
         <div className="flex items-start gap-4">
           <div className="mt-1 rounded-full bg-emerald-500/10 p-2 border border-emerald-500/20 text-emerald-500">
             <Lock className="w-4 h-4" />

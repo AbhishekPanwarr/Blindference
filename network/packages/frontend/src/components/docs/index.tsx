@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../utils/helpers';
-import { ChevronDown, Zap, AlertTriangle, Info, Lightbulb } from 'lucide-react';
+import { ChevronDown, Zap, AlertTriangle, Info, Lightbulb, Check, Copy } from 'lucide-react';
 
 // ─── Card / CardGroup ───
 
@@ -39,7 +39,7 @@ export function Card({ title, icon, href, children, className }: CardProps) {
       <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_2.5s_linear_infinite] bg-gradient-to-r from-transparent via-white/5 to-transparent pointer-events-none" />
       <div className="relative z-10 p-6">
         {icon && (
-          <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mb-4 text-orange-400">
+          <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mb-4 text-violet-400">
             {iconMap[icon] || iconMap.default}
           </div>
         )}
@@ -91,8 +91,8 @@ interface StepProps {
 export function Step({ title, children }: StepProps) {
   return (
     <div className="relative pl-8 pb-8 last:pb-0">
-      <div className="absolute left-0 top-0 w-6 h-6 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center">
-        <div className="w-2 h-2 rounded-full bg-orange-400" />
+      <div className="absolute left-0 top-0 w-6 h-6 rounded-full bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
+        <div className="w-2 h-2 rounded-full bg-violet-400" />
       </div>
       <div className="absolute left-[11px] top-6 bottom-0 w-px bg-white/10" />
       {title && <h4 className="text-white font-semibold mb-2">{title}</h4>}
@@ -223,14 +223,14 @@ const calloutStyles = {
   note: "border-l-4 border-blue-500/50 bg-blue-500/5",
   tip: "border-l-4 border-green-500/50 bg-green-500/5",
   warning: "border-l-4 border-yellow-500/50 bg-yellow-500/5",
-  info: "border-l-4 border-orange-500/50 bg-orange-500/5",
+  info: "border-l-4 border-violet-500/50 bg-violet-500/5",
 };
 
 const calloutIcons = {
   note: <Info className="w-4 h-4 text-blue-400" />,
   tip: <Lightbulb className="w-4 h-4 text-green-400" />,
   warning: <AlertTriangle className="w-4 h-4 text-yellow-400" />,
-  info: <Zap className="w-4 h-4 text-orange-400" />,
+  info: <Zap className="w-4 h-4 text-violet-400" />,
 };
 
 function Callout({ type, children, className }: CalloutProps & { type: keyof typeof calloutStyles }) {
@@ -268,23 +268,41 @@ export function CodeBlock({ children, className, title }: CodeBlockProps) {
   const handleCopy = () => {
     navigator.clipboard.writeText(code);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), 1800);
   };
 
   return (
-    <div className="my-6 rounded-2xl bg-[#0a0a0a] border border-white/[0.08] overflow-hidden">
-      {title && (
-        <div className="flex items-center justify-between px-4 py-2 border-b border-white/[0.08] bg-white/[0.02]">
-          <span className="text-xs text-white/40 font-mono">{title}</span>
+    <div className="my-6 overflow-hidden rounded-xl border border-white/[0.06] bg-[#08080a]">
+      <div className="flex items-center justify-between border-b border-white/[0.05] bg-white/[0.015] px-3 py-1.5">
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1">
+            <div className="h-[9px] w-[9px] rounded-full bg-[#ff5f57]" />
+            <div className="h-[9px] w-[9px] rounded-full bg-[#febc2e]" />
+            <div className="h-[9px] w-[9px] rounded-full bg-[#28c840]" />
+          </div>
+          {title && (
+            <span className="text-[11px] font-semibold text-gray-400 tracking-wide">
+              {title}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] font-mono text-gray-600">{language}</span>
           <button
             onClick={handleCopy}
-            className="text-xs text-white/40 hover:text-white transition-colors"
+            className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium transition-all ${
+              copied
+                ? 'bg-emerald-500/10 text-emerald-400'
+                : 'bg-white/[0.04] text-gray-500 hover:bg-white/[0.08] hover:text-gray-300'
+            }`}
+            aria-label="Copy code"
           >
-            {copied ? 'Copied!' : 'Copy'}
+            {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+            {copied ? 'Copied' : 'Copy'}
           </button>
         </div>
-      )}
-      <div className="overflow-x-auto">
+      </div>
+      <div className="relative">
         <SyntaxHighlighter
           language={language}
           style={vscDarkPlus}
@@ -293,7 +311,7 @@ export function CodeBlock({ children, className, title }: CodeBlockProps) {
             padding: '1rem 1.25rem',
             background: 'transparent',
             fontSize: '13px',
-            lineHeight: '1.6',
+            lineHeight: '1.7',
           }}
         >
           {code}
@@ -355,9 +373,9 @@ export function Mermaid({ children }: MermaidProps) {
         mermaid.default.initialize({
           theme: 'dark',
           themeVariables: {
-            primaryColor: '#f97316',
+            primaryColor: '#8B5CF6',
             primaryTextColor: '#fff',
-            primaryBorderColor: '#f97316',
+            primaryBorderColor: '#8B5CF6',
             lineColor: '#666',
             secondaryColor: '#1a1a1a',
             tertiaryColor: '#0a0a0a',
@@ -377,15 +395,126 @@ export function Mermaid({ children }: MermaidProps) {
   );
 }
 
-// ─── Pre/Code wrapper for inline code ───
+// ─── Copy Button (shared) ───
 
-export function Pre({ children, ...props }: React.HTMLProps<HTMLPreElement>) {
+function CopyButton({ code }: { code: string }) {
+  const [copied, setCopied] = React.useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium transition-all ${
+        copied
+          ? 'bg-emerald-500/10 text-emerald-400'
+          : 'bg-white/[0.04] text-gray-500 hover:bg-white/[0.08] hover:text-gray-300'
+      }`}
+      aria-label="Copy code"
+    >
+      {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+      {copied ? 'Copied' : 'Copy'}
+    </button>
+  );
+}
+
+// ─── Pre wrapper for fenced code blocks ───
+
+function MacCodeBlock({ code, language, title }: { code: string; language: string; title?: string }) {
+  return (
+    <div className="my-6 overflow-hidden rounded-xl border border-white/[0.06] bg-[#08080a]">
+      <div className="flex items-center justify-between border-b border-white/[0.05] bg-white/[0.015] px-4 py-2">
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1.5">
+            <div className="h-[9px] w-[9px] rounded-full bg-[#ff5f57]" />
+            <div className="h-[9px] w-[9px] rounded-full bg-[#febc2e]" />
+            <div className="h-[9px] w-[9px] rounded-full bg-[#28c840]" />
+          </div>
+          <span className="text-[11px] font-semibold text-gray-400 tracking-wide">
+            {title || ''}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-mono text-gray-600">{language}</span>
+          <CopyButton code={code} />
+        </div>
+      </div>
+      <div className="relative">
+        <SyntaxHighlighter
+          language={language}
+          style={vscDarkPlus}
+          customStyle={{
+            margin: 0,
+            padding: '1rem 1.25rem',
+            background: 'transparent',
+            fontSize: '13px',
+            lineHeight: '1.7',
+          }}
+        >
+          {code}
+        </SyntaxHighlighter>
+      </div>
+    </div>
+  );
+}
+
+export function Pre({ children, title: preTitle, ...props }: React.HTMLProps<HTMLPreElement> & { title?: string }) {
+  // Extract code element from children
+  let code = '';
+  let language = 'text';
+  let title = preTitle || '';
+
+  const extractCode = (child: React.ReactNode) => {
+    if (React.isValidElement(child)) {
+      const el = child as React.ReactElement;
+      // MDX maps `code` to InlineCode, so check both native 'code' and our wrapper
+      if (el.type === 'code' || el.type === InlineCode) {
+        const codeProps = el.props as { className?: string; children?: React.ReactNode; title?: string };
+        language = codeProps.className?.replace('language-', '') || 'text';
+        title = title || codeProps.title || '';
+        code = typeof codeProps.children === 'string' ? codeProps.children : '';
+        return true;
+      }
+    }
+    return false;
+  };
+
+  if (React.isValidElement(children) && extractCode(children)) {
+    // Single code child
+  } else if (Array.isArray(children)) {
+    for (const child of children) {
+      if (extractCode(child)) break;
+    }
+  }
+
+  // If we found a code block with language, render Mac-style
+  if (code && language !== 'text') {
+    // Route mermaid blocks to the Mermaid diagram component
+    if (language === 'mermaid') {
+      return <Mermaid>{code}</Mermaid>;
+    }
+    return <MacCodeBlock code={code} language={language} title={title} />;
+  }
+
+  // Fallback for plain pre blocks (no language)
   return <pre {...props}>{children}</pre>;
 }
 
-export function InlineCode({ children }: { children: React.ReactNode }) {
+// ─── Inline code wrapper ───
+
+export function InlineCode({ children, className }: { children: React.ReactNode; className?: string }) {
+  // If this is a code block (language-* class), return plain code to avoid double-styling
+  if (className?.startsWith('language-')) {
+    return <code className={className}>{children}</code>;
+  }
+
+  // Inline code styling
   return (
-    <code className="px-1.5 py-0.5 rounded bg-white/[0.06] text-orange-300 text-sm font-mono">
+    <code className="px-1.5 py-0.5 rounded bg-white/[0.06] text-violet-300 text-sm font-mono">
       {children}
     </code>
   );

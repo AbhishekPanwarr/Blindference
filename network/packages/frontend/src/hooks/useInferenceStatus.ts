@@ -25,6 +25,7 @@ export type DemoStatus = {
     commitment_hash?: string
     encrypted_output_key_high?: string
     encrypted_output_key_low?: string
+    leader_output_preview?: string
   }
   quorum: {
     leader: {
@@ -230,6 +231,7 @@ function mapTextStatusToDemoStatus(
       commitment_hash: request.commitment_hash ?? undefined,
       encrypted_output_key_high: request.encrypted_output_key_high ?? undefined,
       encrypted_output_key_low: request.encrypted_output_key_low ?? undefined,
+      leader_output_preview: request.leader_submission?.summary ?? undefined,
     },
     quorum: {
       leader: leaderSubmission
@@ -274,15 +276,13 @@ function mapJobToDemoStatus(job: JobStatusResponse): DemoStatus {
     task_id: job.job_id,
     mode: 'text',
     status: stage,
-    text_result:
-      stage === 'ACCEPTED'
-        ? {
-            output_cid: job.output_cid ?? undefined,
-            commitment_hash: job.result_hash ?? undefined,
-            encrypted_output_key_high: job.encrypted_output_key_high ?? undefined,
-            encrypted_output_key_low: job.encrypted_output_key_low ?? undefined,
-          }
-        : undefined,
+    text_result: {
+      output_cid: job.output_cid ?? undefined,
+      commitment_hash: job.result_hash ?? undefined,
+      encrypted_output_key_high: job.encrypted_output_key_high ?? undefined,
+      encrypted_output_key_low: job.encrypted_output_key_low ?? undefined,
+      leader_output_preview: job.leader_summary ?? undefined,
+    },
     quorum: {
       leader: job.leader_address
         ? { address: job.leader_address, status: stage === 'ACCEPTED' ? 'COMPLETE' : 'EXECUTING' }
@@ -316,7 +316,10 @@ export function useInferenceStatus(requestId: string) {
 
   useEffect(() => {
     if (!requestId) return
-
+    // Reset status immediately when requestId changes so the UI doesn't
+    // briefly show the previous inference's completed state.
+    setStatus(null)
+    lastLoggedRef.current = null
     let mounted = true
     const poll = async () => {
       try {

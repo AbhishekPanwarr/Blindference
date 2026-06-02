@@ -1,0 +1,210 @@
+---
+title: "SDK API"
+description: "Programmatic API for the Blindference Agent SDK"
+icon: "code"
+---
+
+The `BlindferenceAgent` class is the core SDK for building confidential AI agents.
+
+## Constructor
+
+```typescript title="TypeScript"
+import { BlindferenceAgent } from '@abhieren/blindference-agent'
+
+const agent = new BlindferenceAgent({
+  privateKey: '0xYOUR_PRIVATE_KEY',
+  paymentServiceUrl: 'https://payment.blindference.xyz',
+  rpcUrl: 'https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY',
+  // Optional:
+  iclUrl: 'https://icl.blindference.xyz',
+  ipfsGateway: 'https://ipfs.io/ipfs',
+  chainId: 421614,
+  promptKeyStoreAddress: '0x...',
+  cofheConfig: { /* CoFHE SDK config */ }
+})
+```
+
+### Configuration Options
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `privateKey` | `string` | ✅ | Wallet private key (hex) |
+| `paymentServiceUrl` | `string` | ✅ | Payment Service URL |
+| `rpcUrl` | `string` | ✅ | Arbitrum Sepolia RPC URL |
+| `iclUrl` | `string` | | ICL API URL (default: `https://icl.blindference.xyz`) |
+| `ipfsGateway` | `string` | | IPFS gateway (default: `https://ipfs.io/ipfs`) |
+| `chainId` | `number` | | Chain ID (default: `421614`) |
+| `promptKeyStoreAddress` | `string` | | PromptKeyStore contract address |
+| `cofheConfig` | `object` | | Additional CoFHE SDK configuration |
+
+## Methods
+
+### initCofhe()
+
+Initialize the CoFHE client. Required before calling `infer()`.
+
+```typescript title="TypeScript"
+await agent.initCofhe()
+```
+
+**Returns:** `Promise<void>`
+
+> **Note:** ZK proof generation on first init takes 10-30 seconds. Do not interrupt.
+
+### infer()
+
+Submit an encrypted inference job and wait for the result.
+
+```typescript title="TypeScript"
+const result = await agent.infer({
+  prompt: 'What is the capital of France?',
+  modelId: 'groq:llama-3.3-70b-versatile',
+  currency: 'BLIND',
+  insurance: false
+})
+```
+
+#### Options
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `prompt` | `string` | ✅ | — | The prompt to send |
+| `modelId` | `string` | | `groq:llama-3.3-70b-versatile` | Model ID |
+| `currency` | `'BLIND' \| 'cUSDC'` | | `'BLIND'` | Payment currency |
+| `insurance` | `boolean` | | `false` | Enable insurance |
+
+#### Returns
+
+```typescript title="TypeScript"
+interface InferenceResult {
+  jobId: string          // Unique job identifier
+  taskId: string         // ICL task identifier
+  status: 'COMPLETED' | 'FAILED' | 'REJECTED'
+  output?: string        // Decrypted plaintext (COMPLETED only)
+  outputCid?: string     // IPFS CID of encrypted output
+  commitmentHash?: string // On-chain commitment hash
+}
+```
+
+### getBalance()
+
+Get credit balance for the configured wallet.
+
+```typescript title="TypeScript"
+const balance = await agent.getBalance()
+// or specify an address:
+const balance = await agent.getBalance('0x...')
+```
+
+#### Returns
+
+```typescript title="TypeScript"
+interface CreditBalance {
+  blind: string      // BLIND token balance
+  cusdc: string      // cUSDC credit balance
+  packages: string[] // Active package IDs
+}
+```
+
+### getPackages()
+
+List available credit packages.
+
+```typescript title="TypeScript"
+const packages = await agent.getPackages()
+```
+
+#### Returns
+
+```typescript title="TypeScript"
+interface CreditPackage {
+  id: string
+  name: string
+  calls: number
+  price: string
+  currency: string
+}
+```
+
+### purchasePackage()
+
+Purchase a credit package.
+
+```typescript title="TypeScript"
+const result = await agent.purchasePackage('starter')
+```
+
+#### Returns
+
+```typescript title="TypeScript"
+interface PurchaseResult {
+  success: boolean
+  txHash?: string
+  packageId: string
+}
+```
+
+## Full Example
+
+```typescript title="TypeScript"
+import { BlindferenceAgent } from '@abhieren/blindference-agent'
+
+async function main() {
+  const agent = new BlindferenceAgent({
+    privateKey: process.env.BLF_PRIVATE_KEY!,
+    paymentServiceUrl: 'https://payment.blindference.xyz',
+    rpcUrl: process.env.BLF_RPC_URL!
+  })
+
+  await agent.initCofhe()
+
+  const result = await agent.infer({
+    prompt: 'What is the capital of France?',
+    modelId: 'groq:llama-3.3-70b-versatile',
+    currency: 'BLIND'
+  })
+
+  if (result.status === 'COMPLETED') {
+    console.log('Answer:', result.output)
+  } else {
+    console.error('Job failed:', result.status)
+  }
+}
+
+main().catch(console.error)
+```
+
+## Error Handling
+
+The SDK throws typed errors for common failure modes:
+
+```typescript title="TypeScript"
+try {
+  const result = await agent.infer({ prompt: 'Hello' })
+} catch (error) {
+  if (error instanceof PaymentError) {
+    // Insufficient credits, invalid package, etc.
+  } else if (error instanceof CofheError) {
+    // CoFHE initialization or decryption failed
+  } else if (error instanceof QuorumError) {
+    // Quorum rejected the result
+  } else {
+    // Network, timeout, or unknown error
+  }
+}
+```
+
+## Advanced: Custom IPFS Gateway
+
+Configure a custom IPFS gateway for faster downloads:
+
+```typescript title="TypeScript"
+const agent = new BlindferenceAgent({
+  privateKey: process.env.BLF_PRIVATE_KEY!,
+  paymentServiceUrl: 'https://payment.blindference.xyz',
+  rpcUrl: process.env.BLF_RPC_URL!,
+  ipfsGateway: 'https://gateway.pinata.cloud/ipfs'
+})
+```
+
+The SDK has built-in fallback to multiple public gateways if the primary fails.

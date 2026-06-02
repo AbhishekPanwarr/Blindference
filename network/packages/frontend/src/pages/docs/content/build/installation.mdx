@@ -1,0 +1,73 @@
+---
+title: "Installation"
+description: "Install the Blindference Agent SDK via npm"
+icon: "download"
+---
+
+## Prerequisites
+
+Before installing, ensure you have:
+
+- **Node.js 18+** — verify with `node --version`
+- **npm 9+** — verify with `npm --version`
+- A **MetaMask wallet** with Arbitrum Sepolia testnet configured
+- **Testnet ETH** on Arbitrum Sepolia (for gas)
+- **Testnet BLIND tokens** — request from the [Blindference Faucet](https://blindference.xyz/faucet)
+
+## Global Install (Recommended for CLI)
+
+Install the package globally to use the `blindference-agent` command anywhere:
+
+```bash title="Terminal"
+npm install -g @abhieren/blindference-agent
+```
+
+Verify the installation:
+
+```bash title="Terminal"
+blindference-agent --version
+```
+
+## Per-Project Install (Recommended for SDK)
+
+For programmatic use in a project:
+
+```bash title="Terminal"
+npm install @abhieren/blindference-agent
+```
+
+Import in your code:
+
+```typescript title="TypeScript"
+import { BlindferenceAgent } from '@abhieren/blindference-agent'
+```
+
+## From Source
+
+Clone the repository and build locally:
+
+```bash title="Terminal"
+git clone https://github.com/AbhishekPanwarr/Blindference-Agent.git
+cd Blindference-Agent
+npm install
+npm run build
+```
+
+Link for local development:
+
+```bash title="Terminal"
+npm link
+blindference-agent --version
+```
+
+## Upgrade
+
+```bash title="Terminal"
+npm update -g @abhieren/blindference-agent
+```
+
+## Next Steps
+
+- Read the [5-Minute Quickstart](/build/quickstart)
+- Check the [CLI Reference](/build/cli-reference)
+- Explore the [SDK API](/build/sdk-api)

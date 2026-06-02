@@ -75,12 +75,13 @@ export function useChat() {
     setMessages(prev => prev.map(m => {
       if (m.role !== 'assistant' || m.requestId !== activeRequestId) return m
       if (m.status === 'done' || m.status === 'error' || m.status === 'ready') return m
-      // store metadata for manual decrypt
+      // store metadata for manual decrypt + leader output preview
       const updated: ChatEntry = {
         ...m,
         outputCID: output_cid,
         encryptedOutputKeyHigh: high,
         encryptedOutputKeyLow: low,
+        leaderOutputPreview: status.text_result?.leader_output_preview,
       }
       if (getAutoDecryptSetting() && cofheClient && isReady) {
         // will be handled by the decrypt effect below
@@ -122,6 +123,26 @@ export function useChat() {
       }
     })()
   }, [status?.status, status?.text_result?.output_cid, cofheClient, isReady, activeRequestId])
+
+  // Handle REJECTED / FAILED — surface leader output with rejection reason
+  useEffect(() => {
+    if (!status || (status.status !== 'REJECTED' && status.status !== 'FAILED') || status.mode !== 'text') return
+    const preview = status.text_result?.leader_output_preview
+    const reason = status.failure_reason ?? 'Quorum rejected the leader result.'
+
+    setMessages(prev => prev.map(m => {
+      if (m.role !== 'assistant' || m.requestId !== activeRequestId) return m
+      if (m.status === 'done' || m.status === 'error' || m.status === 'ready') return m
+      const updated: ChatEntry = {
+        ...m,
+        status: 'error',
+        errorMsg: reason,
+        leaderOutputPreview: preview,
+      }
+      updateHistoryEntry(m.id, { status: 'error', errorMsg: reason })
+      return updated
+    }))
+  }, [status?.status, status?.text_result?.leader_output_preview, status?.failure_reason, activeRequestId])
 
   const pushUserMessage = useCallback((prompt: string, model: string): string => {
     const userId = uid()
@@ -193,5 +214,5 @@ export function useChat() {
     }
   }, [messages, cofheClient, isReady])
 
-  return { messages, pushUserMessage, updateAssistantStatus, updateAssistantMetadata, failAssistantMessage, setActiveRequestId, status, decryptMessage }
+  return { messages, pushUserMessage, updateAssistantStatus, updateAssistantMetadata, failAssistantMessage, setActiveRequestId, activeRequestId, status, decryptMessage }
 }

@@ -27,7 +27,7 @@ interface QuorumVisualizerProps {
 
 function RepBadge({ rep }: { rep?: number }) {
   if (rep === undefined) return null;
-  const color = rep > 80 ? 'text-orange-400 bg-orange-500/10 border-orange-500/20' : rep > 50 ? 'text-white/50 bg-orange-500/5 border-orange-500/10' : 'text-error bg-error/10 border-error/20';
+  const color = rep > 80 ? 'text-violet-400 bg-violet-500/10 border-violet-500/20' : rep > 50 ? 'text-white/50 bg-violet-500/5 border-violet-500/10' : 'text-error bg-error/10 border-error/20';
   return (
      <span className={`text-[9px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded border ${color}`}>Rep: {rep}%</span>
   )
@@ -38,7 +38,7 @@ export function QuorumVisualizer({ leader, verifiers, status }: QuorumVisualizer
     <div className="space-y-3">
       {leader && (
         <GlassCard className="flex items-center gap-4 p-4 rounded-xl">
-          <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center text-orange-400 font-bold text-xs uppercase tracking-wider border border-orange-500/30 glow-primary">
+          <div className="w-8 h-8 rounded-full bg-violet-500/20 flex items-center justify-center text-violet-400 font-bold text-xs uppercase tracking-wider border border-violet-500/30 glow-violet">
             L
           </div>
           <div className="flex-1">
@@ -48,7 +48,7 @@ export function QuorumVisualizer({ leader, verifiers, status }: QuorumVisualizer
             </div>
             <span className="font-mono text-xs text-white/50 flex items-center gap-2">
                {truncateAddress(leader.address)}
-               {leader.stake && <span className="opacity-60">• Stake: {leader.stake} GNK</span>}
+               {leader.stake && <span className="opacity-60">• Stake: {leader.stake} BLIND</span>}
             </span>
           </div>
           <StatusBadge status={leader.status} />
@@ -57,7 +57,7 @@ export function QuorumVisualizer({ leader, verifiers, status }: QuorumVisualizer
 
       {verifiers?.map((v, i) => (
         <GlassCard key={i} className="flex items-center gap-4 p-4 rounded-xl">
-          <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center text-orange-400 font-bold text-xs border border-orange-500/20">
+          <div className="w-8 h-8 rounded-full bg-violet-500/10 flex items-center justify-center text-violet-400 font-bold text-xs border border-violet-500/20">
             V{i + 1}
           </div>
           <div className="flex-1">
@@ -67,7 +67,7 @@ export function QuorumVisualizer({ leader, verifiers, status }: QuorumVisualizer
             </div>
             <span className="font-mono text-xs text-white/50 flex items-center gap-2">
                {truncateAddress(v.address)}
-               {v.stake && <span className="opacity-60">• Stake: {v.stake} GNK</span>}
+               {v.stake && <span className="opacity-60">• Stake: {v.stake} BLIND</span>}
             </span>
           </div>
           {v.verdict === 'CONFIRM' ? (
@@ -100,7 +100,7 @@ function StatusBadge({ status }: { status: string }) {
       className={cn(
         "px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest",
         isComplete
-          ? "bg-orange-500/10 text-orange-400 border-orange-500/20"
+          ? "bg-violet-500/10 text-violet-400 border-violet-500/20"
           : "bg-[rgba(10,10,10,0.8)] text-white/50 border-white/10"
       )}
     >

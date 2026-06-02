@@ -38,67 +38,6 @@ const models = [
   },
 ];
 
-const partners = [
-  {
-    name: 'Arbitrum',
-    render: () => (
-      <div className="flex items-center gap-2">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="shrink-0">
-          <path d="M12 2L22 20H2L12 2Z" fill="#f97316" />
-          <path d="M12 8L16 16H8L12 8Z" fill="#000" />
-        </svg>
-        <span className="text-sm font-semibold tracking-wide">Arbitrum</span>
-      </div>
-    ),
-  },
-  {
-    name: 'Fhenix',
-    render: () => (
-      <span className="text-sm font-semibold tracking-wide">Fhenix</span>
-    ),
-  },
-  {
-    name: 'Reineira',
-    render: () => (
-      <span className="text-sm font-semibold tracking-wide">Reineira</span>
-    ),
-  },
-  {
-    name: 'Groq',
-    render: () => (
-      <span className="text-sm font-bold tracking-wide">Groq</span>
-    ),
-  },
-  {
-    name: 'Google',
-    render: () => (
-      <div className="flex items-center gap-2">
-        <svg width="20" height="20" viewBox="0 0 24 24" className="shrink-0">
-          <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2" />
-          <text
-            x="12"
-            y="16"
-            textAnchor="middle"
-            fill="currentColor"
-            fontSize="12"
-            fontWeight="bold"
-            fontFamily="sans-serif"
-          >
-            G
-          </text>
-        </svg>
-        <span className="text-sm font-semibold tracking-wide">Google</span>
-      </div>
-    ),
-  },
-  {
-    name: 'Pinata',
-    render: () => (
-      <span className="text-sm font-semibold tracking-wide">Pinata</span>
-    ),
-  },
-];
-
 export default function ModelShowcase() {
   return (
     <section className="relative py-32 px-6 overflow-hidden">
@@ -111,7 +50,7 @@ export default function ModelShowcase() {
           viewport={{ once: true, margin: '-100px' }}
           className="text-center mb-20"
         >
-          <span className="font-mono text-xs uppercase tracking-[0.3em] text-brand-primary">
+          <span className="font-mono text-xs uppercase tracking-[0.3em] text-violet-500">
             Integrations
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold font-heading text-brand-text mt-3 mb-4">
@@ -143,8 +82,8 @@ export default function ModelShowcase() {
                   'group relative rounded-2xl p-6 h-full flex flex-col',
                   'bg-brand-surface/60 backdrop-blur-xl border border-white/[0.08]',
                   'transition-all duration-300 ease-out',
-                  'hover:border-brand-primary/40',
-                  'hover:shadow-[0_0_30px_rgba(249,115,22,0.12),0_8px_32px_rgba(0,0,0,0.5)]',
+                  'hover:border-violet-500/40',
+                  'hover:shadow-[0_0_30px_rgba(139,92,246,0.12),0_8px_32px_rgba(0,0,0,0.5)]',
                   'hover:-translate-y-1'
                 )}
               >
@@ -153,15 +92,15 @@ export default function ModelShowcase() {
                   <span className="text-xs text-brand-text-secondary font-medium">
                     {model.provider}
                   </span>
-                  <span className="inline-flex items-center gap-1 rounded-lg bg-brand-primary/10 border border-brand-primary/20 px-2.5 py-1 text-[11px] font-semibold text-brand-highlight">
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-violet-500/10 border border-violet-500/20 px-2.5 py-1 text-[11px] font-semibold text-violet-300">
                     {model.badge}
                   </span>
                 </div>
 
                 {/* Center: model name + icon */}
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center shrink-0 group-hover:glow-primary transition-all duration-300">
-                    <model.Icon className="w-5 h-5 text-brand-secondary" />
+                  <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0 group-hover:glow-violet transition-all duration-300">
+                    <model.Icon className="w-5 h-5 text-violet-400" />
                   </div>
                   <h3 className="text-xl font-bold text-brand-text leading-tight font-heading">
                     {model.name}
@@ -192,29 +131,7 @@ export default function ModelShowcase() {
           ))}
         </motion.div>
 
-        {/* Partner Logos */}
-        <motion.div
-          variants={fadeInUp}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: '-50px' }}
-          className="mt-24"
-        >
-          <p className="text-center text-xs uppercase tracking-[0.3em] text-brand-text-secondary/60 mb-10">
-            Trusted by leading infrastructure partners
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-12">
-            {partners.map((partner) => (
-              <motion.div
-                key={partner.name}
-                whileHover={{ scale: 1.05, opacity: 1 }}
-                className="text-brand-text-secondary/40 hover:text-brand-text transition-all duration-300 cursor-default"
-              >
-                <partner.render />
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
+
       </div>
     </section>
   );

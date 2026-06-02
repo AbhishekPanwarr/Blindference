@@ -54,8 +54,8 @@ function StatusBadge({ status }: { status: 'Completed' | 'Pending' }) {
   const isCompleted = status === 'Completed'
   return (
     <div className="flex items-center gap-1.5">
-      <span className={`h-1.5 w-1.5 rounded-full ${isCompleted ? 'bg-green-400' : 'bg-orange-400'} ${isCompleted ? '' : 'animate-pulse'}`} />
-      <span className={`text-xs font-medium ${isCompleted ? 'text-green-400' : 'text-orange-400'}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${isCompleted ? 'bg-green-400' : 'bg-violet-400'} ${isCompleted ? '' : 'animate-pulse'}`} />
+      <span className={`text-xs font-medium ${isCompleted ? 'text-green-400' : 'text-violet-400'}`}>
         {status}
       </span>
     </div>
@@ -89,8 +89,8 @@ function ContactCard({
     <GlassCard className="gradient-accent-top p-6 hover:-translate-y-1 transition-all duration-300">
       <div className="flex flex-col h-full">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
-            <Icon className="w-5 h-5 text-orange-400" />
+          <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+            <Icon className="w-5 h-5 text-violet-400" />
           </div>
           <h3 className="text-lg font-bold text-white">{title}</h3>
         </div>
@@ -135,7 +135,7 @@ export function WalletPage() {
         className="mb-10"
       >
         <div className="flex items-center gap-3 mb-2">
-          <Wallet className="w-8 h-8 text-orange-400" />
+          <Wallet className="w-8 h-8 text-violet-400" />
           <h1 className="text-4xl font-bold">
             Your{' '}
             <span className="gradient-text">Wallet</span>
@@ -152,10 +152,11 @@ export function WalletPage() {
         animate="show"
         variants={fadeInUp}
         className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12"
+       
       >
         {/* cUSDC Balance Card */}
         <GlassCard className="gradient-accent-top p-8 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-orange-500/50 to-transparent" />
+          <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-violet-500/50 to-transparent" />
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-6">
               <SectionLabel text="CUSDC BALANCE" />
@@ -200,7 +201,7 @@ export function WalletPage() {
 
         {/* BLIND Balance Card */}
         <GlassCard className="gradient-accent-top p-8 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-orange-500/50 to-transparent" />
+          <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-violet-500/50 to-transparent" />
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-6">
               <SectionLabel text="BLIND BALANCE" />
@@ -253,6 +254,7 @@ export function WalletPage() {
         animate="show"
         variants={fadeInUp}
         className="mb-12"
+       
       >
         <div className="flex items-center justify-between mb-6">
           <SectionLabel text="TRANSACTION HISTORY" />
@@ -280,13 +282,13 @@ export function WalletPage() {
               className="glass-card glass-card-hover px-4 py-3 grid grid-cols-2 md:grid-cols-[140px_120px_100px_100px_100px_1fr] gap-4 items-center"
             >
               <div className="flex items-center gap-2">
-                <span className={`p-1.5 rounded-lg ${isPositive(tx.amount) ? 'bg-green-500/10 text-green-400' : 'bg-orange-500/10 text-orange-400'}`}>
+                <span className={`p-1.5 rounded-lg ${isPositive(tx.amount) ? 'bg-green-500/10 text-green-400' : 'bg-violet-500/10 text-violet-400'}`}>
                   {isPositive(tx.amount) ? <ArrowDownLeft className="w-3.5 h-3.5" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
                 </span>
                 <span className="text-sm font-medium text-white">{tx.type}</span>
               </div>
               <span className="text-sm text-white/60">{tx.token}</span>
-              <span className={`text-sm font-mono font-semibold ${isPositive(tx.amount) ? 'text-green-400' : 'text-orange-400'}`}>
+              <span className={`text-sm font-mono font-semibold ${isPositive(tx.amount) ? 'text-green-400' : 'text-violet-400'}`}>
                 {tx.amount}
               </span>
               <span className="text-xs text-white/40">{timeAgo(tx.date)}</span>
@@ -328,7 +330,7 @@ export function WalletPage() {
           <ContactCard
             icon={Code}
             title="Building Agents?"
-            text="Questions about the @blindference/agent-sdk integration."
+            text="Questions about the @abhieren/blindference-agent integration."
             mailto="mailto:agents@blindference.xyz?subject=Agent%20SDK%20Support"
             buttonText="Contact Dev Team"
           />
@@ -345,7 +347,7 @@ export function WalletPage() {
         <GlassCard className="gradient-border p-8 relative">
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-6">
-              <Mail className="w-6 h-6 text-orange-400" />
+              <Mail className="w-6 h-6 text-violet-400" />
               <h3 className="text-xl font-bold text-white">Or send a quick message</h3>
             </div>
 

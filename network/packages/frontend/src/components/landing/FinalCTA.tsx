@@ -6,7 +6,7 @@ import { fadeInUp, fadeInScale, staggerSlow } from "../../lib/animations";
 export function FinalCTA() {
   return (
     <section className="relative py-32 px-6 overflow-hidden">
-      {/* Atmospheric orange glow */}
+      {/* Atmospheric violet glow */}
       <div className="absolute inset-0 pointer-events-none">
         <div
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
@@ -14,7 +14,7 @@ export function FinalCTA() {
             width: "600px",
             height: "600px",
             background:
-              "radial-gradient(circle, rgba(249,115,22,0.08) 0%, rgba(249,115,22,0.03) 40%, transparent 70%)",
+              "radial-gradient(circle, rgba(139,92,246,0.08) 0%, rgba(139,92,246,0.03) 40%, transparent 70%)",
             filter: "blur(80px)",
           }}
         />
@@ -29,7 +29,7 @@ export function FinalCTA() {
       >
         <motion.p
           variants={fadeInUp}
-          className="font-mono text-xs uppercase tracking-[0.3em] text-brand-primary mb-6"
+          className="font-mono text-xs uppercase tracking-[0.3em] text-violet-500 mb-6"
         >
           THE FINAL FRONTIER
         </motion.p>
@@ -57,7 +57,7 @@ export function FinalCTA() {
         >
           <Link
             to="/app"
-            className="group inline-flex items-center gap-2 bg-white text-black font-bold text-sm rounded-full px-8 py-4 transition-all hover:scale-[1.03] hover:shadow-[0_0_30px_rgba(249,115,22,0.35)]"
+            className="group inline-flex items-center gap-2 bg-white text-black font-bold text-sm rounded-full px-8 py-4 transition-all hover:scale-[1.03] hover:shadow-[0_0_30px_rgba(139,92,246,0.35)]"
           >
             Launch App
             <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
@@ -78,7 +78,7 @@ export function FinalCTA() {
           className="flex items-center justify-center gap-2"
         >
           <div className="flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />
+            <div className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />
             <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-brand-text-secondary/60">
               Secured by Arbitrum + Fhenix + Reineira
             </span>

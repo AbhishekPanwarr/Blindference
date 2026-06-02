@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { AlertCircle, CheckCircle2, Clock, Lock, Unlock, ShieldAlert, ShieldCheck, ThumbsDown, ThumbsUp } from 'lucide-react'
+import { AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Clock, Lock, Unlock, ShieldAlert, ShieldCheck, ThumbsDown, ThumbsUp, Activity } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { SectionLabel, GlowDivider } from '../components/effects/GlowDivider'
 
 import { DisputeForm } from '../components/DisputeForm'
 import { OnChainEvidence } from '../components/OnChainEvidence'
@@ -35,6 +36,7 @@ export function InferenceStatusPage() {
   const [decrypted, setDecrypted] = useState(false)
   const [feedbackSubmitted, setFeedbackSubmitted] = useState<'up' | 'down' | null>(null)
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false)
+  const [showMobileTrace, setShowMobileTrace] = useState(false)
   const status = useInferenceStatus(requestId)
   const { client: cofheClient, isReady: cofheReady } = useCofheClient()
 
@@ -174,7 +176,7 @@ export function InferenceStatusPage() {
             className="relative mb-6 h-24 w-24"
           >
             <div className="absolute inset-0 rounded-full border border-white/10" />
-            <div className="absolute inset-0 rounded-full border-t border-orange-500/40" />
+            <div className="absolute inset-0 rounded-full border-t border-violet-500/40" />
           </motion.div>
           <motion.p
             animate={{ opacity: [0.5, 1, 0.5] }}
@@ -191,6 +193,88 @@ export function InferenceStatusPage() {
   const currentDisplay = getStatusDisplay(status.status)
   const Icon = currentDisplay.icon
 
+  // Shared execution trace content (sidebar + mobile)
+  const TraceContent = () => (
+    <>
+      <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/50 mb-5">
+        Execution Trace
+      </p>
+      <div className="space-y-4">
+        {EXECUTION_STEPS.map((step, i) => {
+          const isCompleted =
+            status.status === 'ACCEPTED' ||
+            (status.status === 'VERIFYING' && i < 4) ||
+            (status.status === 'EXECUTING' && i < 3) ||
+            (status.status === 'ASSIGNED' && i < 2) ||
+            (status.status === 'QUEUED' && i < 1)
+          const isCurrent =
+            (status.status === 'QUEUED' && i === 0) ||
+            (status.status === 'ASSIGNED' && i === 1) ||
+            (status.status === 'EXECUTING' && i === 2) ||
+            (status.status === 'VERIFYING' && i === 3) ||
+            (status.status === 'ACCEPTED' && i === 4)
+
+          return (
+            <div key={step.label} className="flex items-start gap-3">
+              <div
+                className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${
+                  isCurrent ? 'bg-violet-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]' : isCompleted ? 'bg-white/50' : 'bg-[rgba(10,10,10,0.8)]'
+                }`}
+              />
+              <div>
+                <div
+                  className={`text-sm ${
+                    isCurrent ? 'text-white font-medium' : isCompleted ? 'text-white/50' : 'text-white/20'
+                  }`}
+                >
+                  {step.label}
+                </div>
+                <div className="text-[11px] text-white/30 mt-0.5">{step.desc}</div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Status */}
+      <div className="mt-auto pt-6 border-t border-white/10 space-y-3">
+        <div className="text-[10px] text-white/50 uppercase tracking-widest font-bold">System</div>
+        <div className="space-y-2">
+          {[
+            { label: 'Mode', value: status.mode === 'text' ? 'Private Inference' : 'Risk Scoring' },
+            { label: 'Nodes', value: status.quorum.verifiers.length + 1 },
+            { label: 'Confirmations', value: `${status.quorum.confirm_count}/${status.quorum.verifiers.length}` },
+          ].map((item) => (
+            <div key={item.label} className="flex items-center justify-between text-xs">
+              <span className="text-white/50">{item.label}</span>
+              <span className="text-white font-mono">{item.value}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Dispute button - only when accepted and has insurance coverage */}
+        {status.status === 'ACCEPTED' && status.coverage_id && (
+          <div className="pt-3 border-t border-white/10">
+            <button
+              onClick={() => {
+                setDisputePrefill(undefined)
+                setIsDisputeOpen(true)
+              }}
+              className="w-full flex items-center justify-center gap-2 rounded-lg border border-error/20 bg-error/10 px-3 py-2 text-xs font-semibold text-error hover:bg-error/20 transition-colors"
+              type="button"
+            >
+              <ShieldAlert className="w-3.5 h-3.5" />
+              File Dispute
+            </button>
+            <p className="text-[10px] text-white/50 text-center mt-1.5">
+              72h window from job completion
+            </p>
+          </div>
+        )}
+      </div>
+    </>
+  )
+
   return (
     <div className="flex h-[calc(100vh-3.5rem)]">
       {/* Main content */}
@@ -199,7 +283,8 @@ export function InferenceStatusPage() {
           {/* Header */}
           <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
             <div>
-              <h2 className="text-xl font-medium gradient-text font-heading mb-1">Active Task</h2>
+              <SectionLabel>INFERENCE STATUS</SectionLabel>
+              <h2 className="text-xl font-medium gradient-text font-heading mb-1 mt-1">Active Task</h2>
               <div className="flex items-center gap-2 font-mono text-[10px] uppercase text-white/50 tracking-wider">
                 <span>REQ-ID: {requestId}</span>
               </div>
@@ -217,7 +302,7 @@ export function InferenceStatusPage() {
           <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr_280px]">
             <div className="space-y-6">
               {/* Quorum */}
-              <GlassCard className="p-5 space-y-4 rounded-xl">
+              <GlassCard className="gradient-accent-top p-5 space-y-4 rounded-xl">
                 <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">
                   Quorum Progress
                 </h3>
@@ -251,9 +336,9 @@ export function InferenceStatusPage() {
                 />
               )}
 
-              {/* UAVP Proof Panel */}
-              {status.status === 'ACCEPTED' && (
-                <GlassCard className="p-5 space-y-4 rounded-xl">
+                {/* UAVP Proof Panel */}
+                {status.status === 'ACCEPTED' && (
+                  <GlassCard className="gradient-accent-top p-5 space-y-4 rounded-xl">
                   <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50 flex items-center gap-2">
                     <ShieldCheck className="w-3.5 h-3.5" /> UAVP Proof
                   </h3>
@@ -284,14 +369,14 @@ export function InferenceStatusPage() {
 
               {/* Coverage + dispute */}
               {status.status === 'ACCEPTED' && status.coverage_id ? (
-                <GlassCard className="mt-auto flex flex-col gap-4 p-5 rounded-xl">
+                <GlassCard className="gradient-accent-top mt-auto flex flex-col gap-4 p-5 rounded-xl">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">
                         Coverage Status
                       </div>
                       <div className="flex items-center gap-2 text-sm font-bold text-white">
-                        <span className="h-2 w-2 animate-pulse rounded-full bg-orange-500" />
+                        <span className="h-2 w-2 animate-pulse rounded-full bg-violet-500" />
                         ACTIVE{' '}
                         <span className="ml-2 text-xs font-normal text-white/50 font-mono">
                           ID: {status.coverage_id}
@@ -358,6 +443,22 @@ export function InferenceStatusPage() {
                         ) : (
                           <div className="py-6 text-sm text-white/50 font-mono">Waiting for output key...</div>
                         )}
+                      </div>
+                    )}
+
+                    {/* Leader output preview — shown regardless of quorum status */}
+                    {status.text_result?.leader_output_preview && (
+                      <div className="w-full rounded-xl border border-violet-500/20 bg-violet-500/5 p-4">
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <ShieldCheck className="w-3.5 h-3.5 text-violet-400" />
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-violet-400">Leader Output</p>
+                        </div>
+                        <p className="text-sm text-white/80 font-mono line-clamp-6">
+                          {status.text_result.leader_output_preview}
+                        </p>
+                        <p className="text-[10px] text-white/40 mt-1.5">
+                          Disclaimer: this output was produced by the leader node and verified by quorum consensus.
+                        </p>
                       </div>
                     )}
 
@@ -504,17 +605,18 @@ export function InferenceStatusPage() {
                       </div>
                     )}
 
-                    {/* Leader output preview (if available) */}
-                    {status.raw && 'leader_submission' in status.raw && status.raw.leader_submission?.summary && (
-                      <div className="w-full rounded-xl border border-orange-500/20 bg-orange-500/5 p-4">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-orange-400 mb-2">
-                          Leader Output
-                        </p>
+                    {/* Leader output preview (always shown with disclaimer) */}
+                    {status.text_result?.leader_output_preview && (
+                      <div className="w-full rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-amber-400">Leader Output (Unverified)</p>
+                        </div>
                         <p className="text-sm text-white/80 font-mono line-clamp-6">
-                          {status.raw.leader_submission.summary}
+                          {status.text_result.leader_output_preview}
                         </p>
-                        <p className="text-[10px] text-white/40 mt-1">
-                          Output CID: {status.raw.leader_submission.summary.slice(0, 20)}…
+                        <p className="text-[10px] text-white/40 mt-1.5">
+                          Disclaimer: quorum rejected this result. The leader may have produced a valid output that verifiers disagreed with.
                         </p>
                       </div>
                     )}
@@ -523,17 +625,29 @@ export function InferenceStatusPage() {
                     <div className="w-full rounded-xl border border-white/10 bg-white/5 p-4">
                       <p className="text-xs text-white/70 mb-3">
                         The leader produced an output, but the quorum rejected it.
-                        If you believe the output is actually correct, you can flag it for review.
+                        If you believe the output is actually correct, your feedback helps us improve the consensus system.
                       </p>
                       <button
-                        onClick={() => {
-                          setDisputePrefill('I believe the leader output is correct and the quorum rejection was a false negative.')
-                          setIsDisputeOpen(true)
+                        onClick={async () => {
+                          setFeedbackSubmitting(true)
+                          try {
+                            await coverageApi.submitFeedback(requestId, {
+                              developer_address: status.developer_address,
+                              rating: 'up',
+                              notes: 'I believe the leader output is correct and the quorum rejection was a false negative.',
+                            })
+                            setFeedbackSubmitted('up')
+                          } catch (e: any) {
+                            console.error('[Blindference] Feedback failed:', e)
+                          } finally {
+                            setFeedbackSubmitting(false)
+                          }
                         }}
-                        className="w-full flex items-center justify-center gap-2 rounded-lg border border-orange-500/20 bg-orange-500/10 px-3 py-2 text-xs font-semibold text-orange-400 hover:bg-orange-500/20 transition-colors"
+                        disabled={feedbackSubmitting}
+                        className="w-full flex items-center justify-center gap-2 rounded-lg border border-violet-500/20 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-400 hover:bg-violet-500/20 transition-colors disabled:opacity-50"
                         type="button"
                       >
-                        <ShieldCheck className="w-3.5 h-3.5" />
+                        <ThumbsUp className="w-3.5 h-3.5" />
                         I Believe This Output Is Correct
                       </button>
                       <p className="text-[10px] text-white/40 text-center mt-1.5">
@@ -549,7 +663,7 @@ export function InferenceStatusPage() {
                         opacity: [0.3, 0.8, 0.3],
                       }}
                       transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
-                      className="absolute w-48 h-48 bg-orange-500/5 rounded-full blur-3xl pointer-events-none"
+                      className="absolute w-48 h-48 bg-violet-500/5 rounded-full blur-3xl pointer-events-none"
                     />
 
                     <div className="relative mb-8 h-28 w-28">
@@ -561,7 +675,7 @@ export function InferenceStatusPage() {
                       <motion.div
                         animate={{ rotate: -360 }}
                         transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}
-                        className="absolute inset-2 rounded-full border border-orange-500/20 border-t-orange-500/40"
+                        className="absolute inset-2 rounded-full border border-violet-500/20 border-t-violet-500/40"
                       />
                       <div className="absolute inset-0 flex items-center justify-center">
                         <span className="text-[10px] font-mono text-white/50 font-bold tracking-widest uppercase">
@@ -607,84 +721,37 @@ export function InferenceStatusPage() {
         />
       </div>
 
+      {/* Mobile execution trace toggle */}
+      <div className="xl:hidden">
+        <button
+          type="button"
+          onClick={() => setShowMobileTrace(v => !v)}
+          className="w-full flex items-center justify-center gap-2 py-2 text-[10px] font-semibold uppercase tracking-widest text-white/40 hover:text-white/60 border-t border-white/10 bg-black transition-colors"
+        >
+          <Activity className="w-3.5 h-3.5" />
+          Execution Trace
+          {showMobileTrace ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        </button>
+        <AnimatePresence>
+          {showMobileTrace && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="p-4 bg-black border-t border-white/10 max-h-[50vh] overflow-y-auto">
+                <TraceContent />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
       {/* Right sidebar — Execution trace */}
       <div className="hidden xl:flex w-60 shrink-0 flex-col border-l border-white/10 bg-black px-4 py-6">
-        <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/50 mb-5">
-          Execution Trace
-        </p>
-        <div className="space-y-4">
-          {EXECUTION_STEPS.map((step, i) => {
-            const isCompleted =
-              status.status === 'ACCEPTED' ||
-              (status.status === 'VERIFYING' && i < 4) ||
-              (status.status === 'EXECUTING' && i < 3) ||
-              (status.status === 'ASSIGNED' && i < 2) ||
-              (status.status === 'QUEUED' && i < 1)
-            const isCurrent =
-              (status.status === 'QUEUED' && i === 0) ||
-              (status.status === 'ASSIGNED' && i === 1) ||
-              (status.status === 'EXECUTING' && i === 2) ||
-              (status.status === 'VERIFYING' && i === 3) ||
-              (status.status === 'ACCEPTED' && i === 4)
-
-            return (
-              <div key={step.label} className="flex items-start gap-3">
-                <div
-                  className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${
-                    isCurrent ? 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]' : isCompleted ? 'bg-white/50' : 'bg-[rgba(10,10,10,0.8)]'
-                  }`}
-                />
-                <div>
-                  <div
-                    className={`text-sm ${
-                      isCurrent ? 'text-white font-medium' : isCompleted ? 'text-white/50' : 'text-white/20'
-                    }`}
-                  >
-                    {step.label}
-                  </div>
-                  <div className="text-[11px] text-white/30 mt-0.5">{step.desc}</div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Status */}
-        <div className="mt-auto pt-6 border-t border-white/10 space-y-3">
-          <div className="text-[10px] text-white/50 uppercase tracking-widest font-bold">System</div>
-          <div className="space-y-2">
-            {[
-              { label: 'Mode', value: status.mode === 'text' ? 'Private Inference' : 'Risk Scoring' },
-              { label: 'Nodes', value: status.quorum.verifiers.length + 1 },
-              { label: 'Confirmations', value: `${status.quorum.confirm_count}/${status.quorum.verifiers.length}` },
-            ].map((item) => (
-              <div key={item.label} className="flex items-center justify-between text-xs">
-                <span className="text-white/50">{item.label}</span>
-                <span className="text-white font-mono">{item.value}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Dispute button - only when accepted and has insurance coverage */}
-          {status.status === 'ACCEPTED' && status.coverage_id && (
-            <div className="pt-3 border-t border-white/10">
-              <button
-                onClick={() => {
-                  setDisputePrefill(undefined)
-                  setIsDisputeOpen(true)
-                }}
-                className="w-full flex items-center justify-center gap-2 rounded-lg border border-error/20 bg-error/10 px-3 py-2 text-xs font-semibold text-error hover:bg-error/20 transition-colors"
-                type="button"
-              >
-                <ShieldAlert className="w-3.5 h-3.5" />
-                File Dispute
-              </button>
-              <p className="text-[10px] text-white/50 text-center mt-1.5">
-                72h window from job completion
-              </p>
-            </div>
-          )}
-        </div>
+        <TraceContent />
       </div>
 
       {/* Decrypt Modal */}
@@ -700,7 +767,7 @@ export function InferenceStatusPage() {
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="bg-[rgba(10,10,10,0.9)] border border-orange-500/20 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl glass-card"
+              className="bg-[rgba(10,10,10,0.9)] border border-violet-500/20 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl glass-card"
             >
               <div className="p-6 border-b border-white/10 text-center space-y-2">
                 <div className="w-14 h-14 rounded-full bg-[rgba(10,10,10,0.6)] mx-auto flex items-center justify-center mb-3 border border-white/10">
@@ -721,7 +788,7 @@ export function InferenceStatusPage() {
                       initial={{ width: 0 }}
                       animate={{ width: isDecryptingAnswer ? '60%' : '100%' }}
                       transition={{ duration: 1.5 }}
-                      className="h-full bg-orange-500"
+                      className="h-full bg-violet-500"
                     />
                   </div>
                 </div>

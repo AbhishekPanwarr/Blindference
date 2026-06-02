@@ -122,36 +122,38 @@ navTree.forEach((section) => {
 
 // ─── MDX Module Map ───
 
+const mdxFiles = import.meta.glob('./content/**/*.mdx') as Record<string, () => Promise<any>>
+
 const mdxModules: Record<string, () => Promise<any>> = {
-  '/docs/introduction': () => import('./content/introduction.mdx'),
-  '/docs/what-is-blindference': () => import('./content/what-is-blindference.mdx'),
-  '/docs/architecture': () => import('./content/architecture.mdx'),
-  '/docs/components': () => import('./content/components.mdx'),
-  '/docs/compute/introduction': () => import('./content/compute/introduction.mdx'),
-  '/docs/compute/quickstart': () => import('./content/compute/quickstart.mdx'),
-  '/docs/compute/installation': () => import('./content/compute/installation.mdx'),
-  '/docs/compute/configuration': () => import('./content/compute/configuration.mdx'),
-  '/docs/compute/attestation': () => import('./content/compute/attestation.mdx'),
-  '/docs/compute/models': () => import('./content/compute/models.mdx'),
-  '/docs/compute/backends': () => import('./content/compute/backends.mdx'),
-  '/docs/compute/running': () => import('./content/compute/running.mdx'),
-  '/docs/compute/monitoring': () => import('./content/compute/monitoring.mdx'),
-  '/docs/compute/troubleshooting': () => import('./content/compute/troubleshooting.mdx'),
-  '/docs/compute/rewards': () => import('./content/compute/rewards.mdx'),
-  '/docs/build/introduction': () => import('./content/build/introduction.mdx'),
-  '/docs/build/quickstart': () => import('./content/build/quickstart.mdx'),
-  '/docs/build/architecture': () => import('./content/build/architecture.mdx'),
-  '/docs/build/cofhe-encryption': () => import('./content/build/cofhe-encryption.mdx'),
-  '/docs/build/contracts': () => import('./content/build/contracts.mdx'),
-  '/docs/build/deployment': () => import('./content/build/deployment.mdx'),
-  '/docs/build/examples/risk-scoring': () => import('./content/build/examples/risk-scoring.mdx'),
-  '/docs/build/examples/text-inference': () => import('./content/build/examples/text-inference.mdx'),
-  '/docs/api-reference/introduction': () => import('./content/api-reference/introduction.mdx'),
-  '/docs/api-reference/icl-api': () => import('./content/api-reference/icl-api.mdx'),
-  '/docs/resources/changelog': () => import('./content/resources/changelog.mdx'),
-  '/docs/resources/contract-addresses': () => import('./content/resources/contract-addresses.mdx'),
-  '/docs/resources/faq': () => import('./content/resources/faq.mdx'),
-  '/docs/resources/troubleshooting': () => import('./content/resources/troubleshooting.mdx'),
+  '/docs/introduction': mdxFiles['./content/introduction.mdx'],
+  '/docs/what-is-blindference': mdxFiles['./content/what-is-blindference.mdx'],
+  '/docs/architecture': mdxFiles['./content/architecture.mdx'],
+  '/docs/components': mdxFiles['./content/components.mdx'],
+  '/docs/compute/introduction': mdxFiles['./content/compute/introduction.mdx'],
+  '/docs/compute/quickstart': mdxFiles['./content/compute/quickstart.mdx'],
+  '/docs/compute/installation': mdxFiles['./content/compute/installation.mdx'],
+  '/docs/compute/configuration': mdxFiles['./content/compute/configuration.mdx'],
+  '/docs/compute/attestation': mdxFiles['./content/compute/attestation.mdx'],
+  '/docs/compute/models': mdxFiles['./content/compute/models.mdx'],
+  '/docs/compute/backends': mdxFiles['./content/compute/backends.mdx'],
+  '/docs/compute/running': mdxFiles['./content/compute/running.mdx'],
+  '/docs/compute/monitoring': mdxFiles['./content/compute/monitoring.mdx'],
+  '/docs/compute/troubleshooting': mdxFiles['./content/compute/troubleshooting.mdx'],
+  '/docs/compute/rewards': mdxFiles['./content/compute/rewards.mdx'],
+  '/docs/build/introduction': mdxFiles['./content/build/introduction.mdx'],
+  '/docs/build/quickstart': mdxFiles['./content/build/quickstart.mdx'],
+  '/docs/build/architecture': mdxFiles['./content/build/architecture.mdx'],
+  '/docs/build/cofhe-encryption': mdxFiles['./content/build/cofhe-encryption.mdx'],
+  '/docs/build/contracts': mdxFiles['./content/build/contracts.mdx'],
+  '/docs/build/deployment': mdxFiles['./content/build/deployment.mdx'],
+  '/docs/build/examples/risk-scoring': mdxFiles['./content/build/examples/risk-scoring.mdx'],
+  '/docs/build/examples/text-inference': mdxFiles['./content/build/examples/text-inference.mdx'],
+  '/docs/api-reference/introduction': mdxFiles['./content/api-reference/introduction.mdx'],
+  '/docs/api-reference/icl-api': mdxFiles['./content/api-reference/icl-api.mdx'],
+  '/docs/resources/changelog': mdxFiles['./content/resources/changelog.mdx'],
+  '/docs/resources/contract-addresses': mdxFiles['./content/resources/contract-addresses.mdx'],
+  '/docs/resources/faq': mdxFiles['./content/resources/faq.mdx'],
+  '/docs/resources/troubleshooting': mdxFiles['./content/resources/troubleshooting.mdx'],
 }
 
 // ─── Search Component ───
@@ -196,7 +198,7 @@ function DocsSearch({ onClose }: { onClose: () => void }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search documentation..."
-          className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-orange-500/30 transition-colors"
+          className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-violet-500/30 transition-colors"
         />
       </div>
       {results.length > 0 && (
@@ -208,7 +210,7 @@ function DocsSearch({ onClose }: { onClose: () => void }) {
               className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/[0.05] transition-colors group"
             >
               <div className="flex items-center justify-between">
-                <span className="text-sm text-white group-hover:text-orange-300 transition-colors">{r.title}</span>
+                <span className="text-sm text-white group-hover:text-violet-300 transition-colors">{r.title}</span>
                 <span className="text-[10px] text-white/30 uppercase">{r.section}</span>
               </div>
               <p className="text-xs text-white/40 mt-0.5">{r.description}</p>
@@ -250,7 +252,7 @@ function Sidebar({ mobile = false, onClose }: { mobile?: boolean; onClose?: () =
   return (
     <nav className={cn("flex flex-col", mobile ? "p-4" : "py-6 px-4")}>
       <div className="flex items-center gap-2 mb-6 px-2">
-        <BookOpen className="w-5 h-5 text-orange-400" />
+        <BookOpen className="w-5 h-5 text-violet-400" />
         <span className="font-bold text-white text-sm tracking-wide">Documentation</span>
       </div>
 
@@ -265,7 +267,7 @@ function Sidebar({ mobile = false, onClose }: { mobile?: boolean; onClose?: () =
               onClick={() => toggleSection(section.id)}
               className={cn(
                 "w-full flex items-center gap-2 px-2 py-2 rounded-lg text-sm font-medium transition-colors",
-                hasActiveChild ? "text-orange-300" : "text-white/50 hover:text-white/80"
+                hasActiveChild ? "text-violet-300" : "text-white/50 hover:text-white/80"
               )}
             >
               <SectionIcon className="w-4 h-4" />
@@ -296,7 +298,7 @@ function Sidebar({ mobile = false, onClose }: { mobile?: boolean; onClose?: () =
                         className={cn(
                           "block px-3 py-1.5 rounded-lg text-sm transition-colors",
                           isActive(page.path)
-                            ? "bg-orange-500/10 text-orange-300 border border-orange-500/20"
+                            ? "bg-violet-500/10 text-violet-300 border border-violet-500/20"
                             : "text-white/40 hover:text-white/70 hover:bg-white/[0.03]"
                         )}
                       >
@@ -407,7 +409,7 @@ function TableOfContents() {
               className={cn(
                 "block px-3 py-1.5 text-sm rounded-lg transition-colors border-l-2",
                 activeId === h.id
-                  ? "text-orange-300 border-orange-500/40 bg-orange-500/5"
+                  ? "text-violet-300 border-violet-500/40 bg-violet-500/5"
                   : "text-white/40 border-transparent hover:text-white/70 hover:bg-white/[0.03]"
               )}
             >
@@ -453,7 +455,7 @@ function MdxPage({ path }: { path: string }) {
         <p className="text-white/40 text-sm mb-6">The documentation page you are looking for does not exist.</p>
         <Link
           to="/docs"
-          className="inline-flex items-center gap-2 text-sm text-orange-400 hover:text-orange-300 transition-colors"
+          className="inline-flex items-center gap-2 text-sm text-violet-400 hover:text-violet-300 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to documentation
@@ -465,7 +467,7 @@ function MdxPage({ path }: { path: string }) {
   if (!Component) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="w-8 h-8 border-2 border-white/20 border-t-orange-400 rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-white/20 border-t-violet-400 rounded-full animate-spin" />
       </div>
     )
   }
@@ -500,15 +502,15 @@ function OverviewPage() {
               to={section.children?.[0]?.path || section.path}
               className="group block"
             >
-              <div className="relative rounded-2xl bg-[rgba(10,10,10,0.6)] backdrop-blur-xl border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] overflow-hidden transition-all duration-300 hover:border-white/[0.2] hover:shadow-[0_0_30px_rgba(249,115,22,0.1)] p-6">
+              <div className="relative rounded-2xl bg-[rgba(10,10,10,0.6)] backdrop-blur-xl border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] overflow-hidden transition-all duration-300 hover:border-white/[0.2] hover:shadow-[0_0_30px_rgba(249,115,22,0.1)] p-6 gradient-accent-top">
                 <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_2.5s_linear_infinite] bg-gradient-to-r from-transparent via-white/5 to-transparent pointer-events-none" />
                 <div className="relative z-10">
-                  <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mb-4 text-orange-400">
+                  <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mb-4 text-violet-400">
                     <SectionIcon className="w-5 h-5" />
                   </div>
                   <h3 className="text-lg font-semibold text-white mb-1">{section.label}</h3>
                   <p className="text-white/50 text-sm">{section.description}</p>
-                  <div className="mt-3 flex items-center gap-1 text-xs text-orange-400/60 group-hover:text-orange-400 transition-colors">
+                  <div className="mt-3 flex items-center gap-1 text-xs text-violet-400/60 group-hover:text-violet-400 transition-colors">
                     <span>{section.children?.length || 0} pages</span>
                     <ChevronRight className="w-3 h-3" />
                   </div>
@@ -549,10 +551,13 @@ export default function DocsLayout() {
             >
               <Menu className="w-5 h-5 text-white/60" />
             </button>
-            <Link to="/docs" className="flex items-center gap-2 no-underline">
-              <div className="w-7 h-7 rounded-lg bg-orange-500/20 border border-orange-500/30 flex items-center justify-center text-orange-400 font-bold text-xs">
-                B
-              </div>
+            <Link to="/docs" className="flex items-center gap-2.5 no-underline">
+              <img
+                src="/logos/bf-final-logo-2.png"
+                alt="Blindference"
+                className="h-7 w-auto object-contain"
+                draggable={false}
+              />
               <span className="font-semibold text-sm text-white hidden sm:block">Blindference Docs</span>
             </Link>
           </div>

@@ -2,8 +2,10 @@ import { BrowserRouter, Link, NavLink, Outlet, Route, Routes, useLocation } from
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
 import { Toaster, ToastBar } from 'react-hot-toast'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, AlertCircle } from 'lucide-react'
-import { lazy, Suspense, useMemo } from 'react'
+import { Check, AlertCircle, Menu, X } from 'lucide-react'
+import { lazy, Suspense, useMemo, useState } from 'react'
+import { GrainOverlay } from './components/effects/GrainOverlay'
+import { TutorialProvider, TutorialManager } from './components/tutorial'
 
 import { InferenceNewPage } from './pages/InferenceNewPage'
 import { InferenceStatusPage } from './pages/InferenceStatusPage'
@@ -13,9 +15,12 @@ import { SettingsPage } from './pages/SettingsPage'
 import { BuyCreditsPage } from './pages/BuyCreditsPage'
 import { CreateEscrowPage } from './pages/CreateEscrowPage'
 import { NodeDashboardPage } from './pages/NodeDashboardPage'
+import { NodesPage } from './pages/NodesPage'
 import { WalletPage } from './pages/WalletPage'
-import { DeveloperDashboardPage } from './pages/DeveloperDashboardPage'
 import LandingPage from './pages/LandingPage'
+import VisionPage from './pages/VisionPage'
+import ArchitecturePage from './pages/ArchitecturePage'
+import WhitepaperPage from './pages/WhitepaperPage'
 import { truncateAddress } from './utils/helpers'
 
 const DocsLayout = lazy(() => import('./pages/docs/DocsLayout'))
@@ -49,21 +54,30 @@ function WalletButton() {
   )
 }
 
+const landingPaths = ['/', '/vision', '/architecture', '/whitepaper']
+
 function Navbar() {
   const location = useLocation()
-  const isLanding = location.pathname === '/'
+  const isLanding = landingPaths.includes(location.pathname)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
-  const navItems = [
+  const landingNavItems = [
+    { path: '/', label: 'Home' },
+    { path: '/vision', label: 'Vision' },
+    { path: '/architecture', label: 'Architecture' },
+  ]
+
+  const appNavItems = [
     { path: '/app', label: 'Inference' },
     { path: '/history', label: 'History' },
     { path: '/wallet', label: 'Wallet' },
     { path: '/buy-credits', label: 'Credits' },
     { path: '/create-escrow', label: 'Escrow' },
-    { path: '/node-dashboard', label: 'Nodes' },
-    { path: '/node-registration', label: 'Join' },
-    { path: '/developer-dashboard', label: 'Developer' },
+    { path: '/nodes', label: 'Nodes' },
     { path: '/settings', label: 'Settings' },
   ]
+
+  const navItems = isLanding ? landingNavItems : appNavItems
 
   return (
     <motion.nav
@@ -74,66 +88,130 @@ function Navbar() {
     >
       <div className="w-full max-w-7xl flex items-center justify-between pointer-events-auto">
         {/* Logo */}
-        <Link to="/" className="group flex items-center gap-3 no-underline">
-          <div className="relative w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.3)] group-hover:shadow-[0_0_35px_rgba(249,115,22,0.4)] transition-all duration-500">
-            <div className="w-4 h-4 border-2 border-black group-hover:border-orange-500 rotate-45 group-hover:rotate-90 transition-all duration-500" />
+        <Link to="/" className="flex items-center gap-3 no-underline group/logo z-10">
+          <div className="relative h-9 w-auto shrink-0 overflow-hidden rounded-lg">
+            <img
+              src="/logos/bf-final-logo-2.png"
+              alt="Blindference"
+              className="h-full w-auto object-contain"
+              draggable={false}
+            />
+            {/* Shimmer sweep on hover */}
+            <div
+              className="absolute inset-0 -translate-x-full group-hover/logo:translate-x-full transition-transform duration-700 ease-out"
+              style={{
+                background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%)',
+              }}
+            />
           </div>
-          <div className="flex flex-col">
-            <span className="relative text-xl font-bold text-white tracking-tight transition-colors duration-500">
-              <span className="absolute inset-0 text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]" aria-hidden="true">Blindference</span>
-              <span className="group-hover:opacity-0 transition-opacity duration-500">Blindference</span>
-            </span>
-            <span className="relative text-[10px] text-gray-400 uppercase tracking-widest font-medium transition-colors duration-500">
-              <span className="absolute inset-0 text-orange-400/80 opacity-0 group-hover:opacity-100 transition-opacity duration-500" aria-hidden="true">Confidential AI</span>
-              <span className="group-hover:opacity-0 transition-opacity duration-500">Confidential AI</span>
-            </span>
+          <div className="hidden sm:flex flex-col">
+            <span className="text-xl font-bold text-white tracking-tight">Blindference</span>
+            <span className="text-[10px] text-gray-400 uppercase tracking-[0.2em] font-medium">Confidential AI</span>
           </div>
         </Link>
 
-        {/* Navigation Pill */}
-        {!isLanding && (
-          <div className="absolute left-1/2 -translate-x-1/2 flex max-w-[calc(100%-400px)] items-center p-1.5 rounded-full bg-white/[0.03] backdrop-blur-[32px] border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.8)] gap-0.5 overflow-x-auto scrollbar-hide">
-            {navItems.map((item) => {
-              const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/')
-              return (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  end={item.path === '/'}
-                  className={({ isActive: active }) =>
-                    `relative px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-500 whitespace-nowrap ${
-                      active ? 'text-white' : 'text-white/40 hover:text-white'
-                    }`
-                  }
-                >
-                  {isActive && (
-                    <motion.span
-                      layoutId="navbar-active-indicator"
-                      className="absolute inset-0 rounded-full bg-white/[0.08] border border-white/10 shadow-[inset_0_0_12px_rgba(255,255,255,0.05),0_0_20px_rgba(0,0,0,0.2)]"
-                      transition={{ type: "spring", bounce: 0.15, duration: 0.6 }}
-                    />
-                  )}
-                  <span className="relative z-10">{item.label}</span>
-                </NavLink>
-              )
-            })}
-          </div>
-        )}
+        {/* Navigation Pill — Centered (NullPay-style). Hidden on mobile, scrollable on tablet. */}
+        <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 items-center p-1 rounded-full bg-[#0a0a0a]/80 backdrop-blur-xl border border-white/[0.12] shadow-[0_8px_32px_0_rgba(0,0,0,0.6)] max-w-[80vw] overflow-x-auto">
+          {navItems.map((item) => {
+            const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path + '/'))
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                end={item.path === '/'}
+                onClick={() => setMobileMenuOpen(false)}
+                className={({ isActive: active }) =>
+                  `relative px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap ${
+                    active 
+                      ? 'text-white bg-white/[0.08] border border-white/[0.08]' 
+                      : 'text-white/40 hover:text-white/70'
+                  }`
+                }
+              >
+                <span className="relative z-10">{item.label}</span>
+              </NavLink>
+            )
+          })}
+        </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-4">
-          {isLanding && (
-            <Link
-              to="/app"
-              className="hidden md:flex items-center justify-center gap-2 bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 px-6 py-2.5 rounded-full backdrop-blur-[24px] transition-all duration-500 text-sm font-semibold text-white group shadow-[0_8px_32px_0_rgba(0,0,0,0.2)]"
-            >
-              Get Started
-              <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-            </Link>
+        {/* Actions — single CTA on landing */}
+        <div className="flex items-center gap-3 z-10">
+          {isLanding ? (
+            <>
+              <Link
+                to="/app"
+                className="hidden md:flex items-center justify-center gap-2 px-6 py-2.5 rounded-full border border-white/[0.1] bg-white/[0.05] hover:bg-white/[0.08] hover:border-white/[0.15] transition-all duration-300 text-sm font-semibold text-white/80 hover:text-white group"
+              >
+                Launch App
+                <svg className="w-4 h-4 text-white/50 group-hover:text-white transition-colors group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+              </Link>
+              {/* Mobile hamburger (landing pages) */}
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(v => !v)}
+                className="flex md:hidden items-center justify-center w-10 h-10 rounded-full border border-white/10 bg-white/5 text-white/70 hover:text-white transition-colors"
+                aria-label="Toggle menu"
+              >
+                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="hidden md:block">
+                <WalletButton />
+              </div>
+              {/* Mobile hamburger (app pages) */}
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(v => !v)}
+                className="flex md:hidden items-center justify-center w-10 h-10 rounded-full border border-white/10 bg-white/5 text-white/70 hover:text-white transition-colors"
+                aria-label="Toggle menu"
+              >
+                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </button>
+            </>
           )}
-          <WalletButton />
         </div>
       </div>
+
+      {/* Mobile dropdown menu */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.15 }}
+            className="absolute top-full left-0 right-0 mt-2 mx-4 rounded-xl border border-white/10 bg-[rgba(10,10,10,0.95)] backdrop-blur-xl shadow-2xl overflow-hidden md:hidden"
+          >
+            <div className="p-2 space-y-1">
+              {navItems.map((item) => {
+                const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path + '/'))
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    end={item.path === '/'}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center px-4 py-3 rounded-lg text-sm font-semibold transition-colors ${
+                      isActive
+                        ? 'text-white bg-white/[0.08]'
+                        : 'text-white/50 hover:text-white hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    {item.label}
+                  </NavLink>
+                )
+              })}
+            </div>
+            {!isLanding && (
+              <div className="p-3 border-t border-white/10">
+                <WalletButton />
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.nav>
   )
 }
@@ -144,7 +222,7 @@ function BackgroundOrbs() {
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-white/5 rounded-full blur-[120px] animate-float" />
       <div className="absolute top-[20%] right-[-5%] w-[30%] h-[30%] bg-zinc-800/20 rounded-full blur-[100px] animate-float-delayed" />
       <div className="absolute bottom-[-10%] left-[20%] w-[35%] h-[35%] bg-white/5 rounded-full blur-[120px] animate-pulse-slow" />
-      <div className="absolute top-[60%] left-[60%] w-[25%] h-[25%] bg-orange-500/5 rounded-full blur-[100px] animate-float" />
+      <div className="absolute top-[60%] left-[60%] w-[25%] h-[25%] bg-violet-500/5 rounded-full blur-[100px] animate-float" />
     </div>
   )
 }
@@ -155,15 +233,35 @@ const RouteFallback = () => (
   </div>
 )
 
-const AppLayout = () => (
-  <div className="min-h-screen bg-black text-white relative overflow-hidden">
-    <BackgroundOrbs />
-    <Navbar />
-    <main className="relative z-10 pt-24 px-4 pb-12 container-custom min-h-screen">
-      <Outlet />
-    </main>
-  </div>
-)
+const AppLayout = () => {
+  const location = useLocation()
+  const isLandingPage = location.pathname === '/' || location.pathname === '/vision' || location.pathname === '/architecture' || location.pathname === '/whitepaper'
+
+  // Only inference page has tutorial
+  const tutorialPageId = location.pathname === '/app' ? 'app' : null
+
+  return (
+    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+      <GrainOverlay />
+      {!isLandingPage && <BackgroundOrbs />}
+      <Navbar />
+      <main className={`relative z-10 min-h-screen ${isLandingPage ? '' : 'pt-24 px-4 pb-12 container-custom'}`}>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
+      </main>
+      {tutorialPageId && <TutorialManager pageId={tutorialPageId} />}
+    </div>
+  )
+}
 
 function App() {
   const appContent = useMemo(() => (
@@ -200,8 +298,8 @@ function App() {
                   {({ icon, message }: any) => (
                     <div className="flex items-center gap-3.5">
                       {t.type === 'success' ? (
-                        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-500/10 shadow-[0_0_12px_rgba(249,115,22,0.2)]">
-                          <Check className="h-3.5 w-3.5 text-orange-400 stroke-[3]" />
+                        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-500/10 shadow-[0_0_12px_rgba(249,115,22,0.2)]">
+                          <Check className="h-3.5 w-3.5 text-violet-400 stroke-[3]" />
                         </div>
                       ) : t.type === 'error' ? (
                         <AlertCircle className="h-5 w-5 text-red-400" />
@@ -218,17 +316,18 @@ function App() {
         )}
       </Toaster>
       <Routes>
-        <Route element={<LandingPage />} path="/" />
         <Route element={<AppLayout />} path="/">
+          <Route element={<LandingPage />} index />
+          <Route element={<VisionPage />} path="vision" />
+          <Route element={<ArchitecturePage />} path="architecture" />
+          <Route element={<WhitepaperPage />} path="whitepaper" />
           <Route element={<InferenceNewPage />} path="app" />
           <Route element={<InferenceStatusPage />} path="inference/:requestId" />
           <Route element={<HistoryPage />} path="history" />
           <Route element={<WalletPage />} path="wallet" />
           <Route element={<BuyCreditsPage />} path="buy-credits" />
           <Route element={<CreateEscrowPage />} path="create-escrow" />
-          <Route element={<NodeRegistrationPage />} path="node-registration" />
-          <Route element={<NodeDashboardPage />} path="node-dashboard" />
-          <Route element={<DeveloperDashboardPage />} path="developer-dashboard" />
+          <Route element={<NodesPage />} path="nodes" />
           <Route element={<SettingsPage />} path="settings" />
           <Route element={
             <Suspense fallback={<RouteFallback />}>
@@ -242,7 +341,9 @@ function App() {
 
   return (
     <BrowserRouter>
-      {appContent}
+      <TutorialProvider>
+        {appContent}
+      </TutorialProvider>
     </BrowserRouter>
   )
 }

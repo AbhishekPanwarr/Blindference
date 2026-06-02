@@ -1,0 +1,206 @@
+---
+title: "Python Interop"
+description: "Using the Agent SDK from Python via subprocess or HTTP"
+icon: "python"
+---
+
+The Agent SDK is a Node.js/TypeScript package, but Python applications can interact with it through two primary methods.
+
+## Method 1: Subprocess
+
+Call the CLI directly from Python:
+
+```python title="Python"
+import subprocess
+import json
+
+def infer(prompt: str, model_id: str = "groq:llama-3.3-70b-versatile") -> str:
+    """Run inference via CLI and return the output."""
+    result = subprocess.run(
+        [
+            "blindference-agent", "infer",
+            "--prompt", prompt,
+            "--model", model_id,
+            "--json"
+        ],
+        capture_output=True,
+        text=True,
+        check=True
+    )
+    output = json.loads(result.stdout)
+    
+    if output.get("status") != "COMPLETED":
+        raise RuntimeError(f"Inference failed: {output}")
+    
+    return output["output"]
+
+# Usage
+answer = infer("What is the capital of France?")
+print(answer)  # "Paris"
+```
+
+### Checking Balance
+
+```python title="Python"
+import subprocess
+import json
+
+def get_balance():
+    result = subprocess.run(
+        ["blindference-agent", "balance", "--json"],
+        capture_output=True,
+        text=True,
+        check=True
+    )
+    return json.loads(result.stdout)
+
+balance = get_balance()
+print(f"BLIND: {balance['blind']}, cUSDC: {balance['cusdc']}")
+```
+
+### Buying Credits
+
+```python title="Python"
+import subprocess
+
+def buy_package(package_id: str):
+    subprocess.run(
+        ["blindference-agent", "buy-package", "--id", package_id],
+        check=True
+    )
+    print(f"Purchased package: {package_id}")
+
+buy_package("starter")
+```
+
+## Method 2: HTTP Client (Recommended)
+
+Start the REST server and use HTTP requests from Python:
+
+```bash title="Terminal"
+blindference-agent start --port 3000
+```
+
+Then in Python:
+
+```python title="Python"
+import requests
+import time
+
+class BlindferenceClient:
+    """Python client for the Blindference Agent REST server."""
+    
+    def __init__(self, base_url: str = "http://localhost:3000"):
+        self.base_url = base_url
+    
+    def health(self) -> dict:
+        """Check server health."""
+        response = requests.get(f"{self.base_url}/health")
+        response.raise_for_status()
+        return response.json()
+    
+    def balance(self) -> dict:
+        """Get credit balance."""
+        response = requests.get(f"{self.base_url}/balance")
+        response.raise_for_status()
+        return response.json()
+    
+    def infer(self, prompt: str, model_id: str = "groq:llama-3.3-70b-versatile") -> dict:
+        """Submit an inference job."""
+        response = requests.post(
+            f"{self.base_url}/infer",
+            json={"prompt": prompt, "modelId": model_id}
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_status(self, job_id: str) -> dict:
+        """Check job status."""
+        response = requests.get(f"{self.base_url}/status/{job_id}")
+        response.raise_for_status()
+        return response.json()
+    
+    def infer_and_wait(
+        self,
+        prompt: str,
+        model_id: str = "groq:llama-3.3-70b-versatile",
+        timeout: int = 180,
+        poll_interval: int = 3
+    ) -> str:
+        """Submit job and wait for completion. Returns the output."""
+        result = self.infer(prompt, model_id)
+        job_id = result["jobId"]
+        
+        for _ in range(timeout // poll_interval):
+            status = self.get_status(job_id)
+            
+            if status["status"] == "COMPLETED":
+                return status["output"]
+            elif status["status"] in ["FAILED", "REJECTED"]:
+                raise RuntimeError(f"Job {status['status']}: {job_id}")
+            
+            time.sleep(poll_interval)
+        
+        raise TimeoutError(f"Job {job_id} timed out after {timeout}s")
+
+# Usage
+client = BlindferenceClient()
+
+# Quick inference
+result = client.infer("What is 2+2?")
+print(f"Job ID: {result['jobId']}")
+
+# Wait for result
+answer = client.infer_and_wait("Explain quantum computing")
+print(f"Answer: {answer}")
+
+# Check balance
+balance = client.balance()
+print(f"BLIND: {balance['blind']}, cUSDC: {balance['cusdc']}")
+```
+
+## Method 3: Direct TypeScript (Node.js)
+
+If your project uses both Python and Node.js, you can create a TypeScript microservice:
+
+```typescript title="TypeScript"
+// server.ts
+import express from 'express'
+import { BlindferenceAgent } from '@abhieren/blindference-agent'
+
+const app = express()
+app.use(express.json())
+
+const agent = new BlindferenceAgent({
+  privateKey: process.env.BLF_PRIVATE_KEY!,
+  paymentServiceUrl: process.env.BLF_PAYMENT_URL!,
+  rpcUrl: process.env.BLF_RPC_URL!
+})
+
+app.post('/infer', async (req, res) => {
+  try {
+    const result = await agent.infer(req.body)
+    res.json(result)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+app.listen(3000, () => console.log('Server running on port 3000'))
+```
+
+Then call from Python as shown in Method 2.
+
+## Comparison
+
+| Method | Latency | Complexity | Best For |
+|--------|---------|------------|----------|
+| Subprocess | Higher (process spawn) | Low | Scripts, one-off calls |
+| HTTP Client | Lower | Medium | Production apps, microservices |
+| TypeScript Microservice | Lowest | Higher | High-throughput applications |
+
+## Requirements
+
+- Node.js 18+ installed on the system
+- `blindference-agent` CLI available in PATH (global install)
+- For HTTP method: server must be running

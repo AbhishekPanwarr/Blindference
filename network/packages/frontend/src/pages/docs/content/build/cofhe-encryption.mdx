@@ -1,0 +1,250 @@
+---
+title: CoFHE Encryption
+description: 'How to encrypt data for the Blindference network'
+icon: 'lock'
+---
+
+# CoFHE Encryption
+
+## What is CoFHE?
+
+CoFHE (Confidential FHE) is the Fhenix threshold FHE network that provides:
+
+<CardGroup cols={3}>
+  <Card title="Encrypted Computation" icon="cpu">
+    Data stays encrypted during processing
+  </Card>
+  <Card title="Selective Decryption" icon="key">
+    Only authorized parties can decrypt specific values
+  </Card>
+  <Card title="Access Control" icon="shield">
+    Decryption permissions enforced cryptographically, not by policy
+  </Card>
+</CardGroup>
+
+## How Blindference Uses CoFHE
+
+Blindference uses CoFHE for **access control** on encryption keys, not for the AI inference itself:
+
+<Steps>
+  <Step title="Generate AES key" icon="key">
+    User generates an AES key in browser
+  </Step>
+  <Step title="Encrypt prompt" icon="lock">
+    User encrypts the prompt with AES
+  </Step>
+  <Step title="Split key" icon="split">
+    User splits AES key into two `uint128` halves
+  </Step>
+  <Step title="CoFHE encrypt halves" icon="shield">
+    User CoFHE-encrypts each half
+  </Step>
+  <Step title="Store on-chain" icon="database">
+    User stores CoFHE-encrypted halves in `PromptKeyStore`
+  </Step>
+  <Step title="Node decryption" icon="unlock">
+    Only assigned quorum nodes can decrypt these halves (via sharing permits)
+  </Step>
+  <Step title="Inference" icon="brain">
+    Nodes reconstruct AES key, decrypt the prompt, run inference
+  </Step>
+</Steps>
+
+This is a **hybrid encryption** approach: CoFHE for access control, AES for performance.
+
+## SDK Setup
+
+```bash title="Install CoFHE SDK"
+npm install @cofhe/sdk@0.5.2
+```
+
+## Configuration
+
+```typescript title="CoFHE client configuration"
+import { cofheClient } from '@cofhe/sdk';
+
+const client = await cofheClient.create({
+  provider: window.ethereum,        // MetaMask or other EIP-1193 provider
+  signer: walletClient,              // Viem wallet client
+  chainId: 421614,                  // Arbitrum Sepolia
+
+  // Critical: disable IndexedDB cache to prevent stale key errors
+  fheKeyStorage: null,
+
+  // Local ZK proof verification (still real FHE ciphertexts)
+  environment: 'MOCK',              // On chain config, not full mock mode
+
+  // Don't use Web Workers (broken in Vite dev)
+  useWorkers: false
+});
+```
+
+<Warning>
+  `fheKeyStorage: null` is **critical**. Without it, stale IndexedDB cache causes cascading `Failed to fetch` errors.
+</Warning>
+
+## Key Operations
+
+### 1. Initialize TFHE
+
+```typescript title="Initialize TFHE before encryption"
+import { initTfhe } from '@cofhe/sdk';
+
+// Required before any encryption
+await initTfhe();
+```
+
+### 2. Encrypt Values
+
+```typescript title="Encrypt different value types"
+// Encrypt a uint8 (e.g., credit score 0-255)
+const encryptedScore = await client.encryptInputs().execute(42);
+// Returns: { ctHash: "0x...", signature: "0x..." }
+
+// Encrypt a uint64 (e.g., loan amount)
+const encryptedAmount = await client.encryptInputs().execute(BigInt(100000));
+
+// Encrypt a uint128 (AES key half)
+const keyHalf = new Uint8Array(16); // 16 bytes = 128 bits
+const encryptedKeyHalf = await client.encryptInputs().execute(keyHalf);
+```
+
+### 3. Store Key on Chain
+
+```typescript title="Store CoFHE-encrypted key halves"
+// Store CoFHE-encrypted key halves in PromptKeyStore
+const storeTx = await client.storeKey(
+  encryptedKeyHalfHigh.ctHash,
+  encryptedKeyHalfLow.ctHash
+);
+
+// Wait for confirmation (needed before sharing permits)
+const receipt = await storeTx.wait();
+```
+
+### 4. Create Sharing Permits
+
+```typescript title="Create sharing permits for nodes"
+// Create a permit for a specific node to decrypt
+const permit = await client.createPermit({
+  issuer: userWalletAddress,
+  recipient: nodeAddress,
+  ciphertextHandles: [encryptedKeyHalfHigh.ctHash, encryptedKeyHalfLow.ctHash]
+});
+
+// Export for submission to ICL
+const exportedPermit = client.permitUtils.export(permit);
+```
+
+### 5. Decrypt (for Output Reveal)
+
+```typescript title="Decrypt output key for user"
+// User decrypts their output key
+const decrypted = await client.decryptForView(outputKeyHandle)
+  .withPermit(userPermit);
+
+// Result is the plaintext uint128
+const aesKeyHalf = decrypted.value;
+```
+
+## Critical Configuration Details
+
+<Accordion title="fheKeyStorage: null">
+  **Why**: The CoFHE SDK caches FHE public keys in IndexedDB by default. If the cache gets stale (e.g., after network reset or version upgrade), subsequent encryption calls fail with `Error serializing FHE publicKey` → `Failed to fetch` → cascading failures.
+
+  **Impact**: Disabling IndexedDB cache means the SDK fetches fresh keys on each initialization. Slightly slower (~1-2s) but eliminates stale cache issues.
+</Accordion>
+
+<Accordion title="environment: 'MOCK' on Chain Config">
+  **Important**: This is NOT full mock mode. It tells the SDK to:
+  - Verify ZK proofs locally instead of POSTing to a remote verifier
+  - Still generate real FHE ciphertexts
+  - Still use the actual threshold network for decryption
+
+  **Why**: The remote ZK proof verifier endpoint is sometimes unavailable. Local verification is faster and more reliable.
+</Accordion>
+
+<Accordion title="useWorkers: false">
+  **Why**: The CoFHE SDK uses Web Workers for ZK proof generation by default. In Vite dev mode, Web Workers are broken (module resolution issues with CJS dependencies).
+
+  **Impact**: ZK proof runs on the main thread. Browser freezes for 10-30s during proof generation. Must warn users: "Browser may be unresponsive — do not refresh."
+</Accordion>
+
+## Common Errors
+
+<Accordion title="Error serializing FHE publicKey">
+  **Cause**: Stale IndexedDB cache.
+
+  **Fix**:
+
+  ```typescript title="Clear IndexedDB cache"
+  // Already fixed by fheKeyStorage: null
+  // If still seeing it, clear browser storage:
+  await indexedDB.deleteDatabase('cofhe-sdk');
+  ```
+</Accordion>
+
+<Accordion title="Failed to fetch during encryption">
+  **Cause**: Network issue, stale cache, or ZK verifier unavailable.
+
+  **Fix**:
+
+  ```typescript title="Retry logic for encryption"
+  async function encryptWithRetry(value: any, retries = 3) {
+    for (let i = 0; i < retries; i++) {
+      try {
+        return await client.encryptInputs().execute(value);
+      } catch (e) {
+        if (i === retries - 1) throw e;
+        await new Promise(r => setTimeout(r, 2000 * (i + 1)));
+      }
+    }
+  }
+  ```
+</Accordion>
+
+<Accordion title="Browser freezes during encryption">
+  **Cause**: ZK proof running on main thread.
+
+  **Fix**:
+
+  ```typescript title="Show ZK warning before encryption"
+  function showZkWarning() {
+    const warning = document.createElement('div');
+    warning.innerHTML = `
+      <div style="position:fixed;top:0;left:0;right:0;background:#ff9800;color:black;padding:10px;text-align:center;z-index:9999">
+        ⚠️ Generating zero-knowledge proof... Browser may be unresponsive for 10-30s. Do not refresh.
+      </div>
+    `;
+    document.body.appendChild(warning);
+    return () => warning.remove();
+  }
+
+  const removeWarning = showZkWarning();
+  try {
+    await client.encryptInputs().execute(value);
+  } finally {
+    removeWarning();
+  }
+  ```
+</Accordion>
+
+## Security Best Practices
+
+<Steps>
+  <Step title="Never store AES keys" icon="x">
+    Never store AES keys in localStorage — they should be ephemeral (one per request)
+  </Step>
+  <Step title="Use HTTPS in production" icon="lock">
+    CoFHE operations involve sensitive key material
+  </Step>
+  <Step title="Validate ciphertext handles" icon="check">
+    Ensure handles are from your own `storeKey()` tx, not arbitrary values
+  </Step>
+  <Step title="Check permit expiry" icon="clock">
+    Sharing permits have expiration times; refresh if needed
+  </Step>
+  <Step title="Clear IndexedDB on logout" icon="trash">
+    `await indexedDB.deleteDatabase('cofhe-sdk')`
+  </Step>
+</Steps>

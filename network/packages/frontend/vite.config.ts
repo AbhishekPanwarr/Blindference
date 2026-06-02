@@ -2,6 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import mdx from '@mdx-js/rollup';
 import remarkGfm from 'remark-gfm';
+import remarkFrontmatter from 'remark-frontmatter';
 import path from 'path';
 import {defineConfig, loadEnv} from 'vite';
 
@@ -11,7 +12,7 @@ export default defineConfig(({mode}) => {
     plugins: [
       react(),
       mdx({
-        remarkPlugins: [remarkGfm],
+        remarkPlugins: [remarkGfm, remarkFrontmatter],
         rehypePlugins: [],
         providerImportSource: '@mdx-js/react',
       }),
@@ -74,6 +75,22 @@ export default defineConfig(({mode}) => {
       host: '127.0.0.1',
       port: 3000,
       hmr: process.env.DISABLE_HMR !== 'true',
+    },
+    build: {
+      target: 'esnext',
+      sourcemap: false,
+      chunkSizeWarningLimit: 800,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+            'vendor-ui': ['framer-motion', 'lucide-react', 'recharts'],
+            'vendor-web3': ['viem', 'wagmi', '@tanstack/react-query'],
+            'vendor-crypto': ['@cofhe/sdk', '@reineira-os/sdk'],
+            'vendor-utils': ['axios', 'zustand', 'clsx', 'tailwind-merge'],
+          },
+        },
+      },
     },
     preview: {
       host: '127.0.0.1',

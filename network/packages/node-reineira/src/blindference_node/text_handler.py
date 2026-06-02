@@ -42,17 +42,9 @@ async def process_text_task_as_leader(
     model_runner: Any,
     config: dict[str, Any],
 ) -> dict[str, Any]:
-    job_id = _job_id(task)
-    logger.info("[leader:%s] starting leader task processing", job_id)
-
-    logger.info("[leader:%s] fetching and decrypting prompt from IPFS", job_id)
-    prompt = await _fetch_and_decrypt_prompt(task, config)
-    logger.info("[leader:%s] prompt decrypted (length=%d)", job_id, len(prompt))
-
+    messages = await _fetch_and_decrypt_messages(task, config)
     model_name = _resolve_model_name(task, config)
-    logger.info("[leader:%s] running inference with model=%s", job_id, model_name)
-    output_text = await _run_model(model_runner, prompt, model_name)
-    logger.info("[leader:%s] inference complete (output_length=%d)", job_id, len(output_text))
+    output_text = await _run_model(model_runner, messages, model_name)
 
     output_key = generate_key()
     encrypted_output = encrypt_text(output_text, output_key)
@@ -81,6 +73,7 @@ async def process_text_task_as_leader(
         "output_key_store_job_id": output_key_store["job_id"] if output_key_store else None,
         "verdict": "CONFIRM",
         "confidence": 100,
+        "summary": output_text[:500] if isinstance(output_text, str) else None,
     }
     logger.info("[leader:%s] submitting leader result to ICL", job_id)
     response = await _submit_leader_text_result(payload["job_id"], payload, config)
@@ -98,9 +91,9 @@ async def process_text_task_as_verifier(
     model_runner: Any,
     config: dict[str, Any],
 ) -> dict[str, Any]:
-    job_id = _job_id(task)
-    verifier_address = _operator_address(config, task)
-    logger.info("[verifier:%s:%s] starting verifier task processing", verifier_address[:10], job_id)
+    messages = await _fetch_and_decrypt_messages(task, config)
+    model_name = _resolve_model_name(task, config)
+    output_text = await _run_model(model_runner, messages, model_name)
 
     logger.info("[verifier:%s:%s] fetching and decrypting prompt from IPFS", verifier_address[:10], job_id)
     prompt = await _fetch_and_decrypt_prompt(task, config)
@@ -139,10 +132,10 @@ async def process_text_task_as_verifier(
     }
 
 
-async def _fetch_and_decrypt_prompt(
+async def _fetch_and_decrypt_messages(
     task: dict[str, Any],
     config: dict[str, Any],
-) -> str:
+) -> list[dict[str, str]]:
     prompt_cid = _resolve_prompt_cid(task)
     logger.info("[prompt] downloading prompt from IPFS: cid=%s", prompt_cid)
     packed_prompt = await _call_maybe_async(download_from_ipfs, prompt_cid)
@@ -166,10 +159,26 @@ async def _fetch_and_decrypt_prompt(
         logger.info("[prompt] using stub prompt key (test mode)")
         prompt_key = bytes.fromhex(key_hex)
 
-    logger.info("[prompt] AES-GCM decrypting prompt")
-    prompt = decrypt_blob(packed_prompt, prompt_key)
-    logger.info("[prompt] prompt decrypted successfully")
-    return prompt
+    decrypted = decrypt_blob(packed_prompt, prompt_key)
+
+    # New format: JSON with conversation history + current prompt
+    try:
+        data = json.loads(decrypted)
+        if isinstance(data, dict) and "conversation" in data and "prompt" in data:
+            conversation = data.get("conversation", [])
+            current_prompt = data.get("prompt", "")
+            messages: list[dict[str, str]] = []
+            if isinstance(conversation, list):
+                for turn in conversation:
+                    if isinstance(turn, dict) and "role" in turn and "content" in turn:
+                        messages.append({"role": str(turn["role"]), "content": str(turn["content"])})
+            messages.append({"role": "user", "content": str(current_prompt)})
+            return messages
+    except (json.JSONDecodeError, ValueError, TypeError):
+        pass
+
+    # Backward compat: raw prompt string
+    return [{"role": "user", "content": decrypted}]
 
 
 async def _encrypt_output_key_halves(
@@ -245,8 +254,8 @@ async def _get_json(config: dict[str, Any], path: str) -> dict[str, Any]:
         return response.json()
 
 
-async def _run_model(model_runner: Any, prompt: str, model_name: str) -> str:
-    result = model_runner(prompt, model_name=model_name)
+async def _run_model(model_runner: Any, messages: list[dict[str, str]], model_name: str) -> str:
+    result = model_runner(messages, model_name=model_name)
     if inspect.isawaitable(result):
         result = await result
     return str(result)

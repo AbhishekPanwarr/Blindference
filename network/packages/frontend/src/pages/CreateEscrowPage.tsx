@@ -6,6 +6,7 @@ import { getReineiraSdk } from '../lib/reineiraSdk'
 import { useCofheClient } from '../hooks/useCofheClient'
 import { encodeResolverData } from '@reineira-os/sdk'
 import { GlassCard } from '../components/ui/GlassCard'
+import { SectionLabel } from '../components/effects/GlowDivider'
 
 const PAYOUT_CLAIMER_ADDRESS = (import.meta.env.VITE_PAYOUT_CLAIMER_ADDRESS || '0xEfB565c7989dd1dEDD0C5B8c95dA24Ef2d94FBbd') as `0x${string}`
 const INFERENCE_GATE_ADDRESS = (import.meta.env.VITE_INFERENCE_GATE_ADDRESS || '0x6a3fA63542d0b69937949372c11348A9EE3f6459') as `0x${string}`
@@ -93,12 +94,13 @@ export function CreateEscrowPage() {
       <div className="flex items-center gap-4 mb-8">
         <button
           onClick={() => navigate(-1)}
-          className="p-2 rounded-lg border border-white/10 glass-card hover:bg-orange-500/10 transition-colors"
+          className="p-2 rounded-lg border border-white/10 glass-card hover:bg-violet-500/10 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 text-white/50" />
         </button>
         <div>
-          <h1 className="text-2xl font-semibold gradient-text font-heading">Create Escrow</h1>
+          <SectionLabel>CREATE ESCROW</SectionLabel>
+          <h1 className="text-2xl font-semibold gradient-text font-heading mt-1">Create Escrow</h1>
           <p className="text-sm text-white/50 mt-1">
             Create a Reineira escrow for inference payment. Owner is set to PayoutClaimer for automatic settlement.
           </p>
@@ -115,7 +117,7 @@ export function CreateEscrowPage() {
       </div>
 
       {/* Form */}
-      <GlassCard className="p-6 space-y-4">
+      <GlassCard className="gradient-accent-top p-6 space-y-4">
         <div>
           <label className="block text-sm font-medium text-white/90 mb-1">Amount (USDC)</label>
           <input
@@ -124,7 +126,7 @@ export function CreateEscrowPage() {
             step="1"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="w-full rounded-lg border border-white/10 bg-[rgba(10,10,10,0.6)] px-3 py-2 text-sm text-white/90 focus:outline-none focus:border-orange-500/50 input-glass"
+            className="w-full rounded-lg border border-white/10 bg-[rgba(10,10,10,0.6)] px-3 py-2 text-sm text-white/90 focus:outline-none focus:border-violet-500/50 input-glass"
             placeholder="e.g. 10"
           />
           <p className="text-xs text-white/50 mt-1">Amount in USDC (6 decimals). This will be wrapped into cUSDC during funding.</p>
@@ -136,7 +138,7 @@ export function CreateEscrowPage() {
             type="text"
             value={jobId}
             onChange={(e) => setJobId(e.target.value)}
-            className="w-full rounded-lg border border-white/10 bg-[rgba(10,10,10,0.6)] px-3 py-2 text-sm text-white/90 focus:outline-none focus:border-orange-500/50 font-mono input-glass"
+            className="w-full rounded-lg border border-white/10 bg-[rgba(10,10,10,0.6)] px-3 py-2 text-sm text-white/90 focus:outline-none focus:border-violet-500/50 font-mono input-glass"
             placeholder="0x..."
           />
           <p className="text-xs text-white/50 mt-1">
@@ -148,6 +150,7 @@ export function CreateEscrowPage() {
           onClick={handleCreate}
           disabled={loading || !address}
           className="w-full rounded-lg btn-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+         
         >
           {loading ? (
             <>

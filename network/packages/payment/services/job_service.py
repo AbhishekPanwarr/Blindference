@@ -153,6 +153,8 @@ class JobService:
             amount_blind=str(amount_blind),
             insurance_opt_in=payload.insurance_opt_in,
             insurance_premium_cusdc=str(insurance_premium_cusdc),
+            payment_mode=payload.payment_mode,
+            payment_currency=payload.payment_currency,
             escrow_id=escrow_id,
             coverage_id=coverage_id,
             status="RUNNING",
@@ -162,6 +164,9 @@ class JobService:
         )
         job_dict = job_record.model_dump()
         job_dict.pop("source", None)  # Supabase jobs table has no 'source' column (PGRST204)
+        job_dict.pop("payment_mode", None)  # Supabase jobs table has no 'payment_mode' column (PGRST204)
+        job_dict.pop("payment_currency", None)  # Supabase jobs table has no 'payment_currency' column (PGRST204)
+        job_dict.pop("leader_summary", None)  # Supabase jobs table has no 'leader_summary' column (PGRST204)
         await self.database[JOBS].insert_one(job_dict)
         logger.info("Job record created: job_id=%s task_id=%s", job_id, payload.task_id)
 
@@ -209,7 +214,7 @@ class JobService:
                     await asyncio.sleep(2 ** attempt)  # Exponential backoff
 
         if not icl_success:
-            # Mark job as failed and refund
+            # Mark job as failed and refund (credits mode only)
             await self.database[JOBS].update_one(
                 {"job_id": job_id},
                 {
@@ -276,16 +281,10 @@ class JobService:
             logger.warning("Job %s already finalized (status=%s), skipping", actual_job_id, job.get("status"))
             return {"job_id": actual_job_id, "status": job.get("status"), "note": "already_finalized"}
 
-        # Use the actual DB job_id (UUID) for updates — the ICL callback passes task_id
-        actual_job_id = job["job_id"]
-
-        if job.get("status") != "RUNNING":
-            logger.warning("Job %s already finalized (status=%s), skipping", actual_job_id, job.get("status"))
-            return {"job_id": actual_job_id, "status": job.get("status"), "note": "already_finalized"}
-
         user_address = job["user_address"]
         amount_cusdc = int(job.get("amount_cusdc", 0))
         amount_blind = int(job.get("amount_blind", 0))
+        payment_mode = job.get("payment_mode", "credits")
 
         now = datetime.now(timezone.utc)
 
@@ -328,28 +327,28 @@ class JobService:
                     rewards_map[v_addr.lower()] = 0.2
 
             # Update job record (use actual DB job_id, not the ICL task_id)
+            update_fields = {
+                "status": "COMPLETED",
+                "leader_address": payload.leader_address,
+                "verifier_addresses": payload.verifier_addresses,
+                "result_hash": payload.result_hash,
+                "output_cid": payload.output_cid,
+                "encrypted_output_key_high": payload.encrypted_output_key_high,
+                "encrypted_output_key_low": payload.encrypted_output_key_low,
+                "rewards_distributed": reward_result.get("status") == "distributed",
+                "reward_tx_hashes": [
+                    d.get("tx_hash")
+                    for d in reward_result.get("distributions", [])
+                    if d.get("tx_hash")
+                ],
+                "rewards": rewards_map,
+                "claim_result": claim_result,
+                "updated_at": now,
+            }
+            update_fields.pop("leader_summary", None)  # Supabase jobs table has no 'leader_summary' column (PGRST204)
             result = await self.database[JOBS].update_one(
                 {"job_id": actual_job_id},
-                {
-                    "$set": {
-                        "status": "COMPLETED",
-                        "leader_address": payload.leader_address,
-                        "verifier_addresses": payload.verifier_addresses,
-                        "result_hash": payload.result_hash,
-                        "output_cid": payload.output_cid,
-                        "encrypted_output_key_high": payload.encrypted_output_key_high,
-                        "encrypted_output_key_low": payload.encrypted_output_key_low,
-                        "rewards_distributed": reward_result.get("status") == "distributed",
-                        "reward_tx_hashes": [
-                            d.get("tx_hash")
-                            for d in reward_result.get("distributions", [])
-                            if d.get("tx_hash")
-                        ],
-                        "rewards": rewards_map,
-                        "claim_result": claim_result,
-                        "updated_at": now,
-                    }
-                },
+                {"$set": update_fields},
             )
             if result.matched_count == 0:
                 logger.error("Job update failed: no document matched for job_id=%s", actual_job_id)
@@ -363,8 +362,8 @@ class JobService:
             }
 
         else:  # timeout or rejected
-            # Refund credits
-            if amount_cusdc > 0 or amount_blind > 0:
+            # Refund credits only for credits mode (escrow funds are resolved on-chain)
+            if payment_mode == "credits" and (amount_cusdc > 0 or amount_blind > 0):
                 try:
                     await self.credit_service.refund(
                         user_address=user_address,
@@ -381,17 +380,20 @@ class JobService:
                     [payload.leader_address] + payload.verifier_addresses
                 )
 
+            update_fields = {
+                "status": "FAILED" if payload.status == "timeout" else "REFUNDED",
+                "error_reason": payload.error_reason or payload.status,
+                "leader_address": payload.leader_address,
+                "verifier_addresses": payload.verifier_addresses,
+                "output_cid": payload.output_cid,
+                "encrypted_output_key_high": payload.encrypted_output_key_high,
+                "encrypted_output_key_low": payload.encrypted_output_key_low,
+                "updated_at": now,
+            }
+            update_fields.pop("leader_summary", None)  # Supabase jobs table has no 'leader_summary' column (PGRST204)
             result = await self.database[JOBS].update_one(
                 {"job_id": actual_job_id},
-                {
-                    "$set": {
-                        "status": "FAILED" if payload.status == "timeout" else "REFUNDED",
-                        "error_reason": payload.error_reason or payload.status,
-                        "leader_address": payload.leader_address,
-                        "verifier_addresses": payload.verifier_addresses,
-                        "updated_at": now,
-                    }
-                },
+                {"$set": update_fields},
             )
             if result.matched_count == 0:
                 logger.error("Job update failed: no document matched for job_id=%s", actual_job_id)

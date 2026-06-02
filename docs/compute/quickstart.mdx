@@ -22,22 +22,38 @@ Get a Blindference node running and earning in under 5 minutes.
 ## Install
 
 <Tabs>
-  <Tab title="PyPI (Recommended)">
+  <Tab title="GitHub Clone (Recommended)">
+    ```bash title="Clone and install"
+    git clone https://github.com/AbhishekPanwarr/Blindference-node.git
+    cd Blindference-node
+
+    # Install Node.js dependencies (REQUIRED for CoFHE bridge)
+    npm install
+
+    # Install Python package
+    pip install -e .
+    ```
+
+    This is the recommended path. The CoFHE bridge requires Node.js packages that cannot be bundled in a Python wheel.
+  </Tab>
+  <Tab title="PyPI (Advanced)">
+    <Warning>
+      The PyPI wheel includes Python code but **NOT Node.js dependencies**. After `pip install`, you **must** run `npm install` inside the installed package directory.
+    </Warning>
+
     ```bash title="Install from PyPI"
     pip install blindference-node
+    ```
+
+    ```bash title="Install Node.js dependencies (REQUIRED)"
+    BLF_NODE_DIR=$(python -c "import blindference_node, os; print(os.path.dirname(blindference_node.__file__))")
+    cd "$BLF_NODE_DIR" && npm install
     ```
 
     For GPU-accelerated local inference (optional):
 
     ```bash title="Install with GPU support"
     pip install "blindference-node[gpu]"
-    ```
-  </Tab>
-  <Tab title="From Source">
-    ```bash title="Clone and install"
-    git clone https://github.com/baync180705/Blindference-node.git
-    cd Blindference-node
-    pip install -e .
     ```
   </Tab>
   <Tab title="Docker">

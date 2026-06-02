@@ -21,10 +21,11 @@ import {
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { fadeInUp, staggerSlow } from '../lib/animations'
+import { SectionLabel } from '../components/effects/GlowDivider'
 
-const INSTALL_SNIPPET = `npm install @blindference/agent-sdk`
+const INSTALL_SNIPPET = `npm install @abhieren/blindference-agent`
 
-const USAGE_SNIPPET = `import { BlindferenceAgent } from '@blindference/agent-sdk'
+const USAGE_SNIPPET = `import { BlindferenceAgent } from '@abhieren/blindference-agent'
 
 const agent = new BlindferenceAgent({
   privateKey: process.env.BLINDFERENCE_PRIVATE_KEY,
@@ -98,11 +99,12 @@ export function DeveloperDashboardPage() {
         className="mb-8"
       >
         <motion.div variants={fadeInUp} className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
-            <Code2 className="w-5 h-5 text-orange-400" />
+          <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+            <Code2 className="w-5 h-5 text-violet-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold font-heading tracking-tight">Developer Dashboard</h1>
+            <SectionLabel>DEVELOPER DASHBOARD</SectionLabel>
+            <h1 className="text-2xl font-bold font-heading tracking-tight mt-1">Developer Dashboard</h1>
             <p className="text-sm text-white/50">Monitor your SDK usage and integration</p>
           </div>
         </motion.div>
@@ -115,12 +117,13 @@ export function DeveloperDashboardPage() {
           animate="visible"
           variants={staggerSlow}
           className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8"
+         
         >
           <motion.div variants={fadeInUp}>
             <GlassCard className="p-5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
-                  <Cpu className="w-4 h-4 text-orange-400" />
+                  <Cpu className="w-4 h-4 text-violet-400" />
                 </div>
                 <span className="text-xs font-medium text-white/40 uppercase tracking-wider">Total Jobs</span>
               </div>
@@ -155,8 +158,8 @@ export function DeveloperDashboardPage() {
           <motion.div variants={fadeInUp}>
             <GlassCard className="p-5">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                  <Zap className="w-4 h-4 text-orange-400" />
+                <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                  <Zap className="w-4 h-4 text-violet-400" />
                 </div>
                 <span className="text-xs font-medium text-white/40 uppercase tracking-wider">cUSDC Spent</span>
               </div>
@@ -175,8 +178,8 @@ export function DeveloperDashboardPage() {
           className="mb-8"
         >
           <GlassCard className="p-8 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mx-auto mb-4">
-              <Terminal className="w-8 h-8 text-orange-400" />
+            <div className="w-16 h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mx-auto mb-4">
+              <Terminal className="w-8 h-8 text-violet-400" />
             </div>
             <h2 className="text-xl font-bold mb-2 font-heading">No SDK Jobs Yet</h2>
             <p className="text-sm text-white/50 max-w-md mx-auto mb-6">
@@ -187,7 +190,7 @@ export function DeveloperDashboardPage() {
                 Read Docs
                 <ArrowRight className="w-4 h-4" />
               </Button>
-              <Button variant="outline" onClick={() => window.open('https://github.com/baync180705/blindference/tree/main/network/packages/agent-sdk', '_blank', 'noopener,noreferrer')}>
+              <Button variant="outline" onClick={() => window.open('https://github.com/AbhishekPanwarr/Blindference-Agent', '_blank', 'noopener,noreferrer')}>
                 <Code2 className="w-4 h-4" />
                 View on GitHub
               </Button>
@@ -202,12 +205,13 @@ export function DeveloperDashboardPage() {
         animate="visible"
         variants={staggerSlow}
         className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+       
       >
         <motion.div variants={fadeInUp}>
           <GlassCard className="p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                <Package className="w-4 h-4 text-orange-400" />
+              <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                <Package className="w-4 h-4 text-violet-400" />
               </div>
               <h3 className="text-lg font-semibold">Installation</h3>
             </div>
@@ -226,8 +230,8 @@ export function DeveloperDashboardPage() {
         <motion.div variants={fadeInUp}>
           <GlassCard className="p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                <Terminal className="w-4 h-4 text-orange-400" />
+              <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                <Terminal className="w-4 h-4 text-violet-400" />
               </div>
               <h3 className="text-lg font-semibold">Quick Start</h3>
             </div>
@@ -248,8 +252,8 @@ export function DeveloperDashboardPage() {
         <motion.div variants={fadeInUp}>
           <GlassCard className="p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                <Layers className="w-4 h-4 text-orange-400" />
+              <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                <Layers className="w-4 h-4 text-violet-400" />
               </div>
               <h3 className="text-lg font-semibold">Local Server</h3>
             </div>
@@ -270,8 +274,8 @@ export function DeveloperDashboardPage() {
         <motion.div variants={fadeInUp}>
           <GlassCard className="p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                <Code2 className="w-4 h-4 text-orange-400" />
+              <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                <Code2 className="w-4 h-4 text-violet-400" />
               </div>
               <h3 className="text-lg font-semibold">CLI Commands</h3>
             </div>
@@ -285,7 +289,7 @@ export function DeveloperDashboardPage() {
                   <div className="flex items-center gap-3 min-w-0">
                     <Terminal className="w-4 h-4 text-white/30 shrink-0" />
                     <div className="min-w-0">
-                      <code className="text-xs font-mono text-orange-300/80 truncate block">{cmd}</code>
+                      <code className="text-xs font-mono text-violet-300/80 truncate block">{cmd}</code>
                       <span className="text-xs text-white/40">{desc}</span>
                     </div>
                   </div>

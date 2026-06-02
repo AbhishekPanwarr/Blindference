@@ -25,7 +25,7 @@ description: 'Common issues and how to fix them'
 
 **Fix**:
 
-```bash
+```bash title="Terminal"
 # Check where pip installed it
 python -m site --user-base
 # Add to PATH
@@ -45,7 +45,7 @@ python -m blindference_node.cli --help
 
 **If auto-re-attest fails**:
 
-```bash
+```bash title="Terminal"
 # Check ICL connectivity
 curl $BLF_ICL_ENDPOINT/health
 
@@ -67,7 +67,7 @@ blindference-node run
 
 **Fix**:
 
-```bash
+```bash title="Terminal"
 # Verify backend setting
 grep attestation_backend ~/.blindference/config.json
 
@@ -88,7 +88,7 @@ blindference-node init
 
 **Fix**:
 
-```bash
+```bash title="Terminal"
 # Check ICL logs for claim errors
 grep "task/claim" icl.log
 
@@ -110,7 +110,7 @@ curl $BLF_ICL_ENDPOINT/internal/assignments/YOUR_ADDRESS
 
 **Fix**:
 
-```bash
+```bash title="Terminal"
 # Test IPFS gateway directly
 curl -s $BLF_IPFS_GATEWAY/ipfs/QmTest123 | head -c 100
 
@@ -131,7 +131,7 @@ export BLF_IPFS_GATEWAY=https://gateway.pinata.cloud/ipfs
 This is an ICL-side issue. Ensure the ICL is using the **stored handles** from `PromptKeyStore`, not the original `ctHash` values.
 
 Verify in ICL database:
-```python
+```python title="Python"
 # ICL debug query
 {"prompt_key_store_handles": {"high": "0x...", "low": "0x..."}}
 ```
@@ -148,7 +148,7 @@ Verify in ICL database:
 
 **Fix**:
 
-```bash
+```bash title="Terminal"
 # Check Groq API key is set
 echo $GROQ_API_KEY
 
@@ -174,7 +174,7 @@ export BLF_SUPPORTED_MODEL_IDS=gemini:gemini-2.5-flash
 
 **Fix**:
 
-```bash
+```bash title="Terminal"
 # Test ICL connectivity
 curl -v $BLF_ICL_ENDPOINT/health
 
@@ -193,7 +193,7 @@ nslookup $(echo $BLF_ICL_ENDPOINT | sed 's|https://||')
 
 **Fix**:
 
-```bash
+```bash title="Terminal"
 # Use dedicated RPC endpoint
 export BLF_COFHE_ENDPOINT=https://arb-sepolia.g.alchemy.com/v2/YOUR_DEDICATED_KEY
 
@@ -211,7 +211,7 @@ export BLF_COFHE_ENDPOINT=https://api.helios.fhenix.zone
 
 **Fix**:
 
-```bash
+```bash title="Terminal"
 # Reduce concurrent jobs (default is 2)
 # Edit node_loop.py or config to lower semaphore count
 
@@ -230,7 +230,7 @@ blindference-node run
 
 **Fix**:
 
-```bash
+```bash title="Terminal"
 # Switch to faster model
 groq:llama-3.3-70b-versatile  # Fast
 # vs
@@ -246,5 +246,5 @@ If none of the above fixes work:
 
 1. **Collect logs**: `cat ~/.blindference/node.log | gzip > node_logs.gz`
 2. **Check versions**: `blindference-node --version`, `python --version`
-3. **Open an issue**: [GitHub Issues](https://github.com/baync180705/Blindference-node/issues)
-4. **Join Discord**: [Blindference Community](https://discord.gg/blindference)
+3. **Open an issue**: [GitHub Issues](https://github.com/AbhishekPanwarr/Blindference-node/issues)
+4. **Telegram**: Message [@abhieren](https://t.me/abhieren)

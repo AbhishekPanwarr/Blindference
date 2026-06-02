@@ -112,7 +112,7 @@ Use `<Tabs>` when users need to choose between alternative paths (e.g., OS, inst
   </Tab>
   <Tab title="From Source">
     ```bash title="Clone and install"
-    git clone https://github.com/baync180705/Blindference-node.git
+    git clone https://github.com/AbhishekPanwarr/Blindference-node.git
     cd Blindference-node
     pip install -e .
     ```
@@ -193,20 +193,11 @@ Use tables for structured reference data. Keep column headers concise.
 
 ---
 
-## Mermaid Diagrams
+## Architecture Diagrams
 
-Use Mermaid for architecture and flow diagrams. Keep them simple and label every node.
+Use images for architecture diagrams instead of inline Mermaid. Keep them high-resolution and dark-mode friendly.
 
-```mermaid
-flowchart TB
-    U[User Wallet] --> FE[Frontend]
-    FE -->|AES encrypt| IPFS[(IPFS)]
-    FE -->|Store key| PKS[PromptKeyStore]
-    FE -->|Submit| ICL[ICL]
-    ICL --> N1[Leader Node]
-    ICL --> N2[Verifier 1]
-    ICL --> N3[Verifier 2]
-```
+<img src="/docs/architecture.png" alt="Blindference architecture diagram" className="my-6 rounded-2xl border border-white/[0.08] w-full" />
 
 ---
 

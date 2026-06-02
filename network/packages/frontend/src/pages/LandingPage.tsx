@@ -1,82 +1,67 @@
-import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   Shield,
   Lock,
   Cpu,
-  Globe,
   ArrowRight,
-  ChevronDown,
   Zap,
   CheckCircle2,
   Server,
-  Users,
-  FileText,
   Wallet,
   Database,
-  Layers,
-  HardDrive,
-  Code2,
 } from 'lucide-react'
 import { fadeInUp, fadeInScale, staggerSlow } from '../lib/animations'
 import DottedGlobe from '../components/globe/DottedGlobe'
 import HowItWorks from '../components/landing/HowItWorks'
 import PrivacyMarquee from '../components/landing/PrivacyMarquee'
 import AnimatedBanner from '../components/landing/AnimatedBanner'
+import PromoCard from '../components/landing/PromoCard'
 import ArchitectureDiagram from '../components/landing/ArchitectureDiagram'
 import ModelShowcase from '../components/landing/ModelShowcase'
 import { PrivacyComparison } from '../components/landing/PrivacyComparison'
 import { RolesSection } from '../components/landing/RolesSection'
 import { FinalCTA } from '../components/landing/FinalCTA'
+import HeroGrid from '../components/effects/HeroGrid'
+import { GrainOverlay } from '../components/effects/GrainOverlay'
+import { GlowDivider, SectionLabel } from '../components/effects/GlowDivider'
+import { FeatureCard } from '../components/effects/FeatureCard'
 
-/* ─── Cursor-tracking grid background ─── */
-function CursorGrid() {
-  const gridRef = useRef<HTMLDivElement>(null)
-  const [pos, setPos] = useState({ x: -100, y: -100 })
-
-  useEffect(() => {
-    const handleMove = (e: MouseEvent) => {
-      if (!gridRef.current) return
-      const rect = gridRef.current.getBoundingClientRect()
-      setPos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
-    }
-    window.addEventListener('mousemove', handleMove)
-    return () => window.removeEventListener('mousemove', handleMove)
-  }, [])
-
+/* ─── Scanline CRT effect ─── */
+function Scanlines() {
   return (
     <div
-      ref={gridRef}
-      className="absolute inset-0 z-0 pointer-events-none overflow-hidden"
-    >
-      {/* Base faint grid */}
-      <div
-        className="absolute inset-0 opacity-[0.06]"
-        style={{
-          backgroundImage:
-            'linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px)',
-          backgroundSize: '60px 60px',
-        }}
-      />
-      {/* Grid intersection glow dots */}
-      <div
-        className="absolute inset-0 opacity-40"
-        style={{
-          backgroundImage:
-            'radial-gradient(circle 2px at calc(var(--gx, 0px) + 1px) calc(var(--gy, 0px) + 1px), rgba(249,115,22,0.6) 0%, transparent 100%), radial-gradient(circle 2px at calc(var(--gx, 0px) + 61px) calc(var(--gy, 0px) + 61px), rgba(249,115,22,0.6) 0%, transparent 100%), radial-gradient(circle 2px at calc(var(--gx, 0px) + 1px) calc(var(--gy, 0px) + 61px), rgba(249,115,22,0.6) 0%, transparent 100%), radial-gradient(circle 2px at calc(var(--gx, 0px) + 61px) calc(var(--gy, 0px) + 1px), rgba(249,115,22,0.6) 0%, transparent 100%)',
-          backgroundSize: '120px 120px',
-          backgroundPosition: `${-pos.x % 120}px ${-pos.y % 120}px`,
-          filter: 'blur(0.5px)',
-        }}
-      />
+      className="absolute inset-0 z-[2] pointer-events-none opacity-[0.04]"
+      style={{
+        background:
+          'linear-gradient(to bottom, transparent 50%, rgba(249, 115, 22, 0.03) 51%, transparent 100%)',
+        backgroundSize: '100% 4px',
+      }}
+    />
+  )
+}
 
-      {/* Orange glow near cursor */}
-      <div
-        className="absolute inset-0 opacity-80"
-        style={{
-          background: `radial-gradient(500px circle at ${pos.x}px ${pos.y}px, rgba(249,115,22,0.28), rgba(249,115,22,0.08) 35%, transparent 65%)`,
+/* ─── Aurora blobs behind hero ─── */
+function AuroraBlobs() {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-[1]">
+      <motion.div
+        animate={{
+          x: [0, 100, -60, 0],
+          y: [0, -60, 80, 0],
+          scale: [1, 1.15, 0.9, 1],
         }}
+        transition={{ duration: 20, ease: 'linear', repeat: Infinity }}
+        className="absolute top-[10%] left-[20%] w-[500px] h-[500px] rounded-full bg-violet-500/5 blur-[120px]"
+      />
+      <motion.div
+        animate={{
+          x: [0, -80, 40, 0],
+          y: [0, 40, -60, 0],
+          scale: [1, 0.85, 1.1, 1],
+        }}
+        transition={{ duration: 25, ease: 'linear', repeat: Infinity }}
+        className="absolute top-[40%] right-[10%] w-[400px] h-[400px] rounded-full bg-indigo-500/3 blur-[100px]"
       />
     </div>
   )
@@ -85,102 +70,112 @@ function CursorGrid() {
 /* ─── Hero ─── */
 function HeroSection() {
   return (
-    <section className="relative min-h-[60vh] lg:min-h-[70vh] flex items-center overflow-hidden">
-      <CursorGrid />
+    <section className="relative flex min-h-[80vh] items-start md:items-center overflow-hidden">
+      {/* Background: Animated grid */}
+      <HeroGrid />
 
-      {/* Scanline effect */}
-      <div
-        className="absolute inset-0 z-[2] pointer-events-none opacity-[0.04]"
-        style={{
-          background: 'linear-gradient(to bottom, transparent 50%, rgba(249, 115, 22, 0.03) 51%, transparent 100%)',
-          backgroundSize: '100% 4px',
-        }}
-      />
+      {/* Globe — positioned to the right, NullPay-style */}
+      <motion.div
+        variants={fadeInScale}
+        initial="hidden"
+        animate="show"
+        className="pointer-events-none absolute inset-0 z-[1] overflow-hidden"
+      >
+        <div className="absolute right-[-12rem] top-1/2 -translate-y-1/2 opacity-80 sm:right-[-8rem] md:right-[-6%] lg:right-[-2%] xl:right-[2%]">
+          <DottedGlobe className="w-[26rem] max-w-none sm:w-[30rem] md:w-[34rem] lg:w-[38rem] xl:w-[42rem]" />
+        </div>
+      </motion.div>
 
-      <div className="relative z-10 w-full px-6 md:px-12 lg:px-24 pt-24 pb-12">
+      {/* Hero content */}
+      <div className="relative z-10 w-full px-6 md:px-12 lg:px-24 pt-6 md:pt-36 pb-12">
         <motion.div
           variants={staggerSlow}
           initial="hidden"
           animate="show"
-          className="mx-auto flex max-w-7xl flex-col lg:flex-row items-center gap-10 lg:gap-4"
+          className="mx-auto flex max-w-4xl flex-col items-center gap-10 md:gap-10"
         >
-          {/* Text content - centered */}
-          <div className="flex-1 flex flex-col items-center text-center max-w-2xl">
-            <motion.div variants={fadeInUp}>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 mb-6">
-                <Zap className="w-3.5 h-3.5 text-orange-400" />
-                <span className="text-xs font-medium text-orange-300 tracking-wide">
-                  CoFHE-Powered Confidential AI
+          <div className="relative flex w-full justify-center overflow-visible">
+            <div className="relative z-20 flex max-w-4xl flex-col items-center text-center md:items-center md:text-center">
+              {/* Main headline */}
+              <motion.div variants={fadeInUp} className="relative z-20">
+                <h1 className="text-[3.3rem] font-black leading-[0.9] tracking-[-0.06em] sm:text-[3.9rem] md:text-7xl lg:text-[5rem] xl:text-[5.8rem]">
+                  <span className="block text-white">Confidential AI</span>
+                  <span className="block mt-1 md:mt-0">
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-300 via-violet-500 to-indigo-400 drop-shadow-[0_0_30px_rgba(139,92,246,0.3)]">Inference,</span>{' '}
+                    <span className="text-white/60">Verified.</span>
+                  </span>
+                </h1>
+              </motion.div>
+
+              <motion.p
+                variants={fadeInUp}
+                className="max-w-2xl pt-6 text-xl font-light leading-relaxed tracking-wide text-white/60 md:text-2xl lg:text-[1.35rem]"
+              >
+                Your prompts are encrypted with{' '}
+                <span className="text-white/90 font-medium border-b border-violet-500/30">
+                  FHE
                 </span>
-              </div>
-            </motion.div>
+                . Your answers are proven by{' '}
+                <span className="text-white/90 font-medium border-b border-violet-500/30">
+                  quorum consensus
+                </span>{' '}
+                inside TEEs.
+              </motion.p>
 
-            <motion.h1
-              variants={fadeInUp}
-              className="text-[3.3rem] font-black leading-[0.9] tracking-[-0.06em] sm:text-[3.9rem] md:text-7xl lg:text-[5rem] xl:text-[5.2rem] mb-6"
-            >
-              <span className="block text-white">Confidential AI</span>
-              <span className="block mt-1">
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-500 to-orange-400 drop-shadow-[0_0_30px_rgba(249,115,22,0.3)]">Inference,</span>{' '}
-                <span className="text-stroke" style={{ WebkitTextStroke: '1.5px rgba(255,255,255,0.1)', color: 'transparent' }}>Verified.</span>
-              </span>
-            </motion.h1>
-
-            <motion.p
-              variants={fadeInUp}
-              className="max-w-xl text-lg md:text-xl font-light leading-relaxed tracking-wide text-white/40 mb-8"
-            >
-              Your prompts are encrypted with <span className="text-white/80 font-medium border-b border-orange-500/30">FHE</span>.
-              Your answers are proven by <span className="text-white/80 font-medium border-b border-orange-500/30">quorum consensus</span> inside TEEs.
-            </motion.p>
-
-            <motion.div
-              variants={fadeInUp}
-              className="flex flex-col sm:flex-row items-center gap-4"
-            >
-              <Link
-                to="/app"
-                className="inline-flex items-center gap-2 bg-white text-black font-bold text-sm rounded-full px-8 py-3.5 transition-all hover:scale-[1.03] hover:shadow-[0_0_30px_rgba(255,255,255,0.25)]"
+              {/* CTAs */}
+              <motion.div
+                variants={fadeInUp}
+                className="flex flex-col items-center justify-center gap-4 pt-6"
               >
-                Launch App
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-              <Link
-                to="/docs"
-                className="inline-flex items-center gap-2 glass-card glass-card-hover text-orange-300 font-semibold text-sm rounded-full px-8 py-3.5 border border-white/10"
-              >
-                Read Docs
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </motion.div>
-
-            {/* Trust badges */}
-            <motion.div
-              variants={fadeInUp}
-              className="mt-8 flex flex-wrap justify-center gap-3"
-            >
-              {['100% Private', 'ZK Native', 'FHE Protected', 'Quorum Verified'].map(
-                (label) => (
-                  <div
-                    key={label}
-                    className="group inline-flex items-center gap-2 rounded-full bg-white/[0.03] border border-white/[0.06] hover:border-orange-500/20 px-4 py-2 text-xs text-white/40 transition-all duration-500 backdrop-blur-xl cursor-default"
+                <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+                  <Link
+                    to="/app"
+                    className="group inline-flex min-w-[180px] items-center justify-center gap-2 rounded-full bg-violet-500 px-6 py-3 text-base font-semibold text-white shadow-[0_4px_20px_rgba(139,92,246,0.3)] transition-all hover:scale-[1.03] hover:bg-violet-400 hover:shadow-[0_8px_30px_rgba(139,92,246,0.5)]"
                   >
-                    <span className="text-[10px] font-mono tracking-[0.25em] text-white/40 group-hover:text-white transition-colors uppercase font-bold">{label}</span>
-                  </div>
-                )
-              )}
-            </motion.div>
-          </div>
+                    <span className="relative z-10">Launch App</span>
+                    <ArrowRight className="relative z-10 w-4 h-4 transition-transform group-hover:translate-x-1" />
+                  </Link>
 
-          {/* Globe - right */}
-          <motion.div
-            variants={fadeInUp}
-            className="hidden lg:block flex-1 relative"
-          >
-            <div className="absolute right-[-18rem] top-1/2 -translate-y-1/2 opacity-80 lg:right-[-12%] xl:right-[-4%]">
-              <DottedGlobe className="w-[26rem] max-w-none sm:w-[30rem] md:w-[34rem] lg:w-[38rem] xl:w-[42rem]" />
+                  <Link
+                    to="/docs"
+                    className="group inline-flex min-w-[180px] items-center justify-center gap-2 rounded-full border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-base font-semibold text-white/70 transition-all hover:border-white/[0.2] hover:bg-white/[0.06] hover:text-white"
+                  >
+                    <span className="relative z-10">Documentation</span>
+                    <ArrowRight className="relative z-10 w-4 h-4 text-white/40 transition-colors group-hover:text-white" />
+                  </Link>
+                </div>
+              </motion.div>
+
+              {/* Trust badges */}
+              <motion.div
+                variants={fadeInUp}
+                className="mt-8 flex flex-wrap justify-center gap-3"
+              >
+                {[
+                  '100% Private',
+                  'Cryptographically Secure',
+                  'FHE Protected',
+                  'Quorum Verified',
+                ].map((label, i) => (
+                  <motion.div
+                    key={label}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{
+                      delay: 1 + i * 0.1,
+                      duration: 0.5,
+                      ease: [0.22, 1, 0.36, 1],
+                    }}
+                    className="group relative flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] hover:border-violet-500/20 transition-all duration-500 backdrop-blur-xl cursor-default"
+                  >
+                    <span className="text-[10px] font-mono tracking-[0.25em] text-white/50 group-hover:text-white/80 transition-colors uppercase font-bold">
+                      {label}
+                    </span>
+                  </motion.div>
+                ))}
+              </motion.div>
             </div>
-          </motion.div>
+          </div>
         </motion.div>
       </div>
 
@@ -190,8 +185,6 @@ function HeroSection() {
   )
 }
 
-
-
 /* ─── Feature bento grid ─── */
 function FeaturesSection() {
   const features = [
@@ -199,31 +192,43 @@ function FeaturesSection() {
       icon: Lock,
       title: 'End-to-End Encryption',
       desc: 'AES-256-GCM + CoFHE threshold encryption ensures only the quorum can access your prompts.',
+      accentColor: 'bg-violet-500/50',
+      glowColor: 'bg-violet-500/10',
     },
     {
       icon: CheckCircle2,
       title: 'Quorum Consensus',
       desc: '1 leader + 2 verifiers run the same inference. Mismatches trigger automatic dispute resolution.',
+      accentColor: 'bg-violet-500/50',
+      glowColor: 'bg-violet-500/10',
     },
     {
       icon: Shield,
       title: 'On-Chain Insurance',
       desc: 'Optional hallucination coverage via Reineira. Disputed results trigger USDC payouts.',
+      accentColor: 'bg-violet-500/50',
+      glowColor: 'bg-violet-500/10',
     },
     {
       icon: Server,
       title: 'Decentralized Nodes',
       desc: 'Anyone can run a compute node. Attestation, staking, and slashing keep the network honest.',
+      accentColor: 'bg-violet-500/50',
+      glowColor: 'bg-violet-500/10',
     },
     {
       icon: Wallet,
       title: 'Pay Per Inference',
       desc: 'Use cUSDC credits or create an escrow. No subscriptions, no hidden fees.',
+      accentColor: 'bg-violet-500/50',
+      glowColor: 'bg-violet-500/10',
     },
     {
       icon: Database,
       title: 'IPFS Storage',
       desc: 'Encrypted prompts stored on IPFS via Pinata. Decentralized, immutable, always available.',
+      accentColor: 'bg-violet-500/50',
+      glowColor: 'bg-violet-500/10',
     },
   ]
 
@@ -235,10 +240,11 @@ function FeaturesSection() {
           initial="hidden"
           whileInView="show"
           viewport={{ once: true }}
-          className="text-center mb-20"
+          className="text-center mb-12"
         >
-          <h2 className="text-3xl sm:text-4xl font-bold font-heading text-brand-text mb-4">
-            Built for <span className="gradient-text">Privacy</span>
+          <SectionLabel>BUILT FOR PRIVACY</SectionLabel>
+          <h2 className="text-3xl sm:text-4xl font-bold font-heading text-brand-text mt-4 mb-4">
+            Built for <span className="text-gradient-purple">Privacy</span>
           </h2>
           <p className="text-brand-text-secondary max-w-xl mx-auto">
             Every layer of the stack is designed to keep your data confidential
@@ -246,27 +252,15 @@ function FeaturesSection() {
         </motion.div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((feature, i) => (
-            <motion.div
+          {features.map((feature) => (
+            <FeatureCard
               key={feature.title}
-              variants={fadeInScale}
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.08 }}
-            >
-              <div className="glass-card glass-card-hover p-6 h-full">
-                <div className="w-10 h-10 rounded-xl bg-brand-primary/10 border border-brand-primary/15 flex items-center justify-center mb-4">
-                  <feature.icon className="w-5 h-5 text-brand-secondary" />
-                </div>
-                <h3 className="text-base font-bold text-brand-text mb-2 font-heading">
-                  {feature.title}
-                </h3>
-                <p className="text-sm text-brand-text-secondary leading-relaxed">
-                  {feature.desc}
-                </p>
-              </div>
-            </motion.div>
+              icon={feature.icon}
+              title={feature.title}
+              desc={feature.desc}
+              accentColor={feature.accentColor}
+              glowColor={feature.glowColor}
+            />
           ))}
         </div>
       </div>
@@ -275,48 +269,48 @@ function FeaturesSection() {
 }
 
 /* ─── Partners ─── */
-function PartnersSection() {
+function TechStackSection() {
   const partners = [
-    { name: 'Arbitrum', abbr: 'Arb' },
-    { name: 'Fhenix', abbr: 'Fh' },
-    { name: 'Reineira', abbr: 'Re' },
+    { name: 'Arbitrum', src: '/logos/arbitrum.svg' },
+    { name: 'Fhenix', src: '/logos/fhenix.svg' },
+    { name: 'Reineira', src: '/logos/reineira-logo.png' },
   ]
 
   return (
-    <section className="relative py-20 px-6">
-      <div className="max-w-4xl mx-auto text-center">
-        <motion.p
-          variants={fadeInUp}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true }}
-          className="text-xs uppercase tracking-[0.3em] text-brand-text-secondary mb-10"
-        >
-          Built on
-        </motion.p>
-
+    <section className="relative py-16 px-6">
+      <div className="max-w-6xl mx-auto">
         <motion.div
           variants={staggerSlow}
           initial="hidden"
           whileInView="show"
           viewport={{ once: true }}
-          className="flex flex-wrap items-center justify-center gap-8 sm:gap-12"
+          className="flex flex-wrap items-center justify-center gap-6 sm:gap-10"
         >
-          {partners.map((partner) => (
-            <motion.div
-              key={partner.name}
-              variants={fadeInScale}
-              whileHover={{ scale: 1.05, opacity: 1 }}
-              className="text-brand-text-secondary/50 hover:text-brand-text transition-all cursor-default"
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-xs font-bold text-brand-highlight">
-                  {partner.abbr}
-                </div>
-                <span className="text-sm font-medium">{partner.name}</span>
-              </div>
-            </motion.div>
-          ))}
+          {/* Built with label */}
+          <motion.span
+            variants={fadeInScale}
+            className="text-[10px] uppercase tracking-[0.2em] text-white/30 font-medium whitespace-nowrap"
+          >
+            Built with
+          </motion.span>
+
+          {/* Logos row */}
+          <div className="flex items-center gap-6 sm:gap-10">
+            {partners.map((partner) => (
+              <motion.div
+                key={partner.name}
+                variants={fadeInScale}
+                className="flex items-center justify-center"
+              >
+                <img
+                  src={partner.src}
+                  alt={partner.name}
+                  className="h-7 sm:h-8 w-auto opacity-50 hover:opacity-100 transition-opacity duration-300 object-contain"
+                  loading="lazy"
+                />
+              </motion.div>
+            ))}
+          </div>
         </motion.div>
       </div>
     </section>
@@ -326,14 +320,17 @@ function PartnersSection() {
 /* ─── Footer ─── */
 function Footer() {
   return (
-    <footer className="relative border-t border-brand-primary/10 px-6 py-12">
+    <footer className="relative border-t border-violet-500/10 px-6 py-12">
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-brand-primary text-white font-extrabold text-sm flex items-center justify-center glow-primary">
-                B
-              </div>
+            <div className="flex items-center gap-2.5 mb-4">
+              <img
+                src="/logos/bf-final-logo-2.png"
+                alt="Blindference"
+                className="w-8 h-8 rounded-lg object-cover"
+                draggable={false}
+              />
               <span className="font-semibold text-sm tracking-[0.2em] text-brand-text font-heading">
                 BLINDFERENCE
               </span>
@@ -375,13 +372,13 @@ function Footer() {
             </h4>
             <div className="space-y-2">
               <Link
-                to="/node-registration"
+                to="/nodes"
                 className="block text-sm text-brand-text-secondary hover:text-brand-text transition-colors"
               >
                 Run a Node
               </Link>
               <Link
-                to="/node-dashboard"
+                to="/nodes"
                 className="block text-sm text-brand-text-secondary hover:text-brand-text transition-colors"
               >
                 Dashboard
@@ -401,7 +398,7 @@ function Footer() {
             </h4>
             <div className="space-y-2">
               <a
-                href="https://github.com"
+                href="https://github.com/AbhishekPanwarr/Blindference-Agent"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block text-sm text-brand-text-secondary hover:text-brand-text transition-colors"
@@ -409,31 +406,23 @@ function Footer() {
                 GitHub
               </a>
               <a
-                href="https://x.com"
+                href="https://t.me/abhieren"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block text-sm text-brand-text-secondary hover:text-brand-text transition-colors"
               >
-                X / Twitter
-              </a>
-              <a
-                href="https://discord.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block text-sm text-brand-text-secondary hover:text-brand-text transition-colors"
-              >
-                Discord
+                Telegram
               </a>
             </div>
           </div>
         </div>
 
-        <div className="pt-8 border-t border-brand-primary/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="pt-8 border-t border-violet-500/10 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-brand-text-secondary/60">
             &copy; 2025 Blindference Labs. All rights reserved.
           </p>
           <p className="text-xs text-brand-text-secondary/60">
-            Built with love for privacy.
+            Confidential AI inference, verified by quorum, settled on-chain.
           </p>
         </div>
       </div>
@@ -441,41 +430,63 @@ function Footer() {
   )
 }
 
+/* ─── Hero Stats Bar ─── */
 /* ─── Page ─── */
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-brand-bg text-brand-text relative overflow-hidden">
-      {/* Nav */}
-      <nav className="relative z-50 flex items-center justify-between px-6 sm:px-10 py-5">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-brand-primary text-white font-extrabold text-sm flex items-center justify-center glow-primary">
-            B
-          </div>
-          <span className="font-semibold text-sm tracking-[0.2em] text-brand-text font-heading">
-            BLINDFERENCE
-          </span>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link
-            to="/app"
-            className="inline-flex items-center gap-2 bg-white text-black font-bold text-xs rounded-full px-5 py-2.5 transition-all hover:scale-[1.03] hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
-          >
-            Launch App
-          </Link>
-        </div>
-      </nav>
+      <GrainOverlay />
 
       <main className="relative z-10">
         <HeroSection />
-        <AnimatedBanner />
+
+        {/* Stats bar — NullPay style */}
+        <section className="relative py-10 px-6">
+          <div className="max-w-4xl mx-auto flex items-center justify-center gap-12 md:gap-20">
+            {[
+              { value: '100+', label: 'Encrypted Requests' },
+              { value: '10+', label: 'Active Nodes' },
+              { value: 'Testnet', label: 'Live on Arbitrum Sepolia' },
+            ].map((stat) => (
+              <div key={stat.label} className="text-center">
+                <div className="text-3xl md:text-4xl font-bold text-white tracking-tight">
+                  {stat.value}
+                </div>
+                <div className="text-[11px] text-white/40 mt-1 uppercase tracking-wider">
+                  {stat.label}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <GlowDivider />
+
         <PrivacyMarquee />
+
+        <GlowDivider />
+
         <HowItWorks />
+
+        <GlowDivider />
+
         <FeaturesSection />
+
+        <PromoCard />
+
+        <GlowDivider />
+
         <ArchitectureDiagram />
         <ModelShowcase />
+
+        <GlowDivider />
+
         <PrivacyComparison />
         <RolesSection />
-        <PartnersSection />
+
+        <GlowDivider />
+
+        <TechStackSection />
         <FinalCTA />
       </main>
 

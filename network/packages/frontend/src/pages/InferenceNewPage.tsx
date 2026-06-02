@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi'
-import { Lock, ShieldAlert, ShieldCheck, Copy, Cpu, CheckCircle2, Loader2, ChevronDown, ArrowUp, MessageSquare, BarChart2 } from 'lucide-react'
+import { Lock, ShieldAlert, ShieldCheck, Copy, Cpu, CheckCircle2, Loader2, ChevronDown, ChevronUp, Send, MessageSquare, BarChart2, Activity } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Hex } from 'viem'
 import axios from 'axios'
+import { SectionLabel } from '../components/effects/GlowDivider'
 
-import { inferenceApi, jobApi } from '../api/inferenceApi'
+import { coverageApi, inferenceApi, jobApi } from '../api/inferenceApi'
 import { ChatView } from '../components/inference/ChatView'
 import { useCofheClient } from '../hooks/useCofheClient'
 import { useChat } from '../hooks/useChat'
@@ -23,6 +24,7 @@ import { useCreateEscrow } from '../hooks/useCreateEscrow'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
+
 
 const TEXT_MODEL_OPTIONS = {
   groq_llama_70b: {
@@ -175,10 +177,9 @@ function stepStatus(key: string, stage: string, requestId: string | null, jobSta
       break
     case 'REJECTED':
     case 'DISPUTED':
-      // Something went wrong — mark current step as error, previous as done
-      if (idx < reached) return 'done'
-      if (idx === reached) return 'error'
-      return 'pending'
+      // Quorum rejected the leader result — leader execution completed but consensus failed
+      reached = 3 // encrypt, icl, leader done; quorum is error
+      break
     default:
       reached = 0
   }
@@ -211,7 +212,7 @@ export function InferenceNewPage() {
   const { data: walletClient } = useWalletClient()
   const { client: cofheClient, isReady } = useCofheClient()
   const store = useInferenceStore()
-  const { messages, pushUserMessage, updateAssistantStatus, updateAssistantMetadata, failAssistantMessage, setActiveRequestId, status, decryptMessage } = useChat()
+  const { messages, pushUserMessage, updateAssistantStatus, updateAssistantMetadata, failAssistantMessage, setActiveRequestId, activeRequestId, status, decryptMessage } = useChat()
 
   const selectedModel = TEXT_MODEL_OPTIONS[selectedModelKey]
   const currentRiskModel = MODEL_BINDINGS[store.modelId]
@@ -221,6 +222,9 @@ export function InferenceNewPage() {
 
   const [chatStage, setChatStage] = useState<'idle' | 'encrypting' | 'uploading' | 'escrow' | 'submitting'>('idle')
   const isChatBusy = chatStage !== 'idle'
+
+  // Mobile execution trace toggle
+  const [showMobileTrace, setShowMobileTrace] = useState(false)
 
   // Payment mode state
   const [paymentMode, setPaymentMode] = useState<'escrow' | 'credits'>('credits')
@@ -238,6 +242,10 @@ export function InferenceNewPage() {
   const hasMessages = messages.length > 0
   const jobStatus = status?.status ?? null
   const latestRequestId = [...messages].reverse().find(m => m.role === 'assistant' && m.requestId)?.requestId ?? null
+
+  // Use activeRequestId when available so the execution trace tracks the
+  // currently submitted inference, not the previous completed one.
+  const traceRequestId = activeRequestId || latestRequestId || null
 
   // Auto-scroll
   useEffect(() => {
@@ -259,6 +267,19 @@ export function InferenceNewPage() {
     setPrompt(text)
   }, [])
 
+  const handleFeedback = useCallback(async (requestId: string, rating: 'up' | 'down') => {
+    try {
+      await coverageApi.submitFeedback(requestId, {
+        developer_address: address ?? '',
+        rating,
+        notes: rating === 'up' ? 'User believes the leader output is correct despite quorum rejection.' : undefined,
+      })
+      console.log(`[Blindference] Feedback submitted: ${rating} for ${requestId}`)
+    } catch (e: any) {
+      console.error('[Blindference] Feedback submission failed:', e)
+    }
+  }, [address])
+
   const handleChatSubmit = async () => {
     const normalizedPrompt = prompt.trim()
     if (!normalizedPrompt) { setError('Please enter a prompt first.'); return }
@@ -277,8 +298,17 @@ export function InferenceNewPage() {
       updateAssistantStatus(assistantId, 'encrypting')
       console.log('[Blindference] Encrypting prompt with AES-256-GCM…')
 
+      // Build conversation history from previous messages for multi-turn context
+      const conversation = messages
+        .filter(m => m.role === 'user' || (m.role === 'assistant' && m.status === 'done'))
+        .map(m => ({ role: m.role, content: m.content }))
+
+      const payloadObj = { conversation, prompt: normalizedPrompt }
+      const payloadString = JSON.stringify(payloadObj)
+      console.log(`[Blindference] Encrypting ${conversation.length} history turns + current prompt`)
+
       const promptKey = generateKey()
-      const encryptedPrompt = await encryptText(normalizedPrompt, promptKey)
+      const encryptedPrompt = await encryptText(payloadString, promptKey)
       const packedPrompt = packPayload(encryptedPrompt)
 
       const encryptedPromptKey = await encryptPromptKeyForTextRequest(cofheClient, promptKey)
@@ -432,6 +462,8 @@ export function InferenceNewPage() {
           prompt_key_store_status: 'stored_by_user',
           prompt_key_store_address: promptKeyStoreAddress,
           source: 'frontend',
+          conversation_history: conversation,
+          has_conversation_history: conversation.length > 0,
         },
       })
 
@@ -612,6 +644,138 @@ export function InferenceNewPage() {
     }
   }
 
+  // Shared execution trace content (used by sidebar + mobile panel)
+  const TraceContent = () => (
+    <>
+      <SectionLabel>EXECUTION TRACE</SectionLabel>
+      <div className="h-4" />
+      <div className="relative flex flex-col gap-0">
+        {TRACE_STEPS.map((step, i) => {
+          const traceAssistant = [...messages].reverse().find(m => m.role === 'assistant' && m.requestId === traceRequestId)
+          const decrypted = traceAssistant?.status === 'done' || false
+          const ss = stepStatus(step.key, chatStage, traceRequestId, jobStatus, decrypted)
+          const isLast = i === TRACE_STEPS.length - 1
+          return (
+            <div key={step.key} className="flex gap-3 relative">
+              {!isLast && <div className="absolute left-[7px] top-5 w-[2px] h-full bg-white/10" />}
+              <div className="relative z-10 mt-0.5 shrink-0">
+                {ss === 'done' ? (
+                  <div className="w-4 h-4 rounded-full bg-violet-500 flex items-center justify-center">
+                    <CheckCircle2 className="w-3 h-3 text-black" />
+                  </div>
+                ) : ss === 'active' ? (
+                  <motion.div
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.7, 1, 0.7] }}
+                    transition={{ repeat: Infinity, duration: 1.4 }}
+                    className="w-4 h-4 rounded-full bg-violet-500 glow-violet"
+                  />
+                ) : ss === 'error' ? (
+                  <div className="w-4 h-4 rounded-full bg-error/80 flex items-center justify-center">
+                    <div className="w-2 h-2 rounded-full bg-error" />
+                  </div>
+                ) : (
+                  <div className="w-4 h-4 rounded-full border border-white/10 glass-card" />
+                )}
+              </div>
+              <div className={`pb-7 ${ss === 'pending' ? 'opacity-40' : ''}`}>
+                <div className={`text-sm font-medium ${ss === 'done' ? 'text-white' : ss === 'active' ? 'text-white' : ss === 'error' ? 'text-error' : 'text-white/50'}`}>
+                  {step.label}
+                </div>
+                {(ss === 'active' || ss === 'done' || ss === 'error') && (
+                  <div className={`text-[11px] mt-0.5 font-mono ${ss === 'error' ? 'text-error/70' : 'text-white/30'}`}>{step.sub}</div>
+                )}
+                {ss === 'active' && traceRequestId && step.key === 'leader' && status?.quorum.leader && (
+                  <div className="mt-1.5 text-[10px] text-white/40 font-mono break-all">{status.quorum.leader.address.slice(0, 18)}...</div>
+                )}
+                {ss === 'active' && traceRequestId && step.key === 'quorum' && (
+                  <div className="mt-1.5 text-[10px] text-white/40">{(status?.quorum.confirm_count ?? 0)}/{(status?.quorum.verifiers.length ?? 2)} confirmed</div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      {traceRequestId && (
+        <div className="mt-auto pt-6 border-t border-white/10 space-y-4">
+          <div>
+            <div className="text-[10px] uppercase text-white/40 mb-1">Request ID</div>
+            <div className="font-mono text-[10px] text-white/50 break-all">{traceRequestId}</div>
+            {status?.status && (
+              <Badge variant={status.status === 'ACCEPTED' ? 'success' : 'default'} className="mt-3 gap-1.5 px-3 py-1 text-[10px] uppercase tracking-wide">
+                <div className={`w-1.5 h-1.5 rounded-full ${status.status === 'ACCEPTED' ? 'bg-violet-500' : 'animate-pulse bg-violet-500'}`} />
+                {status.status}
+              </Badge>
+            )}
+          </div>
+          {(() => {
+            const activeMsg = [...messages].reverse().find(m => m.role === 'assistant' && m.requestId === traceRequestId)
+            const md = activeMsg?.metadata
+            if (!md) return null
+            const items = [
+              { label: 'Task ID', value: md.taskId },
+              { label: 'StoreKey Tx', value: md.storeKeyTx, href: md.storeKeyTx ? `https://sepolia.arbiscan.io/tx/${md.storeKeyTx}` : undefined },
+              { label: 'Prompt CID', value: md.promptCID, href: md.promptCID ? `https://gateway.pinata.cloud/ipfs/${md.promptCID}` : undefined },
+              { label: 'Leader', value: md.leader },
+              { label: 'Verifiers', value: md.verifiers },
+              { label: 'Model', value: md.modelId },
+            ].filter(i => i.value)
+            if (items.length === 0) return null
+            return (
+              <div className="border-t border-white/10 pt-4">
+                <div className="text-[10px] uppercase text-white/40 mb-2 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3 h-3" />
+                  On-chain Proof
+                </div>
+                <AnimatePresence mode="popLayout">
+                  <motion.div
+                    key={traceRequestId}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.25 }}
+                    className="space-y-1"
+                  >
+                    {items.map((item, i) => (
+                      <motion.div
+                        key={item.label}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.25, delay: i * 0.06 }}
+                        className="flex items-center justify-between text-[10px] font-mono"
+                      >
+                        <span className="text-white/40 uppercase tracking-wider">{item.label}</span>
+                        <div className="flex items-center gap-1.5">
+                          {item.href ? (
+                            <a
+                              href={item.href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-violet-400 hover:text-violet-300 underline underline-offset-2"
+                            >
+                              {item.value!.slice(0, 18)}{item.value!.length > 18 ? '…' : ''}
+                            </a>
+                          ) : (
+                            <span className="text-white/50">{item.value!.slice(0, 18)}{item.value!.length > 18 ? '…' : ''}</span>
+                          )}
+                          <button
+                            onClick={() => navigator.clipboard.writeText(item.value!)}
+                            className="text-white/30 hover:text-white transition-colors p-0.5"
+                            title="Copy"
+                          >
+                            <Copy className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            )
+          })()}
+        </div>
+      )}
+    </>
+  )
+
   return (
     <div className="flex h-[calc(100vh-3.5rem)] bg-brand-bg">
       {/* Main content */}
@@ -622,13 +786,13 @@ export function InferenceNewPage() {
           <div className="mx-auto max-w-2xl px-6 py-8">
 
             {/* Mode toggle pills */}
-            <div className="flex items-center justify-center gap-2 mb-6">
+            <div className="flex items-center justify-center gap-2 mb-6" data-tutorial="mode-toggle">
               <button
                 type="button"
                 onClick={() => setMode('chat')}
                 className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition-colors border ${
                   mode === 'chat'
-                    ? 'bg-orange-500 text-white border-orange-500 glow-primary'
+                    ? 'bg-violet-500 text-white border-violet-500 glow-violet'
                     : 'glass-card-subtle text-white/50 border-white/10 hover:border-white/20 hover:text-white'
                 }`}
               >
@@ -640,7 +804,7 @@ export function InferenceNewPage() {
                 onClick={() => setMode('risk')}
                 className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition-colors border ${
                   mode === 'risk'
-                    ? 'bg-orange-500 text-white border-orange-500 glow-primary'
+                    ? 'bg-violet-500 text-white border-violet-500 glow-violet'
                     : 'glass-card-subtle text-white/50 border-white/10 hover:border-white/20 hover:text-white'
                 }`}
               >
@@ -690,13 +854,14 @@ export function InferenceNewPage() {
                 </AnimatePresence>
 
                 {/* Chat messages */}
-                <ChatView entries={messages} onSuggestionClick={handleSuggestionClick} onDecrypt={decryptMessage} />
+                <ChatView entries={messages} onSuggestionClick={handleSuggestionClick} onDecrypt={decryptMessage} onFeedback={handleFeedback} />
               </>
             ) : (
               /* Risk Scoring Mode */
-              <GlassCard className="p-6 space-y-5 max-w-2xl mx-auto" hoverEffect={false}>
+              <GlassCard className="gradient-accent-top p-6 space-y-5 max-w-2xl mx-auto" hoverEffect={false}>
                 <div className="mb-2">
-                  <h1 className="text-2xl font-semibold text-white font-heading mb-1">Risk Assessment</h1>
+                  <SectionLabel>RISK ASSESSMENT</SectionLabel>
+                  <h1 className="text-2xl font-semibold text-white font-heading mb-1 mt-1">Confidential Risk Scoring</h1>
                   <p className="text-sm text-white/50">Secure, end-to-end encrypted inference via FHE.</p>
                 </div>
 
@@ -721,7 +886,7 @@ export function InferenceNewPage() {
                           className={cn(
                             'cursor-pointer rounded-xl p-4 text-left outline-none transition-all flex flex-col gap-1.5',
                             isSelected
-                              ? 'border border-orange-500/30 bg-orange-500/5 shadow-[0_0_15px_rgba(249,115,22,0.1)]'
+                              ? 'border border-violet-500/30 bg-violet-500/5 shadow-[0_0_15px_rgba(139,92,246,0.1)]'
                               : 'border border-white/10 bg-[rgba(10,10,10,0.4)] hover:border-white/20'
                           )}
                           key={id}
@@ -773,7 +938,7 @@ export function InferenceNewPage() {
                 <div className="flex items-start gap-4 rounded-xl border border-white/10 bg-[rgba(10,10,10,0.4)] p-4 hover:border-white/20 transition-colors">
                   <input
                     checked={store.coverageEnabled}
-                    className="mt-1 cursor-pointer h-5 w-5 rounded border-white/10 bg-[rgba(10,10,10,0.6)] text-orange-500 focus:ring-orange-500/20 focus:ring-offset-black"
+                    className="mt-1 cursor-pointer h-5 w-5 rounded border-white/10 bg-[rgba(10,10,10,0.6)] text-violet-500 focus:ring-violet-500/20 focus:ring-offset-black"
                     onChange={(e) => store.setCoverageEnabled(e.target.checked)}
                     type="checkbox"
                   />
@@ -793,7 +958,7 @@ export function InferenceNewPage() {
                       Estimated Fee
                     </span>
                     <div className="text-2xl font-mono text-white mt-1">
-                      {totalDisplay}.00 <span className="text-white/50 text-lg">GNK</span>
+                      {totalDisplay}.00 <span className="text-white/50 text-lg">BLIND</span>
                     </div>
                   </div>
 
@@ -844,7 +1009,7 @@ export function InferenceNewPage() {
               </AnimatePresence>
 
               {/* Big rounded-3xl input */}
-              <div className="rounded-3xl border border-white/10 glass-card backdrop-blur-md relative focus-within:border-orange-500/40 focus-within:shadow-[0_0_20px_rgba(249,115,22,0.1)] transition-all">
+              <div className="rounded-3xl border border-white/10 glass-card backdrop-blur-md relative focus-within:border-violet-500/40 focus-within:shadow-[0_0_20px_rgba(139,92,246,0.1)] transition-all" data-tutorial="prompt-input">
                 <textarea
                   rows={3}
                   className="w-full resize-none bg-transparent px-5 pt-4 pb-12 text-sm leading-relaxed text-white placeholder:text-white/30 focus:outline-none"
@@ -860,19 +1025,19 @@ export function InferenceNewPage() {
                   }}
                 />
 
-                {/* Bottom row inside input */}
+                {/* ── Row 1: Model picker + Send ── */}
                 <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between">
                   {/* Model picker pill */}
-                  <div className="relative" ref={modelRef}>
+                  <div className="relative" ref={modelRef} data-tutorial="model-picker">
                     <button
                       type="button"
                       onClick={() => setShowModelPicker((v) => !v)}
                       disabled={isChatBusy}
-                      className="flex items-center gap-1.5 rounded-full border border-white/10 glass-card px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-white/5 transition-colors disabled:opacity-50"
+                      className="flex items-center gap-2 rounded-full border border-white/10 glass-card px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/5 transition-colors disabled:opacity-50"
                     >
-                      <Cpu className="w-3 h-3 text-white/50" />
+                      <Cpu className="w-3.5 h-3.5 text-white/50" />
                       {selectedModel.label}
-                      <ChevronDown className={`w-3 h-3 text-white/50 transition-transform ${showModelPicker ? 'rotate-180' : ''}`} />
+                      <ChevronDown className={`w-3.5 h-3.5 text-white/50 transition-transform ${showModelPicker ? 'rotate-180' : ''}`} />
                     </button>
                     <AnimatePresence>
                       {showModelPicker && (
@@ -893,7 +1058,7 @@ export function InferenceNewPage() {
                               <Cpu className="w-4 h-4 text-white/50 mt-0.5 shrink-0" />
                               <div>
                                 <div className="text-sm font-semibold text-white flex items-center gap-2">
-                                  {o.label}{selectedModelKey === k && <CheckCircle2 className="w-3.5 h-3.5 text-orange-400" />}
+                                  {o.label}{selectedModelKey === k && <CheckCircle2 className="w-3.5 h-3.5 text-violet-400" />}
                                 </div>
                                 <div className="text-xs text-white/50 mt-0.5">{o.provider} · {o.model}</div>
                               </div>
@@ -904,101 +1069,121 @@ export function InferenceNewPage() {
                     </AnimatePresence>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    {/* Payment mode toggle */}
-                    <div className="flex items-center gap-1 rounded-full border border-white/10 glass-card px-2 py-1">
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMode('credits')}
-                        className={`rounded px-2 py-0.5 text-[10px] font-semibold transition-colors ${
-                          paymentMode === 'credits'
-                            ? 'bg-orange-500 text-white'
-                            : 'text-white/50 hover:text-white'
-                        }`}
-                      >
-                        Credits
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMode('escrow')}
-                        className={`rounded px-2 py-0.5 text-[10px] font-semibold transition-colors ${
-                          paymentMode === 'escrow'
-                            ? 'bg-orange-500 text-white'
-                            : 'text-white/50 hover:text-white'
-                        }`}
-                      >
-                        Escrow
-                      </button>
-                    </div>
-                    {paymentMode === 'credits' && (
-                      <div className="flex items-center gap-1 rounded-full border border-white/10 glass-card px-2 py-1">
-                        <button
-                          type="button"
-                          onClick={() => setPaymentCurrency('cusdc')}
-                          className={`rounded px-2 py-0.5 text-[10px] font-semibold transition-colors ${
-                            paymentCurrency === 'cusdc'
-                              ? 'bg-orange-500/20 text-orange-400'
-                              : 'text-white/50 hover:text-white'
-                          }`}
-                        >
-                          cUSDC
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPaymentCurrency('blind')}
-                          className={`rounded px-2 py-0.5 text-[10px] font-semibold transition-colors ${
-                            paymentCurrency === 'blind'
-                              ? 'bg-orange-500/20 text-orange-400'
-                              : 'text-white/50 hover:text-white'
-                          }`}
-                        >
-                          BLIND -20%
-                        </button>
-                      </div>
-                    )}
-                    {paymentMode === 'credits' && (
-                      <label className="flex items-center gap-1.5 rounded-full border border-white/10 glass-card px-2 py-1 cursor-pointer hover:border-white/20 transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={insuranceOptIn}
-                          onChange={(e) => setInsuranceOptIn(e.target.checked)}
-                          className="w-3 h-3 rounded border-white/10 bg-[rgba(10,10,10,0.6)] text-orange-500 focus:ring-orange-500/20"
-                        />
-                        <span className="text-[10px] text-white/50 font-medium">
-                          Insure +2%
-                        </span>
-                      </label>
-                    )}
-                    <span className="text-[10px] text-white/50 font-mono">
-                      {paymentMode === 'credits' 
-                        ? `${(Number(jobPriceDisplay) * (1 + (insuranceOptIn ? 0.02 : 0))).toFixed(3)} ${paymentCurrency.toUpperCase()}` 
-                        : `${(jobPriceCusdc / 1e6).toFixed(3)} USDC (escrow)`}
-                    </span>
+                  {/* Right: status + send */}
+                  <div className="flex items-center gap-3">
                     <AnimatePresence>
                       {isChatBusy && (
                         <motion.span
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
-                          className="flex items-center gap-1.5 text-[11px] text-white/50"
+                          className="flex items-center gap-1.5 text-xs text-white/50"
                         >
-                          <Loader2 className="w-3 h-3 animate-spin text-orange-500" />
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-violet-500" />
                           {chatStage === 'encrypting' ? 'Sealing...' : chatStage === 'uploading' ? 'Uploading...' : chatStage === 'escrow' ? 'Escrow...' : 'Dispatching...'}
                         </motion.span>
                       )}
                     </AnimatePresence>
-                    <span className="flex items-center gap-1 text-[11px] text-white/30">
+                    <span className="flex items-center gap-1.5 text-[11px] text-white/40 bg-white/[0.04] border border-white/[0.08] rounded-full px-2.5 py-1 backdrop-blur-sm">
                       <Lock className="w-3 h-3" /> Private
                     </span>
                     <button
                       type="button"
                       onClick={handleChatSubmit}
                       disabled={isChatBusy || !isReady || !address || !prompt.trim()}
-                      className="btn-primary flex items-center justify-center w-9 h-9 rounded-full p-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500 text-white shadow-[0_4px_20px_rgba(139,92,246,0.3)] hover:shadow-[0_8px_30px_rgba(139,92,246,0.5)] transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:scale-[1.03]"
+                      data-tutorial="send-button"
                     >
-                      {isChatBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowUp className="w-4 h-4" />}
+                      {isChatBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+                        <Send className="w-5 h-5" strokeWidth={2.5} />
+                      )}
                     </button>
                   </div>
+                </div>
+              </div>
+
+              {/* ── Row 2: Payment config bar ── */}
+              <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-3">
+                {/* Payment mode toggle */}
+                <div className="flex items-center rounded-full border border-white/10 glass-card p-1" data-tutorial="payment-mode">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMode('credits')}
+                    className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                      paymentMode === 'credits'
+                        ? 'bg-violet-500 text-white'
+                        : 'text-white/50 hover:text-white'
+                    }`}
+                  >
+                    Credits
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMode('escrow')}
+                    className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                      paymentMode === 'escrow'
+                        ? 'bg-violet-500 text-white'
+                        : 'text-white/50 hover:text-white'
+                    }`}
+                  >
+                    Escrow
+                  </button>
+                </div>
+
+                {/* Currency toggle (credits mode only) */}
+                {paymentMode === 'credits' && (
+                  <div className="flex items-center rounded-full border border-white/10 glass-card p-1" data-tutorial="currency-toggle">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentCurrency('cusdc')}
+                      className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                        paymentCurrency === 'cusdc'
+                          ? 'bg-violet-500/20 text-violet-400'
+                          : 'text-white/50 hover:text-white'
+                      }`}
+                    >
+                      cUSDC
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentCurrency('blind')}
+                      className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                        paymentCurrency === 'blind'
+                          ? 'bg-violet-500/20 text-violet-400'
+                          : 'text-white/50 hover:text-white'
+                      }`}
+                    >
+                      BLIND
+                      <span className="ml-1 text-[10px] opacity-70">-20%</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Insure checkbox (credits mode only) */}
+                {paymentMode === 'credits' && (
+                  <label className="flex items-center gap-2 rounded-full border border-white/10 glass-card px-3 py-1.5 cursor-pointer hover:border-white/20 transition-colors" data-tutorial="insurance-toggle">
+                    <input
+                      type="checkbox"
+                      checked={insuranceOptIn}
+                      onChange={(e) => setInsuranceOptIn(e.target.checked)}
+                      className="w-3.5 h-3.5 rounded border-white/10 bg-[rgba(10,10,10,0.6)] text-violet-500 focus:ring-violet-500/20"
+                    />
+                    <span className="text-xs text-white/60 font-medium">
+                      Insure +2%
+                    </span>
+                  </label>
+                )}
+
+                {/* Fee estimate */}
+                <div className="ml-auto flex items-center gap-2" data-tutorial="fee-display">
+                  <span className="text-[10px] uppercase tracking-wider text-white/40 font-medium">
+                    Est. Fee
+                  </span>
+                  <span className="text-sm font-mono text-white/80">
+                    {paymentMode === 'credits'
+                      ? `${(Number(jobPriceDisplay) * (1 + (insuranceOptIn ? 0.02 : 0))).toFixed(3)} ${paymentCurrency.toUpperCase()}`
+                      : `${(jobPriceCusdc / 1e6).toFixed(3)} USDC`}
+                  </span>
                 </div>
               </div>
             </div>
@@ -1006,136 +1191,42 @@ export function InferenceNewPage() {
         )}
       </div>
 
-      {/* RIGHT: Execution Trace sidebar */}
-      <div className="hidden xl:flex w-80 shrink-0 flex-col p-4">
-        <GlassCard variant="heavy" className="flex-1 flex flex-col p-6 overflow-y-auto" hoverEffect={false}>
-          <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/40 mb-8">Execution Trace</p>
-          <div className="relative flex flex-col gap-0">
-            {TRACE_STEPS.map((step, i) => {
-              const latestAssistant = [...messages].reverse().find(m => m.role === 'assistant' && m.requestId === latestRequestId)
-              const decrypted = latestAssistant?.status === 'done' || false
-              const ss = stepStatus(step.key, chatStage, latestRequestId, jobStatus, decrypted)
-              const isLast = i === TRACE_STEPS.length - 1
-              return (
-                <div key={step.key} className="flex gap-3 relative">
-                  {!isLast && <div className="absolute left-[7px] top-5 w-[2px] h-full bg-white/10" />}
-                  <div className="relative z-10 mt-0.5 shrink-0">
-                    {ss === 'done' ? (
-                      <div className="w-4 h-4 rounded-full bg-orange-500 flex items-center justify-center">
-                        <CheckCircle2 className="w-3 h-3 text-black" />
-                      </div>
-                    ) : ss === 'active' ? (
-                      <motion.div
-                        animate={{ scale: [1, 1.2, 1], opacity: [0.7, 1, 0.7] }}
-                        transition={{ repeat: Infinity, duration: 1.4 }}
-                        className="w-4 h-4 rounded-full bg-orange-500 glow-primary"
-                      />
-                    ) : ss === 'error' ? (
-                      <div className="w-4 h-4 rounded-full bg-error/80 flex items-center justify-center">
-                        <div className="w-2 h-2 rounded-full bg-error" />
-                      </div>
-                    ) : (
-                      <div className="w-4 h-4 rounded-full border border-white/10 glass-card" />
-                    )}
-                  </div>
-                  <div className={`pb-7 ${ss === 'pending' ? 'opacity-40' : ''}`}>
-                    <div className={`text-sm font-medium ${ss === 'done' ? 'text-white' : ss === 'active' ? 'text-white' : ss === 'error' ? 'text-error' : 'text-white/50'}`}>
-                      {step.label}
-                    </div>
-                    {(ss === 'active' || ss === 'done' || ss === 'error') && (
-                      <div className={`text-[11px] mt-0.5 font-mono ${ss === 'error' ? 'text-error/70' : 'text-white/30'}`}>{step.sub}</div>
-                    )}
-                    {ss === 'active' && latestRequestId && step.key === 'leader' && status?.quorum.leader && (
-                      <div className="mt-1.5 text-[10px] text-white/40 font-mono break-all">{status.quorum.leader.address.slice(0, 18)}...</div>
-                    )}
-                    {ss === 'active' && latestRequestId && step.key === 'quorum' && (
-                      <div className="mt-1.5 text-[10px] text-white/40">{(status?.quorum.confirm_count ?? 0)}/{(status?.quorum.verifiers.length ?? 2)} confirmed</div>
-                    )}
-                  </div>
+      {/* Mobile execution trace toggle + panel */}
+      {mode === 'chat' && (
+        <div className="xl:hidden">
+          <button
+            type="button"
+            onClick={() => setShowMobileTrace(v => !v)}
+            className="w-full flex items-center justify-center gap-2 py-2 text-[10px] font-semibold uppercase tracking-widest text-white/40 hover:text-white/60 border-t border-white/10 bg-brand-bg transition-colors"
+          >
+            <Activity className="w-3.5 h-3.5" />
+            Execution Trace
+            {showMobileTrace ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          </button>
+          <AnimatePresence>
+            {showMobileTrace && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="p-4 bg-brand-bg border-t border-white/10 max-h-[50vh] overflow-y-auto">
+                  <GlassCard variant="heavy" className="gradient-accent-top p-4" hoverEffect={false}>
+                    <TraceContent />
+                  </GlassCard>
                 </div>
-              )
-            })}
-          </div>
-          {latestRequestId && (
-            <div className="mt-auto pt-6 border-t border-white/10 space-y-4">
-              <div>
-                <div className="text-[10px] uppercase text-white/40 mb-1">Request ID</div>
-                <div className="font-mono text-[10px] text-white/50 break-all">{latestRequestId}</div>
-                {status?.status && (
-                  <Badge variant={status.status === 'ACCEPTED' ? 'success' : 'default'} className="mt-3 gap-1.5 px-3 py-1 text-[10px] uppercase tracking-wide">
-                    <div className={`w-1.5 h-1.5 rounded-full ${status.status === 'ACCEPTED' ? 'bg-orange-500' : 'animate-pulse bg-orange-500'}`} />
-                    {status.status}
-                  </Badge>
-                )}
-              </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
 
-              {/* Active On-chain Proof panel for current inference */}
-              {(() => {
-                const activeMsg = [...messages].reverse().find(m => m.role === 'assistant' && m.requestId === latestRequestId)
-                const md = activeMsg?.metadata
-                if (!md) return null
-                const items = [
-                  { label: 'Task ID', value: md.taskId },
-                  { label: 'StoreKey Tx', value: md.storeKeyTx, href: md.storeKeyTx ? `https://sepolia.arbiscan.io/tx/${md.storeKeyTx}` : undefined },
-                  { label: 'Prompt CID', value: md.promptCID, href: md.promptCID ? `https://gateway.pinata.cloud/ipfs/${md.promptCID}` : undefined },
-                  { label: 'Leader', value: md.leader },
-                  { label: 'Verifiers', value: md.verifiers },
-                  { label: 'Model', value: md.modelId },
-                ].filter(i => i.value)
-                if (items.length === 0) return null
-                return (
-                  <div className="border-t border-white/10 pt-4">
-                    <div className="text-[10px] uppercase text-white/40 mb-2 flex items-center gap-1.5">
-                      <ShieldCheck className="w-3 h-3" />
-                      On-chain Proof
-                    </div>
-                    <AnimatePresence mode="popLayout">
-                      <motion.div
-                        key={latestRequestId}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.25 }}
-                        className="space-y-1"
-                      >
-                        {items.map((item, i) => (
-                          <motion.div
-                            key={item.label}
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.25, delay: i * 0.06 }}
-                            className="flex items-center justify-between text-[10px] font-mono"
-                          >
-                            <span className="text-white/40 uppercase tracking-wider">{item.label}</span>
-                            <div className="flex items-center gap-1.5">
-                              {item.href ? (
-                                <a
-                                  href={item.href}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-orange-400 hover:text-orange-300 underline underline-offset-2"
-                                >
-                                  {item.value!.slice(0, 18)}{item.value!.length > 18 ? '…' : ''}
-                                </a>
-                              ) : (
-                                <span className="text-white/50">{item.value!.slice(0, 18)}{item.value!.length > 18 ? '…' : ''}</span>
-                              )}
-                              <button
-                                onClick={() => navigator.clipboard.writeText(item.value!)}
-                                className="text-white/30 hover:text-white transition-colors p-0.5"
-                                title="Copy"
-                              >
-                                <Copy className="w-3 h-3" />
-                              </button>
-                            </div>
-                          </motion.div>
-                        ))}
-                      </motion.div>
-                    </AnimatePresence>
-                  </div>
-                )
-              })()}
-            </div>
-          )}
+      {/* RIGHT: Execution Trace sidebar */}
+      <div className="hidden xl:flex w-80 shrink-0 flex-col p-4" data-tutorial="execution-trace">
+        <GlassCard variant="heavy" className="gradient-accent-top flex-1 flex flex-col p-6 overflow-y-auto" hoverEffect={false}>
+          <TraceContent />
         </GlassCard>
       </div>
     </div>
